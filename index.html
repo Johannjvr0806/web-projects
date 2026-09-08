@@ -105,10 +105,10 @@
     <form id="contact-form" name="contact" data-netlify="true" class="flex flex-col gap-3">
         <input type="hidden" name="form-name" value="contact" />
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <input type="text" name="name" placeholder="Your Name" required class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-gray-100 outline-none focus:border-brand">
-            <input type="email" name="email" placeholder="Your Email" required class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-gray-100 outline-none focus:border-brand">
+            <input type="text" name="name" placeholder="Your Name" required class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-white placeholder-gray-400 outline-none focus:border-brand [&:-webkit-autofill]:[-webkit-text-fill-color:white] [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_1000px_#111827_inset]">
+            <input type="email" name="email" placeholder="Your Email" required class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-white placeholder-gray-400 outline-none focus:border-brand [&:-webkit-autofill]:[-webkit-text-fill-color:white] [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_1000px_#111827_inset]">
         </div>
-        <textarea name="message" rows="3" placeholder="Your Message..." required class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-gray-100 outline-none focus:border-brand resize-none"></textarea>
+        <textarea name="message" rows="3" placeholder="Your Message..." required class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-white placeholder-gray-400 outline-none focus:border-brand resize-none"></textarea>
         <button type="submit" class="bg-brand text-white text-xs font-medium py-2.5 px-4 rounded-lg hover:bg-blue-600 transition self-start">Send Message</button>
     </form>
     <p id="form-status" class="text-xs text-emerald-400 mt-2 hidden">Message sent successfully!</p>

@@ -100,18 +100,19 @@
         </section>
 
         <!-- Contact Section -->
-        <section class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
-            <h2 class="text-xl font-semibold mb-3">Get in Touch</h2>
-            <form id="contact-form" class="flex flex-col gap-3">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <input type="text" placeholder="Your Name" required class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-gray-100 outline-none focus:border-brand">
-                    <input type="email" placeholder="Your Email" required class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-gray-100 outline-none focus:border-brand">
-                </div>
-                <textarea rows="3" placeholder="Your Message..." required class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-gray-100 outline-none focus:border-brand resize-none"></textarea>
-                <button type="submit" class="bg-brand text-white text-xs font-medium py-2.5 px-4 rounded-lg hover:bg-blue-600 transition self-start">Send Message</button>
-            </form>
-            <p id="form-status" class="text-xs text-emerald-400 mt-2 hidden">Message sent successfully!</p>
-        </section>
+        <!-- Contact Section -->
+<section class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+    <h2 class="text-xl font-semibold mb-3">Get in Touch</h2>
+    <form id="contact-form" name="contact" data-netlify="true" class="flex flex-col gap-3">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input type="text" name="name" placeholder="Your Name" required class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-gray-100 outline-none focus:border-brand">
+            <input type="email" name="email" placeholder="Your Email" required class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-gray-100 outline-none focus:border-brand">
+        </div>
+        <textarea name="message" rows="3" placeholder="Your Message..." required class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-gray-100 outline-none focus:border-brand resize-none"></textarea>
+        <button type="submit" class="bg-brand text-white text-xs font-medium py-2.5 px-4 rounded-lg hover:bg-blue-600 transition self-start">Send Message</button>
+    </form>
+    <p id="form-status" class="text-xs text-emerald-400 mt-2 hidden">Message sent successfully!</p>
+</section>
 
         <!-- Footer -->
         <footer class="text-center text-xs text-gray-500 pt-4 border-t border-gray-800">

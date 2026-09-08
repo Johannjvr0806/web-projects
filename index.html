@@ -8,11 +8,19 @@
 </head>
 <body>
     <div class="card">
-        <h1>My Task List</h1>
+        <div class="header">
+            <h1>My Task List</h1>
+            <button id="theme-toggle" aria-label="Toggle theme">🌙</button>
+        </div>
         <p class="subtitle">Add tasks below. They stay saved in your browser!</p>
 
         <form id="todo-form">
             <input type="text" id="todo-input" placeholder="Enter a new task..." required>
+            <select id="priority-input">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+            </select>
             <button type="submit" id="add-btn">Add Task</button>
         </form>
 

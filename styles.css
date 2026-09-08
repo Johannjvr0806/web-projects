@@ -116,4 +116,16 @@ body.dark-mode #todo-list li {
     background-color: #dc3545;
     padding: 4px 8px;
     font-size: 0.8rem;
+}input[type="text"] {
+    background-color: #ffffff;
+    color: #333333;
+    border: 1px solid #cccccc;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+}
+
+input[type="text"]:focus {
+    border-color: #007bff;
 }

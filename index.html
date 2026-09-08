@@ -99,11 +99,11 @@
             </div>
         </section>
 
-        <!-- Contact Section -->
-        <!-- Contact Section -->
+       <!-- Contact Section -->
 <section class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
     <h2 class="text-xl font-semibold mb-3">Get in Touch</h2>
     <form id="contact-form" name="contact" data-netlify="true" class="flex flex-col gap-3">
+        <input type="hidden" name="form-name" value="contact" />
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <input type="text" name="name" placeholder="Your Name" required class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-gray-100 outline-none focus:border-brand">
             <input type="email" name="email" placeholder="Your Email" required class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-gray-100 outline-none focus:border-brand">
@@ -130,12 +130,9 @@
             themeToggle.textContent = html.classList.contains('dark') ? '🌙' : '☀️';
         });
 
-        document.getElementById('contact-form').addEventListener('submit', (e) => {
-            e.preventDefault();
+        document.getElementById('contact-form').addEventListener('submit', () => {
             const status = document.getElementById('form-status');
             status.classList.remove('hidden');
-            e.target.reset();
-            setTimeout(() => status.classList.add('hidden'), 3000);
         });
     </script>
 </body>

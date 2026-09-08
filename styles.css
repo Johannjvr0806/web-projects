@@ -42,7 +42,7 @@ body {
     border-radius: 12px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
     width: 100%;
-    max-width: 520px;
+    max-width: 480px;
 }
 
 .header {
@@ -69,181 +69,125 @@ h1 {
     margin: 6px 0 20px 0;
 }
 
-#todo-form {
+#search-form {
     display: flex;
-    flex-wrap: wrap;
     gap: 8px;
-    margin-bottom: 12px;
+    margin-bottom: 20px;
 }
 
-input[type="text"], input[type="date"], select {
+#city-input {
+    flex: 1;
     background-color: var(--card-bg);
     color: var(--text-color);
     border: 1px solid var(--border-color);
-    padding: 10px 12px;
+    padding: 10px 14px;
     border-radius: 6px;
-    font-size: 13px;
+    font-size: 14px;
     outline: none;
 }
 
-#todo-input {
-    flex: 1 1 100%;
-}
-
-#due-date-input, #priority-input {
-    flex: 1;
-}
-
-#search-input {
-    width: 100%;
-    margin-bottom: 16px;
-}
-
-button {
-    cursor: pointer;
-    border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-#add-btn {
+#search-btn {
     background-color: var(--primary-color);
     color: white;
     padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 500;
 }
 
-#add-btn:hover {
+#search-btn:hover {
     background-color: var(--primary-hover);
 }
 
-.controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-    gap: 8px;
-    flex-wrap: wrap;
+.hidden {
+    display: none;
 }
 
-.filters {
-    display: flex;
-    gap: 4px;
-}
-
-.filter-btn {
-    background: var(--item-border);
+#status-message {
+    text-align: center;
     color: var(--subtext-color);
-    padding: 6px 12px;
-    font-size: 12px;
+    font-size: 14px;
+    padding: 20px 0;
 }
 
-.filter-btn.active {
-    background: var(--primary-color);
-    color: white;
-}
-
-#clear-completed-btn {
-    background: transparent;
-    color: #ef4444;
-    font-size: 12px;
-    padding: 6px 8px;
-}
-
-#todo-list {
-    list-style: none;
-    margin-bottom: 16px;
-}
-
-.todo-item-container {
+.current-weather {
+    text-align: center;
+    padding: 16px 0;
     border-bottom: 1px solid var(--item-border);
-    padding: 10px 8px;
 }
 
-.todo-main {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: grab;
+#location-name {
+    font-size: 22px;
+    margin-bottom: 8px;
 }
 
-.todo-main.completed .todo-text {
-    text-decoration: line-through;
-    color: var(--subtext-color);
-}
-
-.todo-text {
-    flex: 1;
-    font-size: 14px;
-    color: var(--text-color);
-}
-
-.due-date {
-    font-size: 11px;
-    color: var(--subtext-color);
-}
-
-.badge {
-    font-size: 10px;
-    text-transform: uppercase;
+.temp-box {
+    font-size: 48px;
     font-weight: bold;
-    padding: 2px 6px;
-    border-radius: 4px;
+    color: var(--primary-color);
 }
 
-.badge.low { background: #e5e7eb; color: #374151; }
-.badge.medium { background: #fef3c7; color: #92400e; }
-.badge.high { background: #fee2e2; color: #991b1b; }
-
-.subtask-toggle, .delete-btn {
-    background: none;
+#weather-desc {
     color: var(--subtext-color);
     font-size: 14px;
-    padding: 2px 4px;
+    margin-top: 4px;
 }
 
-.subtasks {
-    margin-left: 28px;
-    margin-top: 8px;
+.details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 16px 0;
+}
+
+.detail-card {
+    background: var(--item-border);
+    padding: 12px;
+    border-radius: 8px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
-}
-
-.subtask-item {
-    display: flex;
     align-items: center;
-    gap: 6px;
+}
+
+.detail-card .label {
     font-size: 12px;
     color: var(--subtext-color);
 }
 
-.subtask-item.completed span {
-    text-decoration: line-through;
+.detail-card .val {
+    font-size: 16px;
+    font-weight: 600;
+    margin-top: 4px;
 }
 
-.subtask-form {
-    display: flex;
-    gap: 6px;
-    margin-top: 6px;
+.forecast-section h3 {
+    font-size: 14px;
+    margin-bottom: 10px;
+    color: var(--subtext-color);
 }
 
-.subtask-form input {
-    padding: 4px 8px;
-    font-size: 12px;
-    flex: 1;
+.forecast-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
 }
 
-.subtask-form button {
-    font-size: 11px;
-    padding: 4px 8px;
+.forecast-card {
     background: var(--item-border);
-    color: var(--text-color);
+    padding: 10px;
+    border-radius: 8px;
+    text-align: center;
 }
 
-.footer {
-    font-size: 13px;
+.forecast-card .date {
+    font-size: 11px;
     color: var(--subtext-color);
-    border-top: 1px solid var(--item-border);
-    padding-top: 12px;
+}
+
+.forecast-card .temp {
+    font-size: 14px;
+    font-weight: bold;
+    margin-top: 4px;
 }

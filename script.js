@@ -1,17 +1,16 @@
-const form = document.getElementById('todo-form');
-const input = document.getElementById('todo-input');
-const dueDateInput = document.getElementById('due-date-input');
-const priorityInput = document.getElementById('priority-input');
-const searchInput = document.getElementById('search-input');
-const list = document.getElementById('todo-list');
-const counter = document.getElementById('task-counter');
-const filterBtns = document.querySelectorAll('.filter-btn');
-const clearCompletedBtn = document.getElementById('clear-completed-btn');
+const searchForm = document.getElementById('search-form');
+const cityInput = document.getElementById('city-input');
+const weatherDisplay = document.getElementById('weather-display');
+const statusMessage = document.getElementById('status-message');
 const themeToggle = document.getElementById('theme-toggle');
 
-let todos = JSON.parse(localStorage.getItem('todos')) || [];
-let currentFilter = 'all';
-let searchQuery = '';
+const locationName = document.getElementById('location-name');
+const currentTemp = document.getElementById('current-temp');
+const weatherDesc = document.getElementById('weather-desc');
+const windSpeed = document.getElementById('wind-speed');
+const humidity = document.getElementById('humidity');
+const forecastGrid = document.getElementById('forecast-grid');
+
 let isDarkMode = localStorage.getItem('theme') === 'dark';
 
 if (isDarkMode) {
@@ -26,165 +25,74 @@ themeToggle.addEventListener('click', () => {
     themeToggle.textContent = isDarkMode ? '☀️' : '🌙';
 });
 
-function saveAndRender() {
-    localStorage.setItem('todos', JSON.stringify(todos));
-    render();
-}
+const weatherCodeMap = {
+    0: 'Clear sky',
+    1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
+    45: 'Foggy', 48: 'Depositing rime fog',
+    51: 'Light drizzle', 53: 'Moderate drizzle', 55: 'Dense drizzle',
+    61: 'Slight rain', 63: 'Moderate rain', 65: 'Heavy rain',
+    71: 'Slight snow', 73: 'Moderate snow', 75: 'Heavy snow',
+    80: 'Slight rain showers', 81: 'Moderate rain showers', 82: 'Violent rain showers',
+    95: 'Thunderstorm'
+};
 
-function render() {
-    list.innerHTML = '';
+async function fetchWeather(city) {
+    try {
+        statusMessage.textContent = 'Fetching location...';
+        weatherDisplay.classList.add('hidden');
 
-    todos.forEach((todo, index) => {
-        if (currentFilter === 'active' && todo.completed) return;
-        if (currentFilter === 'completed' && !todo.completed) return;
-        if (searchQuery && !todo.text.toLowerCase().includes(searchQuery.toLowerCase())) return;
+        // 1. Geocode City Name
+        const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`;
+        const geoRes = await fetch(geoUrl);
+        const geoData = await geoRes.json();
 
-        const container = document.createElement('li');
-        container.className = 'todo-item-container';
-
-        const mainDiv = document.createElement('div');
-        mainDiv.className = `todo-main ${todo.completed ? 'completed' : ''}`;
-        mainDiv.draggable = true;
-
-        const badge = document.createElement('span');
-        badge.className = `badge ${todo.priority || 'medium'}`;
-        badge.textContent = todo.priority || 'medium';
-
-        const span = document.createElement('span');
-        span.className = 'todo-text';
-        span.textContent = todo.text;
-        span.onclick = () => toggleTodo(index);
-
-        const dueDate = document.createElement('span');
-        dueDate.className = 'due-date';
-        dueDate.textContent = todo.dueDate ? todo.dueDate : '';
-
-        const subtaskBtn = document.createElement('button');
-        subtaskBtn.className = 'subtask-toggle';
-        subtaskBtn.textContent = '➕ Subtask';
-        subtaskBtn.onclick = () => toggleSubtaskForm(index);
-
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'delete-btn';
-        deleteBtn.innerHTML = '&times;';
-        deleteBtn.onclick = () => deleteTodo(index);
-
-        mainDiv.appendChild(badge);
-        mainDiv.appendChild(span);
-        if (todo.dueDate) mainDiv.appendChild(dueDate);
-        mainDiv.appendChild(subtaskBtn);
-        mainDiv.appendChild(deleteBtn);
-
-        container.appendChild(mainDiv);
-
-        if (todo.subtasks && todo.subtasks.length > 0) {
-            const subtaskContainer = document.createElement('div');
-            subtaskContainer.className = 'subtasks';
-            
-            todo.subtasks.forEach((st, stIndex) => {
-                const stDiv = document.createElement('div');
-                stDiv.className = `subtask-item ${st.completed ? 'completed' : ''}`;
-
-                const stCheckbox = document.createElement('input');
-                stCheckbox.type = 'checkbox';
-                stCheckbox.checked = st.completed;
-                stCheckbox.onchange = () => toggleSubtask(index, stIndex);
-
-                const stText = document.createElement('span');
-                stText.textContent = st.text;
-
-                stDiv.appendChild(stCheckbox);
-                stDiv.appendChild(stText);
-                subtaskContainer.appendChild(stDiv);
-            });
-            container.appendChild(subtaskContainer);
+        if (!geoData.results || geoData.results.length === 0) {
+            statusMessage.textContent = 'City not found. Please try another location.';
+            return;
         }
 
-        if (todo.showSubtaskForm) {
-            const stForm = document.createElement('form');
-            stForm.className = 'subtask-form';
-            const stInput = document.createElement('input');
-            stInput.placeholder = 'New subtask...';
-            const stAddBtn = document.createElement('button');
-            stAddBtn.type = 'submit';
-            stAddBtn.textContent = 'Add';
+        const { latitude, longitude, name, country } = geoData.results[0];
 
-            stForm.onsubmit = (e) => {
-                e.preventDefault();
-                if (stInput.value.trim()) {
-                    if (!todo.subtasks) todo.subtasks = [];
-                    todo.subtasks.push({ text: stInput.value.trim(), completed: false });
-                    todo.showSubtaskForm = false;
-                    saveAndRender();
-                }
-            };
+        // 2. Fetch Weather Data
+        statusMessage.textContent = 'Fetching weather data...';
+        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=auto`;
+        const weatherRes = await fetch(weatherUrl);
+        const weatherData = await weatherRes.json();
 
-            stForm.appendChild(stInput);
-            stForm.appendChild(stAddBtn);
-            container.appendChild(stForm);
+        // 3. Render Current Weather
+        locationName.textContent = `${name}, ${country}`;
+        currentTemp.textContent = Math.round(weatherData.current.temperature_2m);
+        weatherDesc.textContent = weatherCodeMap[weatherData.current.weather_code] || 'Clear';
+        windSpeed.textContent = `${weatherData.current.wind_speed_10m} km/h`;
+        humidity.textContent = `${weatherData.current.relative_humidity_2m}%`;
+
+        // 4. Render 3-Day Forecast
+        forecastGrid.innerHTML = '';
+        for (let i = 1; i <= 3; i++) {
+            const date = weatherData.daily.time[i];
+            const maxTemp = Math.round(weatherData.daily.temperature_2m_max[i]);
+            const minTemp = Math.round(weatherData.daily.temperature_2m_min[i]);
+
+            const forecastCard = document.createElement('div');
+            forecastCard.className = 'forecast-card';
+            forecastCard.innerHTML = `
+                <div class="date">${date}</div>
+                <div class="temp">${maxTemp}° / ${minTemp}°</div>
+            `;
+            forecastGrid.appendChild(forecastCard);
         }
 
-        list.appendChild(container);
-    });
-
-    updateCounter();
+        statusMessage.textContent = '';
+        weatherDisplay.classList.remove('hidden');
+    } catch (err) {
+        statusMessage.textContent = 'Error loading weather data. Please check your connection.';
+    }
 }
 
-function updateCounter() {
-    const completedCount = todos.filter(t => t.completed).length;
-    counter.textContent = `${completedCount} of ${todos.length} tasks completed`;
-}
-
-function toggleTodo(index) {
-    todos[index].completed = !todos[index].completed;
-    saveAndRender();
-}
-
-function deleteTodo(index) {
-    todos.splice(index, 1);
-    saveAndRender();
-}
-
-function toggleSubtaskForm(index) {
-    todos[index].showSubtaskForm = !todos[index].showSubtaskForm;
-    saveAndRender();
-}
-
-function toggleSubtask(todoIndex, stIndex) {
-    todos[todoIndex].subtasks[stIndex].completed = !todos[todoIndex].subtasks[stIndex].completed;
-    saveAndRender();
-}
-
-form.addEventListener('submit', (e) => {
+searchForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    const text = input.value.trim();
-    const dueDate = dueDateInput.value;
-    const priority = priorityInput.value;
-    if (text) {
-        todos.push({ text, completed: false, priority, dueDate, subtasks: [] });
-        input.value = '';
-        dueDateInput.value = '';
-        saveAndRender();
+    const city = cityInput.value.trim();
+    if (city) {
+        fetchWeather(city);
     }
 });
-
-searchInput.addEventListener('input', (e) => {
-    searchQuery = e.target.value;
-    render();
-});
-
-filterBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-        filterBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentFilter = btn.dataset.filter;
-        render();
-    });
-});
-
-clearCompletedBtn.addEventListener('click', () => {
-    todos = todos.filter(t => !t.completed);
-    saveAndRender();
-});
-
-render();

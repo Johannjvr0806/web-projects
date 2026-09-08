@@ -42,7 +42,7 @@ body {
     border-radius: 12px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
     width: 100%;
-    max-width: 500px;
+    max-width: 520px;
 }
 
 .header {
@@ -71,28 +71,32 @@ h1 {
 
 #todo-form {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
 }
 
-input[type="text"] {
-    flex: 1;
+input[type="text"], input[type="date"], select {
     background-color: var(--card-bg);
     color: var(--text-color);
     border: 1px solid var(--border-color);
-    padding: 10px 14px;
+    padding: 10px 12px;
     border-radius: 6px;
-    font-size: 14px;
+    font-size: 13px;
     outline: none;
 }
 
-#priority-input {
-    background-color: var(--card-bg);
-    color: var(--text-color);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    padding: 0 8px;
-    font-size: 13px;
+#todo-input {
+    flex: 1 1 100%;
+}
+
+#due-date-input, #priority-input {
+    flex: 1;
+}
+
+#search-input {
+    width: 100%;
+    margin-bottom: 16px;
 }
 
 button {
@@ -151,21 +155,19 @@ button {
     margin-bottom: 16px;
 }
 
-#todo-list li {
+.todo-item-container {
+    border-bottom: 1px solid var(--item-border);
+    padding: 10px 8px;
+}
+
+.todo-main {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 8px;
-    border-bottom: 1px solid var(--item-border);
     cursor: grab;
-    background: var(--card-bg);
 }
 
-#todo-list li.dragging {
-    opacity: 0.4;
-}
-
-#todo-list li.completed .todo-text {
+.todo-main.completed .todo-text {
     text-decoration: line-through;
     color: var(--subtext-color);
 }
@@ -176,14 +178,9 @@ button {
     color: var(--text-color);
 }
 
-.edit-input {
-    flex: 1;
-    font-size: 14px;
-    padding: 4px 6px;
-    border: 1px solid var(--primary-color);
-    border-radius: 4px;
-    background: var(--card-bg);
-    color: var(--text-color);
+.due-date {
+    font-size: 11px;
+    color: var(--subtext-color);
 }
 
 .badge {
@@ -198,15 +195,50 @@ button {
 .badge.medium { background: #fef3c7; color: #92400e; }
 .badge.high { background: #fee2e2; color: #991b1b; }
 
-.delete-btn {
+.subtask-toggle, .delete-btn {
     background: none;
     color: var(--subtext-color);
-    font-size: 16px;
-    padding: 2px 6px;
+    font-size: 14px;
+    padding: 2px 4px;
 }
 
-.delete-btn:hover {
-    color: #ef4444;
+.subtasks {
+    margin-left: 28px;
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.subtask-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--subtext-color);
+}
+
+.subtask-item.completed span {
+    text-decoration: line-through;
+}
+
+.subtask-form {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.subtask-form input {
+    padding: 4px 8px;
+    font-size: 12px;
+    flex: 1;
+}
+
+.subtask-form button {
+    font-size: 11px;
+    padding: 4px 8px;
+    background: var(--item-border);
+    color: var(--text-color);
 }
 
 .footer {

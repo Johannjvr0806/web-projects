@@ -16,6 +16,7 @@
 
         <form id="todo-form">
             <input type="text" id="todo-input" placeholder="Enter a new task..." required>
+            <input type="date" id="due-date-input">
             <select id="priority-input">
                 <option value="low">Low</option>
                 <option value="medium" selected>Medium</option>
@@ -23,6 +24,8 @@
             </select>
             <button type="submit" id="add-btn">Add Task</button>
         </form>
+
+        <input type="text" id="search-input" placeholder="Search tasks...">
 
         <div class="controls">
             <div class="filters">

@@ -1,77 +1,141 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Johann | Developer Portfolio</title>
-    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: '#007bff',
+                    }
+                }
+            }
+        }
+    </script>
 </head>
-<body>
-    <div class="container">
-        <header class="header">
+<body class="bg-gray-900 text-gray-100 min-h-screen flex justify-center items-center p-6 transition-colors duration-300">
+    <div class="max-w-2xl w-full flex flex-col gap-6">
+        
+        <!-- Header -->
+        <header class="flex justify-between items-start">
             <div>
-                <h1>Johann</h1>
-                <p class="title">Frontend Developer & Systems Builder</p>
+                <h1 class="text-3xl font-bold">Johann</h1>
+                <p class="text-brand font-medium mt-1">Frontend Developer & Systems Builder</p>
             </div>
-            <button id="theme-toggle" aria-label="Toggle theme">🌙</button>
+            <button id="theme-toggle" class="text-2xl p-2 rounded hover:bg-gray-800">🌙</button>
         </header>
 
-        <section class="about-card">
-            <h2>About Me</h2>
-            <p>I design and build interactive, responsive web applications using modern web tools, clean CSS design systems, and automated CI/CD pipelines.</p>
-            <div class="skills">
-                <span class="skill-tag">HTML5 / CSS3</span>
-                <span class="skill-tag">JavaScript (ES6+)</span>
-                <span class="skill-tag">Git / GitHub</span>
-                <span class="skill-tag">Netlify CI/CD</span>
-                <span class="skill-tag">REST APIs</span>
+        <!-- About Card -->
+        <section class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+            <h2 class="text-xl font-semibold mb-3">About Me</h2>
+            <p class="text-gray-400 text-sm leading-relaxed mb-4">
+                I design and build interactive web applications using modern web tools, clean utility-first CSS frameworks, and automated CI/CD pipelines.
+            </p>
+            <div class="flex flex-wrap gap-2">
+                <span class="bg-indigo-950 text-indigo-300 px-3 py-1 rounded-md text-xs font-semibold">Tailwind CSS</span>
+                <span class="bg-indigo-950 text-indigo-300 px-3 py-1 rounded-md text-xs font-semibold">JavaScript (ES6+)</span>
+                <span class="bg-indigo-950 text-indigo-300 px-3 py-1 rounded-md text-xs font-semibold">Git / GitHub</span>
+                <span class="bg-indigo-950 text-indigo-300 px-3 py-1 rounded-md text-xs font-semibold">Netlify CI/CD</span>
+                <span class="bg-indigo-950 text-indigo-300 px-3 py-1 rounded-md text-xs font-semibold">REST APIs</span>
             </div>
         </section>
 
-        <section class="projects-section">
-            <h2>Featured Projects</h2>
-            <div class="projects-grid">
+        <!-- Featured Projects -->
+        <section class="flex flex-col gap-3">
+            <h2 class="text-xl font-semibold">Featured Projects</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 
-                <div class="project-card">
-                    <div class="project-header">
-                        <h3>Task Management App</h3>
-                        <span class="status-badge">Live</span>
+                <!-- Project 1 -->
+                <div class="bg-gray-800 p-5 rounded-xl shadow-lg border border-gray-700 flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="font-semibold text-lg">Task Management</h3>
+                            <span class="bg-emerald-950 text-emerald-400 text-xs px-2 py-0.5 rounded font-bold uppercase">Live</span>
+                        </div>
+                        <p class="text-gray-400 text-xs leading-relaxed mb-4">
+                            Full To-Do application featuring priority badges, drag-and-drop reordering, due dates, inline editing, and sub-tasks.
+                        </p>
                     </div>
-                    <p>A full-featured To-Do application built with vanilla JS featuring dark mode, priority badges, drag-and-drop reordering, due dates, inline editing, and sub-tasks.</p>
-                    <div class="tech-stack">
-                        <span>JavaScript</span>
-                        <span>localStorage</span>
-                        <span>CSS Variables</span>
-                    </div>
-                    <div class="project-links">
-                        <a href="https://github.com/Johannjvr0806/web-projects" target="_blank" class="btn">GitHub Repo</a>
+                    <div>
+                        <div class="flex gap-1.5 flex-wrap mb-4">
+                            <span class="bg-gray-700 text-gray-300 text-xs px-2 py-0.5 rounded">JavaScript</span>
+                            <span class="bg-gray-700 text-gray-300 text-xs px-2 py-0.5 rounded">localStorage</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <a href="/tasks" class="bg-brand text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-blue-600 transition">Launch App</a>
+                            <a href="https://github.com/Johannjvr0806/web-projects" target="_blank" class="border border-gray-600 text-gray-300 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-700 transition">GitHub</a>
+                        </div>
                     </div>
                 </div>
 
-                <div class="project-card">
-                    <div class="project-header">
-                        <h3>Weather Dashboard</h3>
-                        <span class="status-badge">Live</span>
+                <!-- Project 2 -->
+                <div class="bg-gray-800 p-5 rounded-xl shadow-lg border border-gray-700 flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="font-semibold text-lg">Weather Dashboard</h3>
+                            <span class="bg-emerald-950 text-emerald-400 text-xs px-2 py-0.5 rounded font-bold uppercase">Live</span>
+                        </div>
+                        <p class="text-gray-400 text-xs leading-relaxed mb-4">
+                            Real-time weather app consuming Open-Meteo REST APIs for geocoding, live metrics, and 3-day predictions.
+                        </p>
                     </div>
-                    <p>A real-time weather application consuming Open-Meteo REST APIs for geocoding, live meteorological metrics, and 3-day forecast predictions.</p>
-                    <div class="tech-stack">
-                        <span>Fetch API</span>
-                        <span>Async/Await</span>
-                        <span>REST Services</span>
-                    </div>
-                    <div class="project-links">
-                        <a href="https://github.com/Johannjvr0806/web-projects" target="_blank" class="btn">GitHub Repo</a>
+                    <div>
+                        <div class="flex gap-1.5 flex-wrap mb-4">
+                            <span class="bg-gray-700 text-gray-300 text-xs px-2 py-0.5 rounded">Fetch API</span>
+                            <span class="bg-gray-700 text-gray-300 text-xs px-2 py-0.5 rounded">REST Services</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <a href="/weather" class="bg-brand text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-blue-600 transition">Launch App</a>
+                            <a href="https://github.com/Johannjvr0806/web-projects" target="_blank" class="border border-gray-600 text-gray-300 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-700 transition">GitHub</a>
+                        </div>
                     </div>
                 </div>
 
             </div>
         </section>
 
-        <footer class="footer">
+        <!-- Contact Section -->
+        <section class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+            <h2 class="text-xl font-semibold mb-3">Get in Touch</h2>
+            <form id="contact-form" class="flex flex-col gap-3">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input type="text" placeholder="Your Name" required class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-gray-100 outline-none focus:border-brand">
+                    <input type="email" placeholder="Your Email" required class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-gray-100 outline-none focus:border-brand">
+                </div>
+                <textarea rows="3" placeholder="Your Message..." required class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-gray-100 outline-none focus:border-brand resize-none"></textarea>
+                <button type="submit" class="bg-brand text-white text-xs font-medium py-2.5 px-4 rounded-lg hover:bg-blue-600 transition self-start">Send Message</button>
+            </form>
+            <p id="form-status" class="text-xs text-emerald-400 mt-2 hidden">Message sent successfully!</p>
+        </section>
+
+        <!-- Footer -->
+        <footer class="text-center text-xs text-gray-500 pt-4 border-t border-gray-800">
             <p>© 2026 Johann. Deployed automatically via Netlify Continuous Delivery.</p>
         </footer>
+
     </div>
 
-    <script src="script.js"></script>
+    <script>
+        const themeToggle = document.getElementById('theme-toggle');
+        const html = document.documentElement;
+        
+        themeToggle.addEventListener('click', () => {
+            html.classList.toggle('dark');
+            themeToggle.textContent = html.classList.contains('dark') ? '🌙' : '☀️';
+        });
+
+        document.getElementById('contact-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const status = document.getElementById('form-status');
+            status.classList.remove('hidden');
+            e.target.reset();
+            setTimeout(() => status.classList.add('hidden'), 3000);
+        });
+    </script>
 </body>
 </html>

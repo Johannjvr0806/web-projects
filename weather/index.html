@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="card">
+        <div class="header">
+            <h1>Weather Dashboard</h1>
+            <button id="theme-toggle" aria-label="Toggle theme">🌙</button>
+        </div>
+        <p class="subtitle">Search any city for real-time weather and forecast</p>
+
+        <form id="search-form">
+            <input type="text" id="city-input" placeholder="Enter city name (e.g. London, Pretoria)..." required>
+            <button type="submit" id="search-btn">Search</button>
+        </form>
+
+        <div id="weather-display" class="hidden">
+            <div class="current-weather">
+                <h2 id="location-name">--</h2>
+                <div class="temp-box">
+                    <span id="current-temp">--</span>°C
+                </div>
+                <p id="weather-desc">--</p>
+            </div>
+
+            <div class="details-grid">
+                <div class="detail-card">
+                    <span class="label">Wind Speed</span>
+                    <span id="wind-speed" class="val">-- km/h</span>
+                </div>
+                <div class="detail-card">
+                    <span class="label">Humidity</span>
+                    <span id="humidity" class="val">--%</span>
+                </div>
+            </div>
+
+            <div class="forecast-section">
+                <h3>3-Day Forecast</h3>
+                <div id="forecast-grid" class="forecast-grid"></div>
+            </div>
+        </div>
+
+        <div id="status-message">Type a city above to fetch weather data.</div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

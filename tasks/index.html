@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task List</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="card">
+        <div class="header">
+            <h1>My Task List</h1>
+            <button id="theme-toggle" aria-label="Toggle theme">🌙</button>
+        </div>
+        <p class="subtitle">Add tasks below. They stay saved in your browser!</p>
+
+        <form id="task-form">
+            <input type="text" id="task-input" placeholder="Enter a new task..." required>
+            
+            <div class="form-row">
+                <input type="date" id="due-date-input">
+                <select id="priority-input">
+                    <option value="Low">Low</option>
+                    <option value="Medium" selected>Medium</option>
+                    <option value="High">High</option>
+                </select>
+                <button type="submit" id="add-btn">Add Task</button>
+            </div>
+        </form>
+
+        <input type="text" id="search-input" placeholder="Search tasks...">
+
+        <div class="controls">
+            <div class="filters">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="active">Active</button>
+                <button class="filter-btn" data-filter="completed">Completed</button>
+            </div>
+            <button id="clear-completed" class="clear-btn">Clear Completed</button>
+        </div>
+
+        <ul id="task-list"></ul>
+
+        <div class="footer-stats">
+            <span id="task-count">0 of 0 tasks completed</span>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

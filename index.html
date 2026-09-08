@@ -45,59 +45,49 @@
             </div>
         </section>
 
-        <!-- Featured Projects -->
-        <section class="flex flex-col gap-3">
-            <h2 class="text-xl font-semibold">Featured Projects</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
-                <!-- Project 1 -->
-                <div class="bg-gray-800 p-5 rounded-xl shadow-lg border border-gray-700 flex flex-col justify-between">
-                    <div>
-                        <div class="flex justify-between items-center mb-2">
-                            <h3 class="font-semibold text-lg">Task Management</h3>
-                            <span class="bg-emerald-950 text-emerald-400 text-xs px-2 py-0.5 rounded font-bold uppercase">Live</span>
-                        </div>
-                        <p class="text-gray-400 text-xs leading-relaxed mb-4">
-                            Full To-Do application featuring priority badges, drag-and-drop reordering, due dates, inline editing, and sub-tasks.
-                        </p>
-                    </div>
-                    <div>
-                        <div class="flex gap-1.5 flex-wrap mb-4">
-                            <span class="bg-gray-700 text-gray-300 text-xs px-2 py-0.5 rounded">JavaScript</span>
-                            <span class="bg-gray-700 text-gray-300 text-xs px-2 py-0.5 rounded">localStorage</span>
-                        </div>
-                        <div class="flex gap-2">
-                            <a href="/tasks" class="bg-brand text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-blue-600 transition">Launch App</a>
-                            <a href="https://github.com/Johannjvr0806/web-projects" target="_blank" class="border border-gray-600 text-gray-300 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-700 transition">GitHub</a>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Project 2 -->
-                <div class="bg-gray-800 p-5 rounded-xl shadow-lg border border-gray-700 flex flex-col justify-between">
-                    <div>
-                        <div class="flex justify-between items-center mb-2">
-                            <h3 class="font-semibold text-lg">Weather Dashboard</h3>
-                            <span class="bg-emerald-950 text-emerald-400 text-xs px-2 py-0.5 rounded font-bold uppercase">Live</span>
-                        </div>
-                        <p class="text-gray-400 text-xs leading-relaxed mb-4">
-                            Real-time weather app consuming Open-Meteo REST APIs for geocoding, live metrics, and 3-day predictions.
-                        </p>
-                    </div>
-                    <div>
-                        <div class="flex gap-1.5 flex-wrap mb-4">
-                            <span class="bg-gray-700 text-gray-300 text-xs px-2 py-0.5 rounded">Fetch API</span>
-                            <span class="bg-gray-700 text-gray-300 text-xs px-2 py-0.5 rounded">REST Services</span>
-                        </div>
-                        <div class="flex gap-2">
-                            <a href="/weather" class="bg-brand text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-blue-600 transition">Launch App</a>
-                            <a href="https://github.com/Johannjvr0806/web-projects" target="_blank" class="border border-gray-600 text-gray-300 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-700 transition">GitHub</a>
-                        </div>
-                    </div>
-                </div>
-
+       <!-- Featured Projects -->
+<section class="flex flex-col gap-4 mb-8">
+    <h2 class="text-xl font-semibold text-gray-100">Featured Applications</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        <!-- Task Manager Card -->
+        <a href="/tasks" class="group relative block p-5 bg-gray-800 rounded-xl border border-gray-700 hover:border-brand transition duration-300 shadow-lg overflow-hidden">
+            <div class="h-28 w-full mb-4 rounded-lg bg-gradient-to-br from-indigo-900 to-slate-900 flex items-center justify-center border border-gray-700/50 group-hover:scale-[1.02] transition">
+                <span class="text-3xl">📋</span>
             </div>
-        </section>
+            <div class="flex justify-between items-start mb-2">
+                <h3 class="font-medium text-gray-100 group-hover:text-brand transition text-sm">Task Manager App</h3>
+                <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-brand/20 text-brand border border-brand/30">Sub-App</span>
+            </div>
+            <p class="text-xs text-gray-400">Interactive task tracking with local storage state management and dark mode aesthetics.</p>
+        </a>
+
+        <!-- Weather Dashboard Card -->
+        <a href="/weather" class="group relative block p-5 bg-gray-800 rounded-xl border border-gray-700 hover:border-brand transition duration-300 shadow-lg overflow-hidden">
+            <div class="h-28 w-full mb-4 rounded-lg bg-gradient-to-br from-cyan-900 to-slate-900 flex items-center justify-center border border-gray-700/50 group-hover:scale-[1.02] transition">
+                <span class="text-3xl">🌤️</span>
+            </div>
+            <div class="flex justify-between items-start mb-2">
+                <h3 class="font-medium text-gray-100 group-hover:text-brand transition text-sm">Weather Dashboard</h3>
+                <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-brand/20 text-brand border border-brand/30">Sub-App</span>
+            </div>
+            <p class="text-xs text-gray-400">Real-time weather insights featuring dynamic UI cards and API integration.</p>
+        </a>
+
+    </div>
+</section>
+
+<!-- Technical Toolkit Section -->
+<section class="mb-8 bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg">
+    <h2 class="text-xl font-semibold mb-4 text-gray-100">Technical Toolkit</h2>
+    <div class="flex flex-wrap gap-2">
+        <span class="text-xs bg-gray-900 text-gray-300 border border-gray-700 px-3 py-1 rounded-full">Tailwind CSS</span>
+        <span class="text-xs bg-gray-900 text-gray-300 border border-gray-700 px-3 py-1 rounded-full">JavaScript (ES6+)</span>
+        <span class="text-xs bg-gray-900 text-gray-300 border border-gray-700 px-3 py-1 rounded-full">HTML5 / Semantic UI</span>
+        <span class="text-xs bg-gray-900 text-gray-300 border border-gray-700 px-3 py-1 rounded-full">Netlify CI/CD</span>
+        <span class="text-xs bg-gray-900 text-gray-300 border border-gray-700 px-3 py-1 rounded-full">Git & GitHub</span>
+    </div>
+</section>
 
        <!-- Contact Section -->
 <section class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">

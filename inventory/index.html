@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Tracker | Sub-App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: { brand: '#3b82f6' }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen font-sans antialiased p-4 sm:p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <!-- Header Nav -->
+        <header class="flex justify-between items-center mb-8 pb-4 border-b border-gray-800">
+            <div class="flex items-center gap-3">
+                <a href="/" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg border border-gray-700 transition">← Back to Portfolio</a>
+                <h1 class="text-lg font-semibold text-gray-100">Stock & Variance Tracker</h1>
+            </div>
+            <span class="text-xs bg-brand/20 text-brand border border-brand/30 px-2.5 py-0.5 rounded font-mono">v1.0</span>
+        </header>
+
+        <!-- Input Form -->
+        <section class="bg-gray-800 p-5 rounded-xl border border-gray-700 mb-6 shadow-lg">
+            <h2 class="text-sm font-semibold mb-3 text-gray-200">Log Stock Item</h2>
+            <form id="item-form" class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <input type="text" id="item-name" placeholder="Item Name / SKU" required class="bg-gray-900 border border-gray-700 rounded-lg p-2 text-xs text-white placeholder-gray-500 outline-none focus:border-brand sm:col-span-1">
+                <input type="number" id="system-qty" placeholder="Expected Qty" min="0" required class="bg-gray-900 border border-gray-700 rounded-lg p-2 text-xs text-white placeholder-gray-500 outline-none focus:border-brand sm:col-span-1">
+                <input type="number" id="physical-qty" placeholder="Physical Count" min="0" required class="bg-gray-900 border border-gray-700 rounded-lg p-2 text-xs text-white placeholder-gray-500 outline-none focus:border-brand sm:col-span-1">
+                <button type="submit" class="bg-brand text-white text-xs font-medium py-2 px-4 rounded-lg hover:bg-blue-600 transition sm:col-span-1">Add Record</button>
+            </form>
+        </section>
+
+        <!-- Inventory Table -->
+        <section class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden shadow-lg">
+            <div class="p-4 border-b border-gray-700 flex justify-between items-center">
+                <h2 class="text-sm font-semibold text-gray-200">Inventory Reconciliation</h2>
+                <button id="clear-btn" class="text-[11px] text-red-400 hover:text-red-300 transition">Clear All</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="bg-gray-900/60 text-gray-400 border-b border-gray-700 uppercase font-mono text-[10px]">
+                            <th class="p-3">Item / SKU</th>
+                            <th class="p-3 text-center">Expected</th>
+                            <th class="p-3 text-center">Counted</th>
+                            <th class="p-3 text-center">Variance</th>
+                            <th class="p-3 text-center">Status</th>
+                            <th class="p-3 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventory-list" class="divide-y divide-gray-700/50">
+                        <!-- Rows rendered via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        let items = JSON.parse(localStorage.getItem('inventory_items')) || [];
+
+        const form = document.getElementById('item-form');
+        const list = document.getElementById('inventory-list');
+        const clearBtn = document.getElementById('clear-btn');
+
+        function saveAndRender() {
+            localStorage.setItem('inventory_items', JSON.stringify(items));
+            render();
+        }
+
+        function render() {
+            if (items.length === 0) {
+                list.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-500">No stock records added yet.</td></tr>`;
+                return;
+            }
+
+            list.innerHTML = items.map((item, index) => {
+                const variance = item.physical - item.system;
+                let statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Match</span>`;
+                
+                if (variance < 0) {
+                    statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] bg-red-500/20 text-red-400 border border-red-500/30">Shortage (${variance})</span>`;
+                } else if (variance > 0) {
+                    statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30">Overage (+${variance})</span>`;
+                }
+
+                return `
+                    <tr class="hover:bg-gray-700/30 transition">
+                        <td class="p-3 font-medium text-gray-200">${item.name}</td>
+                        <td class="p-3 text-center text-gray-400 font-mono">${item.system}</td>
+                        <td class="p-3 text-center text-gray-200 font-mono">${item.physical}</td>
+                        <td class="p-3 text-center font-mono ${variance < 0 ? 'text-red-400' : variance > 0 ? 'text-amber-400' : 'text-emerald-400'}">${variance > 0 ? '+' + variance : variance}</td>
+                        <td class="p-3 text-center">${statusBadge}</td>
+                        <td class="p-3 text-right">
+                            <button onclick="deleteItem(${index})" class="text-gray-500 hover:text-red-400 transition">✕</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('item-name').value;
+            const system = parseInt(document.getElementById('system-qty').value);
+            const physical = parseInt(document.getElementById('physical-qty').value);
+
+            items.push({ name, system, physical });
+            form.reset();
+            saveAndRender();
+        });
+
+        function deleteItem(index) {
+            items.splice(index, 1);
+            saveAndRender();
+        }
+
+        clearBtn.addEventListener('click', () => {
+            if (confirm('Clear all stock entries?')) {
+                items = [];
+                saveAndRender();
+            }
+        });
+
+        render();
+    </script>
+</body>
+</html>

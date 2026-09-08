@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Web Workspace</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo">DevWorkspace</div>
+        <button id="theme-btn">Switch to Dark Mode</button>
+    </nav>
+
+    <main class="container">
+        <div class="card">
+            <h1 id="main-heading">My Task List</h1>
+            <p id="sub-text">Add tasks below. They stay saved in your browser!</p>
+            
+            <form id="todo-form">
+                <input type="text" id="todo-input" placeholder="Enter a new task..." required>
+                <button type="submit" id="add-btn">Add Task</button>
+            </form>
+
+            <ul id="todo-list"></ul>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

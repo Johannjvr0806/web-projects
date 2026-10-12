@@ -17,6 +17,7 @@ const tabLibrary = document.getElementById('tab-library');
 const tabReader = document.getElementById('tab-reader');
 const shelfGrid = document.getElementById('shelf-grid');
 const readerControls = document.getElementById('reader-controls');
+const viewer = document.getElementById('viewer');
 
 // TOC Elements
 const tocBtn = document.getElementById('toc-btn');
@@ -24,17 +25,25 @@ const tocDrawer = document.getElementById('toc-drawer');
 const closeToc = document.getElementById('close-toc');
 const tocList = document.getElementById('toc-list');
 
-// Theme Elements (5 Styles)
+// Themes
 const themeLight = document.getElementById('theme-light');
 const themeSepia = document.getElementById('theme-sepia');
 const themeEmerald = document.getElementById('theme-emerald');
 const themeNavy = document.getElementById('theme-navy');
 const themeDark = document.getElementById('theme-dark');
 
-// AI Popup Elements
+// AI Popup
 const aiPopup = document.getElementById('ai-popup');
 const aiWord = document.getElementById('ai-word');
 const aiTranslation = document.getElementById('ai-translation');
+
+const themeColors = {
+  light: { bg: '#fffaf0', fg: '#1f2937' },
+  sepia: { bg: '#f7eedb', fg: '#433422' },
+  emerald: { bg: '#0f291e', fg: '#e2f0e8' },
+  navy: { bg: '#121c2e', fg: '#e0e6ed' },
+  dark: { bg: '#1e1e1e', fg: '#e0e0e0' }
+};
 
 // View Switching
 tabLibrary.addEventListener('click', () => showView('library'));
@@ -67,60 +76,68 @@ function filterShelf(filter, btn) {
   renderShelf();
 }
 
-// Upload EPUB to Shelf
+// Batch Multi-EPUB Upload with Duplicate Protection
 fileInput.addEventListener('change', async function (e) {
-  const file = e.target.files[0];
-  if (!file) return;
+  const files = Array.from(e.target.files);
+  if (!files || files.length === 0) return;
 
-  const reader = new FileReader();
+  let savedBooks = (await localforage.getItem('library_books')) || [];
 
-  reader.onload = async function (event) {
-    try {
-      const bookData = event.target.result;
-      const tempBook = ePub(bookData);
+  for (const file of files) {
+    await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = async function (event) {
+        try {
+          const bookData = event.target.result;
+          const tempBook = ePub(bookData);
 
-      const metadata = await tempBook.loaded.metadata;
-      const coverUrl = await tempBook.coverUrl().catch(() => null);
+          const metadata = await tempBook.loaded.metadata;
+          const bookTitle = metadata.title || file.name.replace('.epub', '');
 
-      let coverBase64 = null;
-      if (coverUrl) {
-        coverBase64 = await fetch(coverUrl)
-          .then(res => res.blob())
-          .then(blob => new Promise((resolve) => {
-            const r = new FileReader();
-            r.onloadend = () => resolve(r.result);
-            r.readAsDataURL(blob);
-          })).catch(() => null);
-      }
+          // Duplicate Check: Ignore if book with same title exists
+          const exists = savedBooks.some(b => b.title.trim().toLowerCase() === bookTitle.trim().toLowerCase());
+          if (!exists) {
+            const coverUrl = await tempBook.coverUrl().catch(() => null);
+            let coverBase64 = null;
+            if (coverUrl) {
+              coverBase64 = await fetch(coverUrl)
+                .then(res => res.blob())
+                .then(blob => new Promise((res) => {
+                  const r = new FileReader();
+                  r.onloadend = () => res(r.result);
+                  r.readAsDataURL(blob);
+                })).catch(() => null);
+            }
 
-      const bookId = 'book_' + Date.now();
-      const bookRecord = {
-        id: bookId,
-        title: metadata.title || file.name.replace('.epub', ''),
-        author: metadata.creator || 'Unknown Author',
-        cover: coverBase64,
-        data: bookData,
-        location: null,
-        progress: 0
+            const bookId = 'book_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+            savedBooks.push({
+              id: bookId,
+              title: bookTitle,
+              author: metadata.creator || 'Unknown Author',
+              cover: coverBase64,
+              data: bookData,
+              location: null,
+              progress: 0
+            });
+          }
+
+          tempBook.destroy();
+          resolve();
+        } catch (err) {
+          console.error("Error loading file:", file.name, err);
+          resolve();
+        }
       };
+      reader.readAsArrayBuffer(file);
+    });
+  }
 
-      let savedBooks = (await localforage.getItem('library_books')) || [];
-      savedBooks.push(bookRecord);
-      await localforage.setItem('library_books', savedBooks);
-
-      tempBook.destroy();
-      renderShelf();
-      openBook(bookId);
-    } catch (err) {
-      console.error("Error loading EPUB:", err);
-      alert("Could not load this EPUB file. Please try another one.");
-    }
-  };
-
-  reader.readAsArrayBuffer(file);
+  await localforage.setItem('library_books', savedBooks);
+  renderShelf();
+  fileInput.value = ''; // Reset file input
 });
 
-// Render Bookshelf UI with Filters & Progress Badges
+// Render Bookshelf UI
 async function renderShelf() {
   const savedBooks = (await localforage.getItem('library_books')) || [];
   shelfGrid.innerHTML = '';
@@ -184,12 +201,29 @@ async function openBook(bookId) {
     spread: "auto"
   });
 
-  // Register all 5 EPUB Themes
-  rendition.themes.register("light", { body: { background: "#fffaf0", color: "#1f2937" } });
-  rendition.themes.register("sepia", { body: { background: "#f7eedb", color: "#433422" } });
-  rendition.themes.register("emerald", { body: { background: "#0f291e", color: "#e2f0e8" } });
-  rendition.themes.register("navy", { body: { background: "#121c2e", color: "#e0e6ed" } });
-  rendition.themes.register("dark", { body: { background: "#1e1e1e", color: "#e0e0e0" } });
+  // Register Themes
+  Object.keys(themeColors).forEach(t => {
+    rendition.themes.register(t, {
+      body: { 
+        background: `transparent !important`, 
+        color: `${themeColors[t].fg} !important` 
+      }
+    });
+  });
+
+  // Anti-Flash Hook
+  rendition.hooks.content.register((contents) => {
+    const doc = contents.document;
+    const style = doc.createElement('style');
+    const activeCol = themeColors[currentTheme] || themeColors.light;
+    style.innerHTML = `
+      html, body {
+        background-color: transparent !important;
+        color: ${activeCol.fg} !important;
+      }
+    `;
+    doc.head.appendChild(style);
+  });
 
   applyTheme(currentTheme);
   applyFontSize();
@@ -208,7 +242,7 @@ async function openBook(bookId) {
     tocList.appendChild(li);
   });
 
-  // Track & Auto-Save Progress
+  // Track Progress
   book.ready.then(() => {
     return book.locations.generate(1000);
   }).then(() => {
@@ -233,10 +267,11 @@ async function openBook(bookId) {
     }
   });
 
-  // Enable Touch Swiping inside the EPUB frame for Tablets
+  // ReadEra Tap Zones & Touch Swipes
   rendition.on("rendered", (section) => {
     let touchstartX = 0;
     let touchendX = 0;
+    let touchMoved = false;
 
     const contents = rendition.getContents()[0];
     if (contents && contents.document) {
@@ -244,23 +279,47 @@ async function openBook(bookId) {
 
       iframeDoc.addEventListener('touchstart', e => {
         touchstartX = e.changedTouches[0].screenX;
+        touchMoved = false;
+      }, false);
+
+      iframeDoc.addEventListener('touchmove', () => {
+        touchMoved = true;
       }, false);
 
       iframeDoc.addEventListener('touchend', e => {
         touchendX = e.changedTouches[0].screenX;
-        if (touchendX < touchstartX - 50) {
-          rendition.next();
-          hideAiPopup();
-        }
-        if (touchendX > touchstartX + 50) {
-          rendition.prev();
-          hideAiPopup();
+        if (touchMoved && Math.abs(touchendX - touchstartX) > 40) {
+          if (touchendX < touchstartX) {
+            rendition.next();
+            hideAiPopup();
+          } else {
+            rendition.prev();
+            hideAiPopup();
+          }
         }
       }, false);
+
+      // ReadEra-style Tap Navigation
+      iframeDoc.addEventListener('click', e => {
+        if (touchMoved) return;
+
+        const screenWidth = iframeDoc.defaultView.innerWidth;
+        const clickX = e.clientX;
+
+        if (clickX < screenWidth * 0.35) {
+          rendition.prev();
+          hideAiPopup();
+        } else if (clickX > screenWidth * 0.65) {
+          rendition.next();
+          hideAiPopup();
+        } else {
+          tocDrawer.classList.toggle('open');
+        }
+      });
     }
   });
 
-  // Text Selection Listener for AI Translation
+  // Translation Selection
   rendition.on("selected", (cfiRange, contents) => {
     const selection = contents.window.getSelection();
     const text = selection.toString().trim();
@@ -277,7 +336,7 @@ async function openBook(bookId) {
   showView('reader');
 }
 
-// Save Exact Location & Percentage to IndexedDB
+// Save Progress
 async function saveBookProgress(bookId, cfi, progress) {
   let savedBooks = (await localforage.getItem('library_books')) || [];
   const idx = savedBooks.findIndex(b => b.id === bookId);
@@ -288,27 +347,25 @@ async function saveBookProgress(bookId, cfi, progress) {
   }
 }
 
-// AI Translation / Dictionary Lookup
+// Translation Lookup (MyMemory API)
 async function showAiPopup(text, posX, posY) {
   aiWord.textContent = `"${text}"`;
-  aiTranslation.textContent = "Translating / Looking up...";
+  aiTranslation.textContent = "Translating...";
   aiPopup.style.left = `${Math.min(posX, window.innerWidth - 300)}px`;
   aiPopup.style.top = `${posY}px`;
   aiPopup.style.display = 'block';
 
   try {
-    const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(text)}`);
+    const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=auto|en`);
     const data = await res.json();
-    const translatedText = data[0][0][0];
-    const sourceLang = data[2];
-
-    if (sourceLang === 'en') {
-      aiTranslation.innerHTML = `<b>Definition/Translation:</b><br/>${translatedText}`;
+    if (data && data.responseData && data.responseData.translatedText) {
+      const translatedText = data.responseData.translatedText;
+      aiTranslation.innerHTML = `<b>Translation (→ EN):</b><br/>${translatedText}`;
     } else {
-      aiTranslation.innerHTML = `<b>Detected (${sourceLang.toUpperCase()} → EN):</b><br/>${translatedText}`;
+      aiTranslation.textContent = "Could not find translation.";
     }
   } catch (err) {
-    aiTranslation.textContent = "Could not fetch translation.";
+    aiTranslation.textContent = "Translation service unavailable.";
   }
 }
 
@@ -316,7 +373,7 @@ function hideAiPopup() {
   aiPopup.style.display = 'none';
 }
 
-// Delete Book from Shelf
+// Delete Book
 async function deleteBook(event, bookId) {
   event.stopPropagation();
   let savedBooks = (await localforage.getItem('library_books')) || [];
@@ -329,10 +386,16 @@ async function deleteBook(event, bookId) {
 tocBtn.addEventListener('click', () => tocDrawer.classList.toggle('open'));
 closeToc.addEventListener('click', () => tocDrawer.classList.remove('open'));
 
-// Theme & Font Controls (5 Styles)
-function applyTheme(theme) {
+// Apply Theme
+async function applyTheme(theme) {
   currentTheme = theme;
   document.body.className = `theme-${theme}`;
+
+  const col = themeColors[theme] || themeColors.light;
+  if (viewer) {
+    viewer.style.backgroundColor = col.bg;
+  }
+
   if (rendition) rendition.themes.select(theme);
 
   themeLight.classList.toggle('active', theme === 'light');
@@ -340,6 +403,8 @@ function applyTheme(theme) {
   themeEmerald.classList.toggle('active', theme === 'emerald');
   themeNavy.classList.toggle('active', theme === 'navy');
   themeDark.classList.toggle('active', theme === 'dark');
+
+  await localforage.setItem('selected_theme', theme);
 }
 
 themeLight.addEventListener('click', () => applyTheme('light'));
@@ -374,7 +439,7 @@ nextBtn.addEventListener('click', () => {
   hideAiPopup();
 });
 
-// Keyboard Navigation (Arrow Keys for PC Testing)
+// Keyboard Navigation
 document.addEventListener('keydown', (e) => {
   if (readerView.style.display === 'flex') {
     if (e.key === 'ArrowRight') {
@@ -388,6 +453,8 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Initial Load
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
+  const savedTheme = (await localforage.getItem('selected_theme')) || 'light';
+  applyTheme(savedTheme);
   renderShelf();
 });

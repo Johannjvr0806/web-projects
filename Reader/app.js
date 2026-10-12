@@ -205,7 +205,8 @@ async function openBook(bookId) {
   rendition = book.renderTo("viewer", {
     width: "100%",
     height: "100%",
-    spread: "auto"
+    spread: "auto",
+    allowScriptedContent: false
   });
 
   // Register Themes
@@ -274,7 +275,7 @@ async function openBook(bookId) {
     }
   });
 
-  // Tap & Touch Event Handling (ReadEra Tap Zones)
+  // ReadEra Tap Navigation
   rendition.on("rendered", (section) => {
     const contents = rendition.getContents()[0];
     if (contents && contents.document) {
@@ -324,9 +325,8 @@ async function openBook(bookId) {
         }
       });
 
-      // Handle Mouse Clicks (Desktops / Laptops)
       iframeDoc.addEventListener('click', (e) => {
-        if (e.pointerType === 'touch') return; // Ignore synthetic touch clicks
+        if (e.pointerType === 'touch') return;
         handleTap(e.clientX);
       });
     }
@@ -360,7 +360,7 @@ async function saveBookProgress(bookId, cfi, progress) {
   }
 }
 
-// Fixed Translation Lookup (Using correct MyMemory auto-detect syntax)
+// Translation Lookup (MyMemory API)
 async function showAiPopup(text, posX, posY) {
   aiWord.textContent = `"${text}"`;
   aiTranslation.textContent = "Translating...";

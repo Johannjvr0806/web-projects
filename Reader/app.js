@@ -1,68 +1,146 @@
 let book = null;
 let rendition = null;
+let currentBookId = null;
 
 const fileInput = document.getElementById('file-input');
 const prevBtn = document.getElementById('prev-btn');
 const nextBtn = document.getElementById('next-btn');
 const pageInfo = document.getElementById('page-info');
 
-// Handle EPUB Upload
-fileInput.addEventListener('change', function (e) {
+const libraryView = document.getElementById('library-view');
+const readerView = document.getElementById('reader-view');
+const tabLibrary = document.getElementById('tab-library');
+const tabReader = document.getElementById('tab-reader');
+const shelfGrid = document.getElementById('shelf-grid');
+
+// Tab Switching
+tabLibrary.addEventListener('click', () => showView('library'));
+tabReader.addEventListener('click', () => showView('reader'));
+
+function showView(view) {
+  if (view === 'library') {
+    libraryView.style.display = 'block';
+    readerView.style.display = 'none';
+    tabLibrary.classList.add('active');
+    tabReader.classList.remove('active');
+  } else {
+    libraryView.style.display = 'none';
+    readerView.style.display = 'flex';
+    tabReader.classList.add('active');
+    tabLibrary.classList.remove('active');
+  }
+}
+
+// Upload EPUB to Shelf
+fileInput.addEventListener('change', async function (e) {
   const file = e.target.files[0];
   if (!file) return;
 
   const reader = new FileReader();
 
-  reader.onload = function (event) {
+  reader.onload = async function (event) {
     const bookData = event.target.result;
+    const tempBook = ePub(bookData);
 
-    // Destroy existing book rendition if one is loaded
-    if (book) {
-      book.destroy();
+    // Extract metadata & cover
+    const metadata = await tempBook.loaded.metadata;
+    const coverUrl = await tempBook.coverUrl();
+
+    let coverBase64 = null;
+    if (coverUrl) {
+      coverBase64 = await fetch(coverUrl)
+        .then(res => res.blob())
+        .then(blob => new Promise((resolve) => {
+          const r = new FileReader();
+          r.onloadend = () => resolve(r.result);
+          r.readAsDataURL(blob);
+        })).catch(() => null);
     }
 
-    // Initialize ePub.js
-    book = ePub(bookData);
-    rendition = book.renderTo("viewer", {
-      width: "100%",
-      height: "100%",
-      spread: "auto"
-    });
+    const bookId = 'book_' + Date.now();
+    const bookRecord = {
+      id: bookId,
+      title: metadata.title || file.name.replace('.epub', ''),
+      author: metadata.creator || 'Unknown Author',
+      cover: coverBase64,
+      data: bookData
+    };
 
-    rendition.display();
+    // Store in IndexedDB via localForage
+    let savedBooks = (await localforage.getItem('library_books')) || [];
+    savedBooks.push(bookRecord);
+    await localforage.setItem('library_books', savedBooks);
 
-    // Save uploaded book file to local storage using localForage
-    localforage.setItem('saved_book', bookData).then(() => {
-      console.log('Book saved locally!');
-    });
-
-    pageInfo.textContent = `Reading: ${file.name}`;
+    tempBook.destroy();
+    renderShelf();
+    openBook(bookId);
   };
 
   reader.readAsArrayBuffer(file);
 });
 
-// Page Navigation
-prevBtn.addEventListener('click', () => {
-  if (rendition) rendition.prev();
-});
+// Render Bookshelf UI
+async function renderShelf() {
+  const savedBooks = (await localforage.getItem('library_books')) || [];
+  shelfGrid.innerHTML = '';
 
-nextBtn.addEventListener('click', () => {
-  if (rendition) rendition.next();
-});
+  if (savedBooks.length === 0) {
+    shelfGrid.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: #6b7280; padding: 40px;">Your bookshelf is empty! Click <b>+ Add EPUB to Shelf</b> to add your first book.</p>`;
+    return;
+  }
 
-// Auto-load saved book on startup
-window.addEventListener('load', () => {
-  localforage.getItem('saved_book').then((savedData) => {
-    if (savedData) {
-      book = ePub(savedData);
-      rendition = book.renderTo("viewer", {
-        width: "100%",
-        height: "100%",
-        spread: "auto"
-      });
-      rendition.display();
-      pageInfo.textContent = "Loaded last saved book";
-    }
+  savedBooks.forEach((b) => {
+    const card = document.createElement('div');
+    card.className = 'book-card';
+    card.innerHTML = `
+      <button class="delete-btn" onclick="deleteBook(event, '${b.id}')">✕</button>
+      <div class="cover-box">
+        ${b.cover ? `<img src="${b.cover}" alt="Cover" />` : `<span style="font-size: 32px;">📖</span>`}
+      </div>
+      <div class="book-title">${b.title}</div>
+      <div class="book-author">${b.author}</div>
+    `;
+
+    card.addEventListener('click', () => openBook(b.id));
+    shelfGrid.appendChild(card);
   });
+}
+
+// Open Selected Book
+async function openBook(bookId) {
+  const savedBooks = (await localforage.getItem('library_books')) || [];
+  const selectedBook = savedBooks.find(b => b.id === bookId);
+  if (!selectedBook) return;
+
+  if (book) book.destroy();
+
+  currentBookId = bookId;
+  book = ePub(selectedBook.data);
+  rendition = book.renderTo("viewer", {
+    width: "100%",
+    height: "100%",
+    spread: "auto"
+  });
+
+  rendition.display();
+  pageInfo.textContent = `Reading: ${selectedBook.title}`;
+  showView('reader');
+}
+
+// Delete Book from Shelf
+async function deleteBook(event, bookId) {
+  event.stopPropagation();
+  let savedBooks = (await localforage.getItem('library_books')) || [];
+  savedBooks = savedBooks.filter(b => b.id !== bookId);
+  await localforage.setItem('library_books', savedBooks);
+  renderShelf();
+}
+
+// Navigation Controls
+prevBtn.addEventListener('click', () => rendition && rendition.prev());
+nextBtn.addEventListener('click', () => rendition && rendition.next());
+
+// Initial Setup
+window.addEventListener('load', () => {
+  renderShelf();
 });

@@ -1,0 +1,16 @@
+{
+  "name": "Cozy EPUB Reader",
+  "short_name": "Reader",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#121c2e",
+  "theme_color": "#121c2e",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2232/2232688.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

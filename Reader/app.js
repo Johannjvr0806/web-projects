@@ -205,7 +205,7 @@ async function openBook(bookId) {
   rendition = book.renderTo("viewer", {
     width: "100%",
     height: "100%",
-    spread: "none", // Single page view prevents pagination looping
+    spread: "none",
     allowScriptedContent: false
   });
 
@@ -275,7 +275,7 @@ async function openBook(bookId) {
     }
   });
 
-  // ReadEra Tap Navigation
+  // Reliable Window-Relative ReadEra Tap Zones
   rendition.on("rendered", (section) => {
     const contents = rendition.getContents()[0];
     if (contents && contents.document) {
@@ -287,25 +287,25 @@ async function openBook(bookId) {
 
       iframeDoc.addEventListener('touchstart', (e) => {
         if (e.touches.length === 1) {
-          touchStartX = e.touches[0].clientX;
-          touchStartY = e.touches[0].clientY;
+          touchStartX = e.touches[0].screenX || e.touches[0].clientX;
+          touchStartY = e.touches[0].screenY || e.touches[0].clientY;
           isSwiping = false;
         }
       }, { passive: true });
 
       iframeDoc.addEventListener('touchmove', (e) => {
         if (e.touches.length === 1) {
-          const moveX = Math.abs(e.touches[0].clientX - touchStartX);
-          const moveY = Math.abs(e.touches[0].clientY - touchStartY);
-          if (moveX > 10 || moveY > 10) {
+          const curX = e.touches[0].screenX || e.touches[0].clientX;
+          const curY = e.touches[0].screenY || e.touches[0].clientY;
+          if (Math.abs(curX - touchStartX) > 15 || Math.abs(curY - touchStartY) > 15) {
             isSwiping = true;
           }
         }
       }, { passive: true });
 
-      const handleTap = (clientX) => {
-        const width = iframeDoc.documentElement.clientWidth || iframeDoc.defaultView.innerWidth;
-        const ratio = clientX / width;
+      const handleTap = (screenX) => {
+        const fullWidth = window.innerWidth || document.documentElement.clientWidth;
+        const ratio = screenX / fullWidth;
 
         hideAiPopup();
 
@@ -321,7 +321,7 @@ async function openBook(bookId) {
       iframeDoc.addEventListener('touchend', (e) => {
         if (!isSwiping && e.changedTouches.length === 1) {
           const touch = e.changedTouches[0];
-          handleTap(touch.clientX);
+          handleTap(touch.screenX || touch.clientX);
         }
       });
 

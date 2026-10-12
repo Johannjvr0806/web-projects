@@ -205,7 +205,7 @@ async function openBook(bookId) {
   rendition = book.renderTo("viewer", {
     width: "100%",
     height: "100%",
-    spread: "auto",
+    spread: "none", // Single page view prevents pagination looping
     allowScriptedContent: false
   });
 
@@ -360,7 +360,7 @@ async function saveBookProgress(bookId, cfi, progress) {
   }
 }
 
-// Translation Lookup (MyMemory API)
+// Reliable Translation Lookup (Google GTX Endpoint)
 async function showAiPopup(text, posX, posY) {
   aiWord.textContent = `"${text}"`;
   aiTranslation.textContent = "Translating...";
@@ -369,11 +369,14 @@ async function showAiPopup(text, posX, posY) {
   aiPopup.style.display = 'block';
 
   try {
-    const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=|en`);
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(text)}`;
+    const res = await fetch(url);
     const data = await res.json();
-    if (data && data.responseData && data.responseData.translatedText) {
-      const translatedText = data.responseData.translatedText;
-      aiTranslation.innerHTML = `<b>Translation (→ EN):</b><br/>${translatedText}`;
+    
+    if (data && data[0] && data[0][0] && data[0][0][0]) {
+      const translatedText = data[0].map(item => item[0]).join('');
+      const detectedLang = (data[2] || 'auto').toUpperCase();
+      aiTranslation.innerHTML = `<b>Translation (${detectedLang} → EN):</b><br/>${translatedText}`;
     } else {
       aiTranslation.textContent = "Could not find translation.";
     }

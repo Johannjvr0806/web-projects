@@ -21,41 +21,69 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: #f7f6f2;
-      color: #1f2937;
       display: flex;
       flex-direction: column;
       height: 100vh;
       overflow: hidden;
-      transition: background-color 0.3s, color 0.3s;
+      transition: background 0.3s, color 0.3s;
     }
 
-    /* Themes */
-    body.theme-light { background-color: #f7f6f2; color: #1f2937; }
-    body.theme-sepia { background-color: #f4ebd9; color: #433422; }
-    body.theme-dark { background-color: #121212; color: #e0e0e0; }
+    /* 5 Distinct Cozy Background Themes & Gradients */
+    body.theme-light { 
+      background: linear-gradient(135deg, #fffaf0 0%, #e6dab8 100%); 
+      color: #1f2937; 
+    }
+    body.theme-sepia { 
+      background: linear-gradient(135deg, #f7eedb 0%, #d1b888 100%); 
+      color: #433422; 
+    }
+    body.theme-emerald { 
+      background: linear-gradient(135deg, #0f291e 0%, #06140e 100%); 
+      color: #e2f0e8; 
+    }
+    body.theme-navy { 
+      background: linear-gradient(135deg, #121c2e 0%, #070b14 100%); 
+      color: #e0e6ed; 
+    }
+    body.theme-dark { 
+      background: linear-gradient(135deg, #1e1e1e 0%, #0a0a0a 100%); 
+      color: #e0e0e0; 
+    }
 
     header {
-      background-color: #ffffff;
+      background-color: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(8px);
       padding: 10px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 1px solid #e5e7eb;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
       box-shadow: 0 1px 3px rgba(0,0,0,0.05);
       flex-wrap: wrap;
       gap: 10px;
     }
 
     body.theme-dark header, body.theme-dark footer, body.theme-dark .toc-drawer {
-      background-color: #1e1e1e;
+      background-color: rgba(30, 30, 30, 0.95);
       border-color: #333;
       color: #fff;
     }
 
+    body.theme-navy header, body.theme-navy footer, body.theme-navy .toc-drawer {
+      background-color: rgba(18, 28, 46, 0.95);
+      border-color: #2b3e5e;
+      color: #e0e6ed;
+    }
+
+    body.theme-emerald header, body.theme-emerald footer, body.theme-emerald .toc-drawer {
+      background-color: rgba(15, 41, 30, 0.95);
+      border-color: #2d5a43;
+      color: #e2f0e8;
+    }
+
     body.theme-sepia header, body.theme-sepia footer, body.theme-sepia .toc-drawer {
-      background-color: #ebdcb9;
-      border-color: #d6c49d;
+      background-color: rgba(247, 238, 219, 0.95);
+      border-color: #d1b888;
       color: #433422;
     }
 
@@ -65,26 +93,28 @@
     }
 
     .tab-btn, .ctrl-btn, .filter-btn {
-      background: none;
-      border: 1px solid #d1d5db;
+      background: rgba(255, 255, 255, 0.5);
+      border: 1px solid rgba(0,0,0,0.15);
       padding: 6px 14px;
       font-size: 13px;
       font-weight: 500;
-      color: #374151;
       cursor: pointer;
       border-radius: 6px;
       transition: all 0.2s;
     }
 
-    body.theme-dark .tab-btn, body.theme-dark .ctrl-btn, body.theme-dark .filter-btn {
-      border-color: #444;
-      color: #ccc;
+    body.theme-dark .tab-btn, body.theme-dark .ctrl-btn, body.theme-dark .filter-btn,
+    body.theme-navy .tab-btn, body.theme-navy .ctrl-btn, body.theme-navy .filter-btn,
+    body.theme-emerald .tab-btn, body.theme-emerald .ctrl-btn, body.theme-emerald .filter-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.2);
+      color: inherit;
     }
 
     .tab-btn.active, .filter-btn.active {
       color: #007bff;
-      background-color: #eff6ff;
-      border-color: #bfdbfe;
+      background-color: rgba(0, 123, 255, 0.12);
+      border-color: #007bff;
     }
 
     .upload-btn {
@@ -96,16 +126,20 @@
       font-weight: 500;
       display: inline-block;
       font-size: 13px;
+      transition: background 0.2s;
     }
+    .upload-btn:hover { background-color: #0056b3; }
 
     #file-input { display: none; }
 
-    /* Reader Controls Group */
-    .reader-controls {
-      display: none;
+    /* Reader Controls Group & Theme Dots */
+    .reader-controls, .theme-picker-header {
+      display: flex;
       align-items: center;
       gap: 8px;
     }
+
+    .reader-controls { display: none; }
 
     .theme-dot {
       width: 22px;
@@ -113,12 +147,16 @@
       border-radius: 50%;
       cursor: pointer;
       border: 2px solid transparent;
+      transition: transform 0.2s;
     }
-
-    .theme-dot.active { border-color: #007bff; }
-    .dot-light { background-color: #ffffff; border: 1px solid #ccc; }
-    .dot-sepia { background-color: #f4ebd9; border: 1px solid #d6c49d; }
-    .dot-dark { background-color: #121212; }
+    .theme-dot:hover { transform: scale(1.15); }
+    .theme-dot.active { border-color: #007bff; transform: scale(1.1); }
+    
+    .dot-light { background: linear-gradient(135deg, #fffaf0, #e6dab8); border: 1px solid #d1b888; }
+    .dot-sepia { background: linear-gradient(135deg, #f7eedb, #d1b888); border: 1px solid #b89b66; }
+    .dot-emerald { background: linear-gradient(135deg, #0f291e, #06140e); border: 1px solid #2d5a43; }
+    .dot-navy { background: linear-gradient(135deg, #121c2e, #070b14); border: 1px solid #2b3e5e; }
+    .dot-dark { background: linear-gradient(135deg, #1e1e1e, #0a0a0a); border: 1px solid #444; }
 
     /* Container Views */
     .view-container {
@@ -133,11 +171,11 @@
       display: flex;
       justify-content: center;
       gap: 10px;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
     }
 
     /* Shelf Layout */
-    #library-view { padding: 24px; }
+    #library-view { padding: 30px; }
 
     .shelf-grid {
       display: grid;
@@ -148,10 +186,11 @@
     }
 
     .book-card {
-      background: #ffffff;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(4px);
       border-radius: 8px;
       padding: 10px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -160,12 +199,14 @@
       position: relative;
     }
 
-    body.theme-dark .book-card { background: #252525; }
-    body.theme-sepia .book-card { background: #fdfbf7; }
+    body.theme-dark .book-card { background: rgba(37, 37, 37, 0.9); }
+    body.theme-navy .book-card { background: rgba(20, 34, 58, 0.9); }
+    body.theme-emerald .book-card { background: rgba(18, 51, 37, 0.9); }
+    body.theme-sepia .book-card { background: rgba(253, 251, 247, 0.9); }
 
     .book-card:hover {
       transform: translateY(-4px);
-      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.15);
     }
 
     .cover-box {
@@ -220,7 +261,7 @@
 
     .book-author { 
       font-size: 11px; 
-      color: #6b7280; 
+      opacity: 0.75; 
       margin-top: 2px; 
       text-align: center;
       width: 100%;
@@ -258,10 +299,9 @@
       max-width: 800px;
       height: 100%;
       border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-      border: 1px solid #d1d5db;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      border: 1px solid rgba(0,0,0,0.15);
       background-color: #ffffff;
-      transition: background-color 0.3s;
     }
 
     /* TOC Drawer Panel */
@@ -285,7 +325,7 @@
     .toc-header {
       padding: 14px 18px;
       font-weight: 600;
-      border-bottom: 1px solid #e5e7eb;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -334,12 +374,13 @@
 
     /* Footer & Progress Bar */
     footer {
-      background-color: #ffffff;
+      background-color: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(8px);
       padding: 10px 20px;
       display: flex;
       flex-direction: column;
       gap: 6px;
-      border-top: 1px solid #d1d5db;
+      border-top: 1px solid rgba(0,0,0,0.08);
     }
 
     .footer-nav {
@@ -352,7 +393,7 @@
     .progress-track {
       width: 100%;
       height: 4px;
-      background: #e5e7eb;
+      background: rgba(0,0,0,0.1);
       border-radius: 2px;
       overflow: hidden;
     }
@@ -373,16 +414,21 @@
       <button id="tab-reader" class="tab-btn">📖 Reader</button>
     </div>
 
-    <!-- Reading Controls (TOC, Fonts & Themes) -->
+    <!-- Reading Controls (TOC & Fonts) -->
     <div id="reader-controls" class="reader-controls">
       <button id="toc-btn" class="ctrl-btn">📑 Chapters</button>
-      <div style="width: 1px; height: 18px; background: #ccc; margin: 0 2px;"></div>
+      <div style="width: 1px; height: 18px; background: rgba(0,0,0,0.2); margin: 0 2px;"></div>
       <button id="font-dec" class="ctrl-btn">A-</button>
       <button id="font-inc" class="ctrl-btn">A+</button>
-      <div style="width: 1px; height: 18px; background: #ccc; margin: 0 2px;"></div>
-      <div id="theme-light" class="theme-dot dot-light active" title="Light Mode"></div>
-      <div id="theme-sepia" class="theme-dot dot-sepia" title="Cozy Sepia"></div>
-      <div id="theme-dark" class="theme-dot dot-dark" title="Dark Mode"></div>
+    </div>
+
+    <!-- Always Visible 5 Theme Selector Dots -->
+    <div class="theme-picker-header">
+      <div id="theme-light" class="theme-dot dot-light active" title="Warm Light"></div>
+      <div id="theme-sepia" class="theme-dot dot-sepia" title="Vintage Sepia"></div>
+      <div id="theme-emerald" class="theme-dot dot-emerald" title="Emerald Forest"></div>
+      <div id="theme-navy" class="theme-dot dot-navy" title="Midnight Navy"></div>
+      <div id="theme-dark" class="theme-dot dot-dark" title="Pitch Dark"></div>
     </div>
 
     <label class="upload-btn">
@@ -405,4 +451,40 @@
     <main id="library-view">
       <!-- Read/Unread Filter Tabs -->
       <div class="shelf-filters">
-        <button class="filter-btn active" onclick="filter
+        <button class="filter-btn active" onclick="filterShelf('all', this)">All Books</button>
+        <button class="filter-btn" onclick="filterShelf('unread', this)">Unread</button>
+        <button class="filter-btn" onclick="filterShelf('reading', this)">Reading</button>
+        <button class="filter-btn" onclick="filterShelf('finished', this)">Finished</button>
+      </div>
+      <div id="shelf-grid" class="shelf-grid"></div>
+    </main>
+
+    <!-- Reader View -->
+    <main id="reader-view">
+      <div id="viewer"></div>
+    </main>
+  </div>
+
+  <!-- AI Translation Floating Popup -->
+  <div id="ai-popup">
+    <div id="ai-popup-header">
+      <span id="ai-word">Translation</span>
+      <span style="cursor:pointer; opacity: 0.7;" onclick="hideAiPopup()">✕</span>
+    </div>
+    <div id="ai-translation">Translating...</div>
+  </div>
+
+  <footer>
+    <div class="progress-track">
+      <div id="progress-bar" class="progress-bar"></div>
+    </div>
+    <div class="footer-nav">
+      <button id="prev-btn" class="ctrl-btn">← Previous</button>
+      <span id="page-info" style="font-size: 13px;">Select a book from the Bookshelf</span>
+      <button id="next-btn" class="ctrl-btn">Next →</button>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

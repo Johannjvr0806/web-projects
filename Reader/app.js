@@ -24,9 +24,11 @@ const tocDrawer = document.getElementById('toc-drawer');
 const closeToc = document.getElementById('close-toc');
 const tocList = document.getElementById('toc-list');
 
-// Theme Elements
+// Theme Elements (5 Styles)
 const themeLight = document.getElementById('theme-light');
 const themeSepia = document.getElementById('theme-sepia');
+const themeEmerald = document.getElementById('theme-emerald');
+const themeNavy = document.getElementById('theme-navy');
 const themeDark = document.getElementById('theme-dark');
 
 // AI Popup Elements
@@ -133,7 +135,7 @@ async function renderShelf() {
   }
 
   if (filteredBooks.length === 0) {
-    shelfGrid.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: #6b7280; padding: 40px;">No books found in this category!</p>`;
+    shelfGrid.innerHTML = `<p style="grid-column: 1/-1; text-align: center; opacity: 0.7; padding: 40px;">No books found in this category!</p>`;
     return;
   }
 
@@ -182,10 +184,12 @@ async function openBook(bookId) {
     spread: "auto"
   });
 
-  // Register EPUB themes
-  rendition.themes.register("light", { body: { background: "#ffffff", color: "#1f2937" } });
-  rendition.themes.register("sepia", { body: { background: "#f4ebd9", color: "#433422" } });
-  rendition.themes.register("dark", { body: { background: "#121212", color: "#e0e0e0" } });
+  // Register all 5 EPUB Themes
+  rendition.themes.register("light", { body: { background: "#fffaf0", color: "#1f2937" } });
+  rendition.themes.register("sepia", { body: { background: "#f7eedb", color: "#433422" } });
+  rendition.themes.register("emerald", { body: { background: "#0f291e", color: "#e2f0e8" } });
+  rendition.themes.register("navy", { body: { background: "#121c2e", color: "#e0e6ed" } });
+  rendition.themes.register("dark", { body: { background: "#1e1e1e", color: "#e0e0e0" } });
 
   applyTheme(currentTheme);
   applyFontSize();
@@ -325,7 +329,7 @@ async function deleteBook(event, bookId) {
 tocBtn.addEventListener('click', () => tocDrawer.classList.toggle('open'));
 closeToc.addEventListener('click', () => tocDrawer.classList.remove('open'));
 
-// Themes & Font Controls
+// Theme & Font Controls (5 Styles)
 function applyTheme(theme) {
   currentTheme = theme;
   document.body.className = `theme-${theme}`;
@@ -333,11 +337,15 @@ function applyTheme(theme) {
 
   themeLight.classList.toggle('active', theme === 'light');
   themeSepia.classList.toggle('active', theme === 'sepia');
+  themeEmerald.classList.toggle('active', theme === 'emerald');
+  themeNavy.classList.toggle('active', theme === 'navy');
   themeDark.classList.toggle('active', theme === 'dark');
 }
 
 themeLight.addEventListener('click', () => applyTheme('light'));
 themeSepia.addEventListener('click', () => applyTheme('sepia'));
+themeEmerald.addEventListener('click', () => applyTheme('emerald'));
+themeNavy.addEventListener('click', () => applyTheme('navy'));
 themeDark.addEventListener('click', () => applyTheme('dark'));
 
 document.getElementById('font-inc').addEventListener('click', () => {

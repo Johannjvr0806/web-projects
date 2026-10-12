@@ -274,25 +274,60 @@ async function openBook(bookId) {
     }
   });
 
-  // ReadEra Tap Navigation (Cleaned up to prevent double-firing/looping)
+  // Tap & Touch Event Handling (ReadEra Tap Zones)
   rendition.on("rendered", (section) => {
     const contents = rendition.getContents()[0];
     if (contents && contents.document) {
       const iframeDoc = contents.document;
 
-      iframeDoc.addEventListener('click', e => {
-        const screenWidth = iframeDoc.defaultView.innerWidth;
-        const clickX = e.clientX;
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let isSwiping = false;
 
-        if (clickX < screenWidth * 0.35) {
+      iframeDoc.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+          isSwiping = false;
+        }
+      }, { passive: true });
+
+      iframeDoc.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 1) {
+          const moveX = Math.abs(e.touches[0].clientX - touchStartX);
+          const moveY = Math.abs(e.touches[0].clientY - touchStartY);
+          if (moveX > 10 || moveY > 10) {
+            isSwiping = true;
+          }
+        }
+      }, { passive: true });
+
+      const handleTap = (clientX) => {
+        const width = iframeDoc.documentElement.clientWidth || iframeDoc.defaultView.innerWidth;
+        const ratio = clientX / width;
+
+        hideAiPopup();
+
+        if (ratio < 0.35) {
           rendition.prev();
-          hideAiPopup();
-        } else if (clickX > screenWidth * 0.65) {
+        } else if (ratio > 0.65) {
           rendition.next();
-          hideAiPopup();
         } else {
           tocDrawer.classList.toggle('open');
         }
+      };
+
+      iframeDoc.addEventListener('touchend', (e) => {
+        if (!isSwiping && e.changedTouches.length === 1) {
+          const touch = e.changedTouches[0];
+          handleTap(touch.clientX);
+        }
+      });
+
+      // Handle Mouse Clicks (Desktops / Laptops)
+      iframeDoc.addEventListener('click', (e) => {
+        if (e.pointerType === 'touch') return; // Ignore synthetic touch clicks
+        handleTap(e.clientX);
       });
     }
   });

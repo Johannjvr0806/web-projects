@@ -3,11 +3,13 @@ let rendition = null;
 let currentBookId = null;
 let fontSize = 100;
 let currentTheme = 'light';
+let currentFilter = 'all';
 
 const fileInput = document.getElementById('file-input');
 const prevBtn = document.getElementById('prev-btn');
 const nextBtn = document.getElementById('next-btn');
 const pageInfo = document.getElementById('page-info');
+const progressBar = document.getElementById('progress-bar');
 
 const libraryView = document.getElementById('library-view');
 const readerView = document.getElementById('reader-view');
@@ -45,6 +47,7 @@ function showView(view) {
     hideAiPopup();
     tabLibrary.classList.add('active');
     tabReader.classList.remove('active');
+    renderShelf();
   } else {
     libraryView.style.display = 'none';
     readerView.style.display = 'flex';
@@ -52,6 +55,14 @@ function showView(view) {
     tabReader.classList.add('active');
     tabLibrary.classList.remove('active');
   }
+}
+
+// Filter Shelf View
+function filterShelf(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderShelf();
 }
 
 // Upload EPUB to Shelf
@@ -85,7 +96,9 @@ fileInput.addEventListener('change', async function (e) {
       title: metadata.title || file.name.replace('.epub', ''),
       author: metadata.creator || 'Unknown Author',
       cover: coverBase64,
-      data: bookData
+      data: bookData,
+      location: null,
+      progress: 0
     };
 
     let savedBooks = (await localforage.getItem('library_books')) || [];
@@ -100,23 +113,44 @@ fileInput.addEventListener('change', async function (e) {
   reader.readAsArrayBuffer(file);
 });
 
-// Render Bookshelf UI
+// Render Bookshelf UI with Filters & Progress Badges
 async function renderShelf() {
   const savedBooks = (await localforage.getItem('library_books')) || [];
   shelfGrid.innerHTML = '';
 
-  if (savedBooks.length === 0) {
-    shelfGrid.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: #6b7280; padding: 40px;">Your bookshelf is empty! Click <b>+ Add EPUB to Shelf</b> to add your first book.</p>`;
+  let filteredBooks = savedBooks;
+  if (currentFilter === 'unread') {
+    filteredBooks = savedBooks.filter(b => !b.progress || b.progress === 0);
+  } else if (currentFilter === 'reading') {
+    filteredBooks = savedBooks.filter(b => b.progress > 0 && b.progress < 95);
+  } else if (currentFilter === 'finished') {
+    filteredBooks = savedBooks.filter(b => b.progress >= 95);
+  }
+
+  if (filteredBooks.length === 0) {
+    shelfGrid.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: #6b7280; padding: 40px;">No books found in this category!</p>`;
     return;
   }
 
-  savedBooks.forEach((b) => {
+  filteredBooks.forEach((b) => {
+    let statusText = 'Unread';
+    let statusClass = '';
+    const pct = Math.round(b.progress || 0);
+
+    if (pct >= 95) {
+      statusText = '✓ Finished';
+      statusClass = 'finished';
+    } else if (pct > 0) {
+      statusText = `${pct}% Read`;
+    }
+
     const card = document.createElement('div');
     card.className = 'book-card';
     card.innerHTML = `
       <button class="delete-btn" onclick="deleteBook(event, '${b.id}')">✕</button>
       <div class="cover-box">
         ${b.cover ? `<img src="${b.cover}" alt="Cover" />` : `<span style="font-size: 32px;">📖</span>`}
+        <span class="status-badge ${statusClass}">${statusText}</span>
       </div>
       <div class="book-title">${b.title}</div>
       <div class="book-author">${b.author}</div>
@@ -127,7 +161,7 @@ async function renderShelf() {
   });
 }
 
-// Open Selected Book
+// Open Selected Book & Restore Saved Location
 async function openBook(bookId) {
   const savedBooks = (await localforage.getItem('library_books')) || [];
   const selectedBook = savedBooks.find(b => b.id === bookId);
@@ -165,7 +199,54 @@ async function openBook(bookId) {
     tocList.appendChild(li);
   });
 
-  // Add Text Selection Listener for AI Translation
+  // Track & Auto-Save Progress
+  book.ready.then(() => {
+    return book.locations.generate(1000);
+  }).then(() => {
+    if (selectedBook.location) {
+      rendition.display(selectedBook.location);
+    } else {
+      rendition.display();
+    }
+  });
+
+  rendition.on("relocated", (location) => {
+    if (book.locations && book.locations.total) {
+      const percent = book.locations.percentageFromCfi(location.start.cfi) * 100;
+      const rounded = Math.round(percent);
+      
+      progressBar.style.width = `${percent}%`;
+      pageInfo.textContent = `Reading: ${selectedBook.title} (${rounded}%)`;
+
+      saveBookProgress(bookId, location.start.cfi, percent);
+    }
+  });
+
+  // Enable Touch Swiping inside the EPUB frame for Tablets
+  rendition.on("rendered", (section) => {
+    let touchstartX = 0;
+    let touchendX = 0;
+
+    const iframeDoc = rendition.getContents()[0].document;
+
+    iframeDoc.addEventListener('touchstart', e => {
+      touchstartX = e.changedTouches[0].screenX;
+    }, false);
+
+    iframeDoc.addEventListener('touchend', e => {
+      touchendX = e.changedTouches[0].screenX;
+      if (touchendX < touchstartX - 50) {
+        rendition.next();
+        hideAiPopup();
+      }
+      if (touchendX > touchstartX + 50) {
+        rendition.prev();
+        hideAiPopup();
+      }
+    }, false);
+  });
+
+  // Text Selection Listener for AI Translation
   rendition.on("selected", (cfiRange, contents) => {
     const selection = contents.window.getSelection();
     const text = selection.toString().trim();
@@ -179,9 +260,18 @@ async function openBook(bookId) {
     }
   });
 
-  rendition.display();
-  pageInfo.textContent = `Reading: ${selectedBook.title}`;
   showView('reader');
+}
+
+// Save Exact Location & Percentage to IndexedDB
+async function saveBookProgress(bookId, cfi, progress) {
+  let savedBooks = (await localforage.getItem('library_books')) || [];
+  const idx = savedBooks.findIndex(b => b.id === bookId);
+  if (idx !== -1) {
+    savedBooks[idx].location = cfi;
+    savedBooks[idx].progress = progress;
+    await localforage.setItem('library_books', savedBooks);
+  }
 }
 
 // AI Translation / Dictionary Lookup
@@ -264,6 +354,19 @@ prevBtn.addEventListener('click', () => {
 nextBtn.addEventListener('click', () => {
   if (rendition) rendition.next();
   hideAiPopup();
+});
+
+// Keyboard Navigation (Arrow Keys for PC Testing)
+document.addEventListener('keydown', (e) => {
+  if (readerView.style.display === 'flex') {
+    if (e.key === 'ArrowRight') {
+      if (rendition) rendition.next();
+      hideAiPopup();
+    } else if (e.key === 'ArrowLeft') {
+      if (rendition) rendition.prev();
+      hideAiPopup();
+    }
+  }
 });
 
 // Initial Load

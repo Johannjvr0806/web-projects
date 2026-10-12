@@ -76,12 +76,13 @@ function filterShelf(filter, btn) {
   renderShelf();
 }
 
-// Batch Multi-EPUB Upload with Duplicate Protection
+// Batch Multi-EPUB Upload with Duplicate Protection (Stays on Bookshelf view)
 fileInput.addEventListener('change', async function (e) {
   const files = Array.from(e.target.files);
   if (!files || files.length === 0) return;
 
   let savedBooks = (await localforage.getItem('library_books')) || [];
+  let addedCount = 0;
 
   for (const file of files) {
     await new Promise((resolve) => {
@@ -119,6 +120,7 @@ fileInput.addEventListener('change', async function (e) {
               location: null,
               progress: 0
             });
+            addedCount++;
           }
 
           tempBook.destroy();
@@ -133,8 +135,16 @@ fileInput.addEventListener('change', async function (e) {
   }
 
   await localforage.setItem('library_books', savedBooks);
-  renderShelf();
   fileInput.value = ''; // Reset file input
+
+  // Ensure we stay on the library view and refresh the shelf grid
+  showView('library');
+
+  if (addedCount > 0) {
+    alert(`Successfully added ${addedCount} book(s) to your bookshelf!`);
+  } else {
+    alert('No new books added (selected book(s) already exist on your shelf).');
+  }
 });
 
 // Render Bookshelf UI

@@ -73,41 +73,46 @@ fileInput.addEventListener('change', async function (e) {
   const reader = new FileReader();
 
   reader.onload = async function (event) {
-    const bookData = event.target.result;
-    const tempBook = ePub(bookData);
+    try {
+      const bookData = event.target.result;
+      const tempBook = ePub(bookData);
 
-    const metadata = await tempBook.loaded.metadata;
-    const coverUrl = await tempBook.coverUrl();
+      const metadata = await tempBook.loaded.metadata;
+      const coverUrl = await tempBook.coverUrl().catch(() => null);
 
-    let coverBase64 = null;
-    if (coverUrl) {
-      coverBase64 = await fetch(coverUrl)
-        .then(res => res.blob())
-        .then(blob => new Promise((resolve) => {
-          const r = new FileReader();
-          r.onloadend = () => resolve(r.result);
-          r.readAsDataURL(blob);
-        })).catch(() => null);
+      let coverBase64 = null;
+      if (coverUrl) {
+        coverBase64 = await fetch(coverUrl)
+          .then(res => res.blob())
+          .then(blob => new Promise((resolve) => {
+            const r = new FileReader();
+            r.onloadend = () => resolve(r.result);
+            r.readAsDataURL(blob);
+          })).catch(() => null);
+      }
+
+      const bookId = 'book_' + Date.now();
+      const bookRecord = {
+        id: bookId,
+        title: metadata.title || file.name.replace('.epub', ''),
+        author: metadata.creator || 'Unknown Author',
+        cover: coverBase64,
+        data: bookData,
+        location: null,
+        progress: 0
+      };
+
+      let savedBooks = (await localforage.getItem('library_books')) || [];
+      savedBooks.push(bookRecord);
+      await localforage.setItem('library_books', savedBooks);
+
+      tempBook.destroy();
+      renderShelf();
+      openBook(bookId);
+    } catch (err) {
+      console.error("Error loading EPUB:", err);
+      alert("Could not load this EPUB file. Please try another one.");
     }
-
-    const bookId = 'book_' + Date.now();
-    const bookRecord = {
-      id: bookId,
-      title: metadata.title || file.name.replace('.epub', ''),
-      author: metadata.creator || 'Unknown Author',
-      cover: coverBase64,
-      data: bookData,
-      location: null,
-      progress: 0
-    };
-
-    let savedBooks = (await localforage.getItem('library_books')) || [];
-    savedBooks.push(bookRecord);
-    await localforage.setItem('library_books', savedBooks);
-
-    tempBook.destroy();
-    renderShelf();
-    openBook(bookId);
   };
 
   reader.readAsArrayBuffer(file);
@@ -208,6 +213,8 @@ async function openBook(bookId) {
     } else {
       rendition.display();
     }
+  }).catch(() => {
+    rendition.display();
   });
 
   rendition.on("relocated", (location) => {
@@ -227,23 +234,26 @@ async function openBook(bookId) {
     let touchstartX = 0;
     let touchendX = 0;
 
-    const iframeDoc = rendition.getContents()[0].document;
+    const contents = rendition.getContents()[0];
+    if (contents && contents.document) {
+      const iframeDoc = contents.document;
 
-    iframeDoc.addEventListener('touchstart', e => {
-      touchstartX = e.changedTouches[0].screenX;
-    }, false);
+      iframeDoc.addEventListener('touchstart', e => {
+        touchstartX = e.changedTouches[0].screenX;
+      }, false);
 
-    iframeDoc.addEventListener('touchend', e => {
-      touchendX = e.changedTouches[0].screenX;
-      if (touchendX < touchstartX - 50) {
-        rendition.next();
-        hideAiPopup();
-      }
-      if (touchendX > touchstartX + 50) {
-        rendition.prev();
-        hideAiPopup();
-      }
-    }, false);
+      iframeDoc.addEventListener('touchend', e => {
+        touchendX = e.changedTouches[0].screenX;
+        if (touchendX < touchstartX - 50) {
+          rendition.next();
+          hideAiPopup();
+        }
+        if (touchendX > touchstartX + 50) {
+          rendition.prev();
+          hideAiPopup();
+        }
+      }, false);
+    }
   });
 
   // Text Selection Listener for AI Translation

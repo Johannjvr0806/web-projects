@@ -135,9 +135,9 @@ fileInput.addEventListener('change', async function (e) {
   }
 
   await localforage.setItem('library_books', savedBooks);
-  fileInput.value = ''; // Reset file input
+  fileInput.value = '';
 
-  // Ensure we stay on the library view and refresh the shelf grid
+  // Stay on library view so user sees the shelf instead of jumping into reader
   showView('library');
 
   if (addedCount > 0) {
@@ -423,7 +423,7 @@ themeEmerald.addEventListener('click', () => applyTheme('emerald'));
 themeNavy.addEventListener('click', () => applyTheme('navy'));
 themeDark.addEventListener('click', () => applyTheme('dark'));
 
-document.getElementById('font-inc').addEventListener('click', () => {
+modifiedFont = document.getElementById('font-inc').addEventListener('click', () => {
   fontSize += 10;
   applyFontSize();
 });

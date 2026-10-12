@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cozy EPUB Library</title>
+  <title>Cozy EPUB Reader</title>
   
-  <!-- ePub.js & JSZip Libraries -->
+  <!-- ePub.js & JSZip -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
   
-  <!-- localForage for offline storage -->
+  <!-- localForage for IndexedDB storage -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
 
   <style>
@@ -47,15 +47,16 @@
       gap: 10px;
     }
 
-    body.theme-dark header, body.theme-dark footer {
+    body.theme-dark header, body.theme-dark footer, body.theme-dark .toc-drawer {
       background-color: #1e1e1e;
       border-color: #333;
       color: #fff;
     }
 
-    body.theme-sepia header, body.theme-sepia footer {
+    body.theme-sepia header, body.theme-sepia footer, body.theme-sepia .toc-drawer {
       background-color: #ebdcb9;
       border-color: #d6c49d;
+      color: #433422;
     }
 
     .nav-tabs {
@@ -124,6 +125,7 @@
       flex: 1;
       height: calc(100vh - 120px);
       overflow-y: auto;
+      position: relative;
     }
 
     /* Shelf Layout */
@@ -221,6 +223,74 @@
       transition: background-color 0.3s;
     }
 
+    /* TOC Drawer Panel */
+    .toc-drawer {
+      position: absolute;
+      top: 0;
+      left: -320px;
+      width: 300px;
+      height: 100%;
+      background-color: #ffffff;
+      border-right: 1px solid #d1d5db;
+      box-shadow: 4px 0 12px rgba(0,0,0,0.1);
+      transition: left 0.3s ease;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .toc-drawer.open { left: 0; }
+
+    .toc-header {
+      padding: 14px 18px;
+      font-weight: 600;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .toc-list {
+      list-style: none;
+      overflow-y: auto;
+      padding: 10px 0;
+      flex: 1;
+    }
+
+    .toc-item {
+      padding: 10px 18px;
+      font-size: 14px;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(0,0,0,0.04);
+      transition: background 0.2s;
+    }
+
+    .toc-item:hover { background-color: rgba(0,123,255,0.08); }
+
+    /* AI Translation Tooltip Popup */
+    #ai-popup {
+      position: fixed;
+      display: none;
+      background: #1e293b;
+      color: #f8fafc;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      max-width: 280px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+      z-index: 100;
+      line-height: 1.4;
+    }
+
+    #ai-popup-header {
+      font-weight: bold;
+      color: #38bdf8;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
     footer {
       background-color: #ffffff;
       padding: 10px 20px;
@@ -239,11 +309,13 @@
       <button id="tab-reader" class="tab-btn">📖 Reader</button>
     </div>
 
-    <!-- Reading Controls (Fonts & Themes) -->
+    <!-- Reading Controls (TOC, Fonts & Themes) -->
     <div id="reader-controls" class="reader-controls">
+      <button id="toc-btn" class="ctrl-btn">📑 Chapters</button>
+      <div style="width: 1px; height: 18px; background: #ccc; margin: 0 2px;"></div>
       <button id="font-dec" class="ctrl-btn">A-</button>
       <button id="font-inc" class="ctrl-btn">A+</button>
-      <div style="width: 1px; height: 18px; background: #ccc; margin: 0 4px;"></div>
+      <div style="width: 1px; height: 18px; background: #ccc; margin: 0 2px;"></div>
       <div id="theme-light" class="theme-dot dot-light active" title="Light Mode"></div>
       <div id="theme-sepia" class="theme-dot dot-sepia" title="Cozy Sepia"></div>
       <div id="theme-dark" class="theme-dot dot-dark" title="Dark Mode"></div>
@@ -256,6 +328,15 @@
   </header>
 
   <div class="view-container">
+    <!-- TOC Drawer Panel -->
+    <aside id="toc-drawer" class="toc-drawer">
+      <div class="toc-header">
+        <span>Table of Contents</span>
+        <button id="close-toc" class="ctrl-btn" style="padding: 2px 8px; font-size: 12px;">✕</button>
+      </div>
+      <ul id="toc-list" class="toc-list"></ul>
+    </aside>
+
     <!-- Shelf View -->
     <main id="library-view">
       <div id="shelf-grid" class="shelf-grid"></div>
@@ -265,6 +346,15 @@
     <main id="reader-view">
       <div id="viewer"></div>
     </main>
+  </div>
+
+  <!-- AI Translation Floating Popup -->
+  <div id="ai-popup">
+    <div id="ai-popup-header">
+      <span id="ai-word">Translation</span>
+      <span style="cursor:pointer; opacity: 0.7;" onclick="hideAiPopup()">✕</span>
+    </div>
+    <div id="ai-translation">Translating...</div>
   </div>
 
   <footer>

@@ -1,7 +1,7 @@
 let book = null;
 let rendition = null;
 let currentBookId = null;
-let fontSize = 100; // Percentage
+let fontSize = 100;
 let currentTheme = 'light';
 
 const fileInput = document.getElementById('file-input');
@@ -16,10 +16,21 @@ const tabReader = document.getElementById('tab-reader');
 const shelfGrid = document.getElementById('shelf-grid');
 const readerControls = document.getElementById('reader-controls');
 
+// TOC Elements
+const tocBtn = document.getElementById('toc-btn');
+const tocDrawer = document.getElementById('toc-drawer');
+const closeToc = document.getElementById('close-toc');
+const tocList = document.getElementById('toc-list');
+
 // Theme Elements
 const themeLight = document.getElementById('theme-light');
 const themeSepia = document.getElementById('theme-sepia');
 const themeDark = document.getElementById('theme-dark');
+
+// AI Popup Elements
+const aiPopup = document.getElementById('ai-popup');
+const aiWord = document.getElementById('ai-word');
+const aiTranslation = document.getElementById('ai-translation');
 
 // View Switching
 tabLibrary.addEventListener('click', () => showView('library'));
@@ -30,6 +41,8 @@ function showView(view) {
     libraryView.style.display = 'block';
     readerView.style.display = 'none';
     readerControls.style.display = 'none';
+    tocDrawer.classList.remove('open');
+    hideAiPopup();
     tabLibrary.classList.add('active');
     tabReader.classList.remove('active');
   } else {
@@ -138,9 +151,65 @@ async function openBook(bookId) {
   applyTheme(currentTheme);
   applyFontSize();
 
+  // Load Table of Contents
+  const navigation = await book.loaded.navigation;
+  tocList.innerHTML = '';
+  navigation.toc.forEach((chapter) => {
+    const li = document.createElement('li');
+    li.className = 'toc-item';
+    li.textContent = chapter.label.trim();
+    li.addEventListener('click', () => {
+      rendition.display(chapter.href);
+      tocDrawer.classList.remove('open');
+    });
+    tocList.appendChild(li);
+  });
+
+  // Add Text Selection Listener for AI Translation
+  rendition.on("selected", (cfiRange, contents) => {
+    const selection = contents.window.getSelection();
+    const text = selection.toString().trim();
+
+    if (text.length > 0 && text.length < 100) {
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      const iframeRect = contents.document.defaultView.frameElement.getBoundingClientRect();
+
+      showAiPopup(text, iframeRect.left + rect.left, iframeRect.top + rect.bottom + 10);
+    }
+  });
+
   rendition.display();
   pageInfo.textContent = `Reading: ${selectedBook.title}`;
   showView('reader');
+}
+
+// AI Translation / Dictionary Lookup
+async function showAiPopup(text, posX, posY) {
+  aiWord.textContent = `"${text}"`;
+  aiTranslation.textContent = "Translating / Looking up...";
+  aiPopup.style.left = `${Math.min(posX, window.innerWidth - 300)}px`;
+  aiPopup.style.top = `${posY}px`;
+  aiPopup.style.display = 'block';
+
+  try {
+    const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(text)}`);
+    const data = await res.json();
+    const translatedText = data[0][0][0];
+    const sourceLang = data[2];
+
+    if (sourceLang === 'en') {
+      aiTranslation.innerHTML = `<b>Definition/Translation:</b><br/>${translatedText}`;
+    } else {
+      aiTranslation.innerHTML = `<b>Detected (${sourceLang.toUpperCase()} → EN):</b><br/>${translatedText}`;
+    }
+  } catch (err) {
+    aiTranslation.textContent = "Could not fetch translation.";
+  }
+}
+
+function hideAiPopup() {
+  aiPopup.style.display = 'none';
 }
 
 // Delete Book from Shelf
@@ -151,6 +220,10 @@ async function deleteBook(event, bookId) {
   await localforage.setItem('library_books', savedBooks);
   renderShelf();
 }
+
+// TOC Drawer Toggles
+tocBtn.addEventListener('click', () => tocDrawer.classList.toggle('open'));
+closeToc.addEventListener('click', () => tocDrawer.classList.remove('open'));
 
 // Themes & Font Controls
 function applyTheme(theme) {
@@ -184,8 +257,14 @@ function applyFontSize() {
 }
 
 // Navigation Controls
-prevBtn.addEventListener('click', () => rendition && rendition.prev());
-nextBtn.addEventListener('click', () => rendition && rendition.next());
+prevBtn.addEventListener('click', () => {
+  if (rendition) rendition.prev();
+  hideAiPopup();
+});
+nextBtn.addEventListener('click', () => {
+  if (rendition) rendition.next();
+  hideAiPopup();
+});
 
 // Initial Load
 window.addEventListener('load', () => {

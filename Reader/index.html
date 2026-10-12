@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Custom Book Reader</title>
+  
+  <!-- ePub.js & JSZip Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
+  
+  <!-- localForage for offline storage -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #f4f5f7;
+      color: #1f2937;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    header {
+      background-color: #ffffff;
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #d1d5db;
+    }
+
+    .upload-btn {
+      background-color: #007bff;
+      color: #ffffff;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      display: inline-block;
+    }
+
+    .upload-btn:hover {
+      background-color: #0056b3;
+    }
+
+    #file-input {
+      display: none;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    #viewer {
+      width: 100%;
+      max-width: 800px;
+      height: 80vh;
+      background-color: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      border: 1px solid #d1d5db;
+    }
+
+    footer {
+      background-color: #ffffff;
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid #d1d5db;
+    }
+
+    .nav-btn {
+      background-color: #f3f4f6;
+      border: 1px solid #d1d5db;
+      padding: 8px 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .nav-btn:hover {
+      background-color: #e5e7eb;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h2>My Books</h2>
+    <label class="upload-btn">
+      + Upload EPUB
+      <input type="file" id="file-input" accept=".epub" />
+    </label>
+  </header>
+
+  <main>
+    <div id="viewer"></div>
+  </main>
+
+  <footer>
+    <button id="prev-btn" class="nav-btn">← Previous</button>
+    <span id="page-info">Select an EPUB book to start reading</span>
+    <button id="next-btn" class="nav-btn">Next →</button>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

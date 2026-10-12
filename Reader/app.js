@@ -1,6 +1,8 @@
 let book = null;
 let rendition = null;
 let currentBookId = null;
+let fontSize = 100; // Percentage
+let currentTheme = 'light';
 
 const fileInput = document.getElementById('file-input');
 const prevBtn = document.getElementById('prev-btn');
@@ -12,8 +14,14 @@ const readerView = document.getElementById('reader-view');
 const tabLibrary = document.getElementById('tab-library');
 const tabReader = document.getElementById('tab-reader');
 const shelfGrid = document.getElementById('shelf-grid');
+const readerControls = document.getElementById('reader-controls');
 
-// Tab Switching
+// Theme Elements
+const themeLight = document.getElementById('theme-light');
+const themeSepia = document.getElementById('theme-sepia');
+const themeDark = document.getElementById('theme-dark');
+
+// View Switching
 tabLibrary.addEventListener('click', () => showView('library'));
 tabReader.addEventListener('click', () => showView('reader'));
 
@@ -21,11 +29,13 @@ function showView(view) {
   if (view === 'library') {
     libraryView.style.display = 'block';
     readerView.style.display = 'none';
+    readerControls.style.display = 'none';
     tabLibrary.classList.add('active');
     tabReader.classList.remove('active');
   } else {
     libraryView.style.display = 'none';
     readerView.style.display = 'flex';
+    readerControls.style.display = 'flex';
     tabReader.classList.add('active');
     tabLibrary.classList.remove('active');
   }
@@ -42,7 +52,6 @@ fileInput.addEventListener('change', async function (e) {
     const bookData = event.target.result;
     const tempBook = ePub(bookData);
 
-    // Extract metadata & cover
     const metadata = await tempBook.loaded.metadata;
     const coverUrl = await tempBook.coverUrl();
 
@@ -66,7 +75,6 @@ fileInput.addEventListener('change', async function (e) {
       data: bookData
     };
 
-    // Store in IndexedDB via localForage
     let savedBooks = (await localforage.getItem('library_books')) || [];
     savedBooks.push(bookRecord);
     await localforage.setItem('library_books', savedBooks);
@@ -122,6 +130,14 @@ async function openBook(bookId) {
     spread: "auto"
   });
 
+  // Register EPUB themes
+  rendition.themes.register("light", { body: { background: "#ffffff", color: "#1f2937" } });
+  rendition.themes.register("sepia", { body: { background: "#f4ebd9", color: "#433422" } });
+  rendition.themes.register("dark", { body: { background: "#121212", color: "#e0e0e0" } });
+
+  applyTheme(currentTheme);
+  applyFontSize();
+
   rendition.display();
   pageInfo.textContent = `Reading: ${selectedBook.title}`;
   showView('reader');
@@ -136,11 +152,42 @@ async function deleteBook(event, bookId) {
   renderShelf();
 }
 
+// Themes & Font Controls
+function applyTheme(theme) {
+  currentTheme = theme;
+  document.body.className = `theme-${theme}`;
+  if (rendition) rendition.themes.select(theme);
+
+  themeLight.classList.toggle('active', theme === 'light');
+  themeSepia.classList.toggle('active', theme === 'sepia');
+  themeDark.classList.toggle('active', theme === 'dark');
+}
+
+themeLight.addEventListener('click', () => applyTheme('light'));
+themeSepia.addEventListener('click', () => applyTheme('sepia'));
+themeDark.addEventListener('click', () => applyTheme('dark'));
+
+document.getElementById('font-inc').addEventListener('click', () => {
+  fontSize += 10;
+  applyFontSize();
+});
+
+document.getElementById('font-dec').addEventListener('click', () => {
+  if (fontSize > 60) fontSize -= 10;
+  applyFontSize();
+});
+
+function applyFontSize() {
+  if (rendition) {
+    rendition.themes.fontSize(`${fontSize}%`);
+  }
+}
+
 // Navigation Controls
 prevBtn.addEventListener('click', () => rendition && rendition.prev());
 nextBtn.addEventListener('click', () => rendition && rendition.next());
 
-// Initial Setup
+// Initial Load
 window.addEventListener('load', () => {
   renderShelf();
 });

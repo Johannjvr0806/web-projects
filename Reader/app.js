@@ -76,7 +76,7 @@ function filterShelf(filter, btn) {
   renderShelf();
 }
 
-// Batch Multi-EPUB Upload with Duplicate Protection (Stays on Bookshelf view)
+// Batch Multi-EPUB Upload with Duplicate Protection
 fileInput.addEventListener('change', async function (e) {
   const files = Array.from(e.target.files);
   if (!files || files.length === 0) return;
@@ -95,7 +95,6 @@ fileInput.addEventListener('change', async function (e) {
           const metadata = await tempBook.loaded.metadata;
           const bookTitle = metadata.title || file.name.replace('.epub', '');
 
-          // Duplicate Check: Ignore if book with same title exists
           const exists = savedBooks.some(b => b.title.trim().toLowerCase() === bookTitle.trim().toLowerCase());
           if (!exists) {
             const coverUrl = await tempBook.coverUrl().catch(() => null);
@@ -136,8 +135,6 @@ fileInput.addEventListener('change', async function (e) {
 
   await localforage.setItem('library_books', savedBooks);
   fileInput.value = '';
-
-  // Stay on library view so user sees the shelf instead of jumping into reader
   showView('library');
 
   if (addedCount > 0) {
@@ -277,42 +274,13 @@ async function openBook(bookId) {
     }
   });
 
-  // ReadEra Tap Zones & Touch Swipes
+  // ReadEra Tap Navigation (Cleaned up to prevent double-firing/looping)
   rendition.on("rendered", (section) => {
-    let touchstartX = 0;
-    let touchendX = 0;
-    let touchMoved = false;
-
     const contents = rendition.getContents()[0];
     if (contents && contents.document) {
       const iframeDoc = contents.document;
 
-      iframeDoc.addEventListener('touchstart', e => {
-        touchstartX = e.changedTouches[0].screenX;
-        touchMoved = false;
-      }, false);
-
-      iframeDoc.addEventListener('touchmove', () => {
-        touchMoved = true;
-      }, false);
-
-      iframeDoc.addEventListener('touchend', e => {
-        touchendX = e.changedTouches[0].screenX;
-        if (touchMoved && Math.abs(touchendX - touchstartX) > 40) {
-          if (touchendX < touchstartX) {
-            rendition.next();
-            hideAiPopup();
-          } else {
-            rendition.prev();
-            hideAiPopup();
-          }
-        }
-      }, false);
-
-      // ReadEra-style Tap Navigation
       iframeDoc.addEventListener('click', e => {
-        if (touchMoved) return;
-
         const screenWidth = iframeDoc.defaultView.innerWidth;
         const clickX = e.clientX;
 
@@ -357,7 +325,7 @@ async function saveBookProgress(bookId, cfi, progress) {
   }
 }
 
-// Translation Lookup (MyMemory API)
+// Fixed Translation Lookup (Using correct MyMemory auto-detect syntax)
 async function showAiPopup(text, posX, posY) {
   aiWord.textContent = `"${text}"`;
   aiTranslation.textContent = "Translating...";
@@ -366,7 +334,7 @@ async function showAiPopup(text, posX, posY) {
   aiPopup.style.display = 'block';
 
   try {
-    const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=auto|en`);
+    const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=|en`);
     const data = await res.json();
     if (data && data.responseData && data.responseData.translatedText) {
       const translatedText = data.responseData.translatedText;
@@ -423,7 +391,7 @@ themeEmerald.addEventListener('click', () => applyTheme('emerald'));
 themeNavy.addEventListener('click', () => applyTheme('navy'));
 themeDark.addEventListener('click', () => applyTheme('dark'));
 
-modifiedFont = document.getElementById('font-inc').addEventListener('click', () => {
+document.getElementById('font-inc').addEventListener('click', () => {
   fontSize += 10;
   applyFontSize();
 });

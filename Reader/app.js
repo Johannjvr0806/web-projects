@@ -1,452 +1,439 @@
-let book = null;
-let rendition = null;
+// App State
+let books = [];
+let customCategories = ["Favorites", "Sci-Fi", "Romance"];
 let currentBookId = null;
-let fontSize = 100;
-let currentTheme = 'light';
-let currentFilter = 'all';
-let controlsVisible = true;
-let speechSynth = window.speechSynthesis;
-let isSpeaking = false;
+let currentEpub = null;
+let currentRendition = null;
+let currentFontSize = 100;
+let currentTheme = 'theme-purple';
+let activeFilter = 'all';
+let ttsUtterance = null;
+let isTTSPlaying = false;
 
-const fileInput = document.getElementById('file-input');
-const prevBtn = document.getElementById('prev-btn');
-const nextBtn = document.getElementById('next-btn');
-const pageInfo = document.getElementById('page-info');
-const progressBar = document.getElementById('progress-bar');
+// LocalForage Setup
+localforage.config({ name: 'ReaderApp', storeName: 'library' });
 
-const libraryView = document.getElementById('library-view');
-const readerView = document.getElementById('reader-view');
-const tabLibrary = document.getElementById('tab-library');
-const tabReader = document.getElementById('tab-reader');
-const shelfGrid = document.getElementById('shelf-grid');
-const readerControls = document.getElementById('reader-controls');
-const readerFooter = document.getElementById('reader-footer');
-const appHeader = document.getElementById('app-header');
-const viewer = document.getElementById('viewer');
-
-const tapLeft = document.getElementById('tap-left');
-const tapCenter = document.getElementById('tap-center');
-const tapRight = document.getElementById('tap-right');
-
-const tocBtn = document.getElementById('toc-btn');
-const tocDrawer = document.getElementById('toc-drawer');
-const closeToc = document.getElementById('close-toc');
-const tocList = document.getElementById('toc-list');
-const audiobookBtn = document.getElementById('audiobook-btn');
-const liveClock = document.getElementById('live-clock');
-
-const themeLight = document.getElementById('theme-light');
-const themeSepia = document.getElementById('theme-sepia');
-const themePurple = document.getElementById('theme-purple');
-const themeNavy = document.getElementById('theme-navy');
-const themeDark = document.getElementById('theme-dark');
-
-const aiPopup = document.getElementById('ai-popup');
-const aiWord = document.getElementById('ai-word');
-const aiTranslation = document.getElementById('ai-translation');
-
-const themeColors = {
-  light: { bg: '#fffaf0', fg: '#1f2937' },
-  sepia: { bg: '#f7eedb', fg: '#433422' },
-  purple: { bg: '#241633', fg: '#f3e8ff' },
-  navy: { bg: '#121c2e', fg: '#e0e6ed' },
-  dark: { bg: '#1e1e1e', fg: '#e0e0e0' }
-};
-
-setInterval(() => {
-  const now = new Date();
-  liveClock.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}, 1000);
-
-tabLibrary.addEventListener('click', () => showView('library'));
-tabReader.addEventListener('click', () => showView('reader'));
-
-function showView(view) {
-  stopAudiobook();
-  if (view === 'library') {
-    libraryView.style.display = 'block';
-    readerView.style.display = 'none';
-    appHeader.style.display = 'flex';
-    tocDrawer.classList.remove('open');
-    hideAiPopup();
-    tabLibrary.classList.add('active');
-    tabReader.classList.remove('active');
-    renderShelf();
-  } else {
-    libraryView.style.display = 'none';
-    readerView.style.display = 'flex';
-    appHeader.style.display = 'none';
-    tabReader.classList.add('active');
-    tabLibrary.classList.remove('active');
-  }
-}
-
-function filterShelf(filter, btn) {
-  currentFilter = filter;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderShelf();
-}
-
-fileInput.addEventListener('change', async function (e) {
-  const files = Array.from(e.target.files);
-  if (!files || files.length === 0) return;
-
-  let savedBooks = (await localforage.getItem('library_books')) || [];
-  let addedCount = 0;
-
-  for (const file of files) {
-    await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = async function (event) {
-        try {
-          const bookData = event.target.result;
-          const tempBook = ePub(bookData);
-
-          const metadata = await tempBook.loaded.metadata;
-          const bookTitle = metadata.title || file.name.replace('.epub', '');
-
-          const exists = savedBooks.some(b => b.title.trim().toLowerCase() === bookTitle.trim().toLowerCase());
-          if (!exists) {
-            const coverUrl = await tempBook.coverUrl().catch(() => null);
-            let coverBase64 = null;
-            if (coverUrl) {
-              coverBase64 = await fetch(coverUrl)
-                .then(res => res.blob())
-                .then(blob => new Promise((res) => {
-                  const r = new FileReader();
-                  r.onloadend = () => res(r.result);
-                  r.readAsDataURL(blob);
-                })).catch(() => null);
-            }
-
-            const bookId = 'book_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
-            savedBooks.push({
-              id: bookId,
-              title: bookTitle,
-              author: metadata.creator || 'Unknown Author',
-              cover: coverBase64,
-              data: bookData,
-              location: null,
-              progress: 0
-            });
-            addedCount++;
-          }
-
-          tempBook.destroy();
-          resolve();
-        } catch (err) {
-          resolve();
-        }
-      };
-      reader.readAsArrayBuffer(file);
-    });
-  }
-
-  await localforage.setItem('library_books', savedBooks);
-  fileInput.value = '';
-  showView('library');
-
-  if (addedCount > 0) {
-    alert(`Successfully added ${addedCount} book(s) to your bookshelf!`);
-  } else {
-    alert('No new books added (already on shelf).');
-  }
+// Initialize
+document.addEventListener('DOMContentLoaded', async () => {
+  startClock();
+  await loadSavedTheme(); // Loads saved theme immediately on startup
+  await loadCategories();
+  await loadBooks();
+  setupFileInput();
+  renderCategoryTabs();
 });
 
-async function renderShelf() {
-  const savedBooks = (await localforage.getItem('library_books')) || [];
-  shelfGrid.innerHTML = '';
+function startClock() {
+  const updateClock = () => {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const clockEl = document.getElementById('live-clock');
+    if (clockEl) clockEl.textContent = timeStr;
+  };
+  updateClock();
+  setInterval(updateClock, 1000);
+}
 
-  let filteredBooks = savedBooks;
-  if (currentFilter === 'unread') {
-    filteredBooks = savedBooks.filter(b => !b.progress || b.progress === 0);
-  } else if (currentFilter === 'reading') {
-    filteredBooks = savedBooks.filter(b => b.progress > 0 && b.progress < 95);
-  } else if (currentFilter === 'finished') {
-    filteredBooks = savedBooks.filter(b => b.progress >= 95);
+// Persistent Theme System
+async function loadSavedTheme() {
+  const saved = await localforage.getItem('user_theme');
+  if (saved) {
+    currentTheme = saved;
+    document.body.className = saved;
+  } else {
+    document.body.className = 'theme-purple';
   }
+}
 
-  if (filteredBooks.length === 0) {
-    shelfGrid.innerHTML = `<p style="grid-column: 1/-1; text-align: center; opacity: 0.7; padding: 40px;">No books found! Click OceanPDF above to download books.</p>`;
+async function setTheme(themeClass) {
+  document.body.className = themeClass;
+  currentTheme = themeClass;
+  await localforage.setItem('user_theme', themeClass);
+  applyThemeToRendition();
+}
+
+// Categories Management
+async function loadCategories() {
+  const saved = await localforage.getItem('custom_categories');
+  if (saved) customCategories = saved;
+}
+
+async function promptAddCategory() {
+  const name = prompt("Enter new shelf name (e.g., Thrillers, Audiobooks, To Read):");
+  if (name && name.trim()) {
+    const trimmed = name.trim();
+    if (!customCategories.includes(trimmed)) {
+      customCategories.push(trimmed);
+      await localforage.setItem('custom_categories', customCategories);
+      renderCategoryTabs();
+      renderBookshelf();
+    }
+  }
+}
+
+function renderCategoryTabs() {
+  const filterBar = document.getElementById('filter-bar');
+  filterBar.innerHTML = `
+    <button class="filter-btn ${activeFilter === 'all' ? 'active' : ''}" onclick="filterCategory('all', this)">All</button>
+    <button class="filter-btn ${activeFilter === 'unread' ? 'active' : ''}" onclick="filterCategory('unread', this)">Unread</button>
+    <button class="filter-btn ${activeFilter === 'reading' ? 'active' : ''}" onclick="filterCategory('reading', this)">Reading</button>
+    <button class="filter-btn ${activeFilter === 'finished' ? 'active' : ''}" onclick="filterCategory('finished', this)">Finished</button>
+  `;
+
+  customCategories.forEach(cat => {
+    const btn = document.createElement('button');
+    btn.className = `filter-btn ${activeFilter === cat ? 'active' : ''}`;
+    btn.textContent = cat;
+    btn.onclick = () => filterCategory(cat, btn);
+    filterBar.appendChild(btn);
+  });
+
+  const addBtn = document.createElement('button');
+  addBtn.className = 'filter-btn add-cat-btn';
+  addBtn.textContent = '+ Shelf';
+  addBtn.onclick = promptAddCategory;
+  filterBar.appendChild(addBtn);
+}
+
+function filterCategory(cat, btn) {
+  activeFilter = cat;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderBookshelf();
+}
+
+// Bookshelf Logic
+async function loadBooks() {
+  const stored = await localforage.getItem('books_meta');
+  books = stored || [];
+  renderBookshelf();
+}
+
+async function saveBooksMeta() {
+  await localforage.setItem('books_meta', books);
+}
+
+function setupFileInput() {
+  const input = document.getElementById('epub-input');
+  input.addEventListener('change', async (e) => {
+    const files = Array.from(e.target.files);
+    for (let file of files) {
+      await processAndAddBook(file);
+    }
+    input.value = '';
+    renderBookshelf();
+  });
+}
+
+async function processAndAddBook(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const tempBook = ePub(arrayBuffer);
+  await tempBook.ready;
+  const metadata = await tempBook.loaded.metadata;
+  let coverUrl = null;
+
+  try {
+    const coverPath = await tempBook.coverUrl();
+    if (coverPath) {
+      const blob = await fetch(coverPath).then(r => r.blob());
+      coverUrl = await new Promise(res => {
+        const reader = new FileReader();
+        reader.onloadend = () => res(reader.result);
+        reader.readAsDataURL(blob);
+      });
+    }
+  } catch (err) { console.log('No cover found', err); }
+
+  const id = 'book_' + Date.now() + '_' + Math.random().toString(36).substring(2, 5);
+  await localforage.setItem(id, arrayBuffer);
+
+  const newBook = {
+    id,
+    title: metadata.title || file.name.replace('.epub', ''),
+    author: metadata.creator || 'Unknown Author',
+    cover: coverUrl,
+    progress: 0,
+    cfi: null,
+    status: 'unread',
+    category: null,
+    bookmarks: []
+  };
+
+  books.push(newBook);
+  await saveBooksMeta();
+}
+
+function renderBookshelf() {
+  const grid = document.getElementById('shelf-grid');
+  grid.innerHTML = '';
+
+  const filtered = books.filter(b => {
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'unread') return b.status === 'unread' || !b.status;
+    if (activeFilter === 'reading') return b.status === 'reading';
+    if (activeFilter === 'finished') return b.status === 'finished';
+    return b.category === activeFilter;
+  });
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; opacity: 0.6; padding: 40px;">No books found in "${activeFilter}". Tapping "Add Book" lets you upload EPUB files!</div>`;
     return;
   }
 
-  filteredBooks.forEach((b) => {
-    let statusText = 'Unread';
-    let statusClass = '';
-    const pct = Math.round(b.progress || 0);
-
-    if (pct >= 95) {
-      statusText = '✓ Finished';
-      statusClass = 'finished';
-    } else if (pct > 0) {
-      statusText = `${pct}% Read`;
-    }
-
+  filtered.forEach(book => {
     const card = document.createElement('div');
     card.className = 'book-card';
-    card.innerHTML = `
-      <button class="delete-btn" onclick="deleteBook(event, '${b.id}')">✕</button>
-      <div class="cover-box">
-        ${b.cover ? `<img src="${b.cover}" alt="Cover" />` : `<span style="font-size: 32px;">📖</span>`}
-        <span class="status-badge ${statusClass}">${statusText}</span>
-      </div>
-      <div class="book-title">${b.title}</div>
-      <div class="book-author">${b.author}</div>
-    `;
+    
+    let shelfOptions = `<option value="">-- Shelf --</option>`;
+    customCategories.forEach(cat => {
+      shelfOptions += `<option value="${cat}" ${book.category === cat ? 'selected' : ''}>${cat}</option>`;
+    });
 
-    card.addEventListener('click', () => openBook(b.id));
-    shelfGrid.appendChild(card);
+    card.innerHTML = `
+      <div class="cover-box" onclick="openBook('${book.id}')">
+        ${book.cover ? `<img src="${book.cover}" alt="Cover">` : `<span>📖</span>`}
+        ${book.category ? `<span class="category-badge">${book.category}</span>` : ''}
+        <span class="status-badge ${book.status === 'finished' ? 'finished' : ''}">${book.status || 'unread'}</span>
+      </div>
+      <div class="book-title" title="${book.title}">${book.title}</div>
+      <div class="book-author" title="${book.author}">${book.author}</div>
+      <div class="card-actions">
+        <select class="shelf-select" onchange="assignShelf('${book.id}', this.value)">
+          ${shelfOptions}
+        </select>
+      </div>
+      <button class="delete-btn" onclick="deleteBook('${book.id}', event)">✕</button>
+    `;
+    grid.appendChild(card);
   });
 }
 
-async function openBook(bookId) {
-  const savedBooks = (await localforage.getItem('library_books')) || [];
-  const selectedBook = savedBooks.find(b => b.id === bookId);
-  if (!selectedBook) return;
+async function assignShelf(bookId, category) {
+  const book = books.find(b => b.id === bookId);
+  if (book) {
+    book.category = category || null;
+    await saveBooksMeta();
+    renderBookshelf();
+  }
+}
 
-  if (book) book.destroy();
+async function deleteBook(id, e) {
+  e.stopPropagation();
+  if (confirm("Delete this book from your library?")) {
+    books = books.filter(b => b.id !== id);
+    await localforage.removeItem(id);
+    await saveBooksMeta();
+    renderBookshelf();
+  }
+}
 
-  currentBookId = bookId;
-  book = ePub(selectedBook.data);
-  rendition = book.renderTo("viewer", {
+// Reader Logic
+async function openBook(id) {
+  currentBookId = id;
+  const bookData = books.find(b => b.id === id);
+  if (!bookData) return;
+
+  const arrayBuffer = await localforage.getItem(id);
+  if (!arrayBuffer) return alert("Error loading book data.");
+
+  switchView('reader');
+
+  if (currentEpub) currentEpub.destroy();
+  currentEpub = ePub(arrayBuffer);
+  
+  currentRendition = currentEpub.renderTo("viewer", {
     width: "100%",
     height: "100%",
-    spread: "none",
-    allowScriptedContent: false
+    spread: "none"
   });
 
-  Object.keys(themeColors).forEach(t => {
-    rendition.themes.register(t, {
-      body: { 
-        background: `transparent !important`, 
-        color: `${themeColors[t].fg} !important` 
+  const targetCfi = bookData.cfi || undefined;
+  await currentRendition.display(targetCfi);
+
+  applyThemeToRendition();
+  setupRenditionEvents();
+  loadToc();
+
+  if (bookData.status === 'unread') {
+    bookData.status = 'reading';
+    await saveBooksMeta();
+  }
+}
+
+function setupRenditionEvents() {
+  currentRendition.on("relocated", location => {
+    const cfi = location.start.cfi;
+    const book = books.find(b => b.id === currentBookId);
+    if (book) {
+      book.cfi = cfi;
+      if (currentEpub.locations && currentEpub.locations.length()) {
+        const progress = currentEpub.locations.percentageFromCfi(cfi);
+        book.progress = Math.round(progress * 100);
+        document.getElementById('progress-bar').style.width = `${book.progress}%`;
+        document.getElementById('page-info').textContent = `${book.progress}% completed`;
+        if (book.progress >= 98) book.status = 'finished';
       }
-    });
+      saveBooksMeta();
+    }
   });
 
-  rendition.hooks.content.register((contents) => {
-    const doc = contents.document;
-    const style = doc.createElement('style');
-    const activeCol = themeColors[currentTheme] || themeColors.light;
-    style.innerHTML = `
-      html, body {
-        background-color: transparent !important;
-        color: ${activeCol.fg} !important;
-      }
+  currentEpub.ready.then(() => {
+    return currentEpub.locations.generate(1000);
+  }).then(() => {
+    if (currentRendition.location) {
+      const cfi = currentRendition.location.start.cfi;
+      const progress = currentEpub.locations.percentageFromCfi(cfi);
+      document.getElementById('progress-bar').style.width = `${Math.round(progress * 100)}%`;
+      document.getElementById('page-info').textContent = `${Math.round(progress * 100)}% completed`;
+    }
+  });
+}
+
+// Smart Bookmarks
+async function addBookmark() {
+  if (!currentRendition || !currentBookId) return;
+  const book = books.find(b => b.id === currentBookId);
+  if (!book) return;
+
+  const location = currentRendition.location;
+  if (!location) return;
+
+  const cfi = location.start.cfi;
+  const now = new Date();
+  const timeStr = now.toLocaleDateString() + ' ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  
+  if (!book.bookmarks) book.bookmarks = [];
+  book.bookmarks.push({ cfi, time: timeStr });
+  
+  await saveBooksMeta();
+  alert("Bookmark saved!");
+  renderBookmarks();
+}
+
+function toggleBookmarkDrawer() {
+  const drawer = document.getElementById('bookmark-drawer');
+  document.getElementById('toc-drawer').classList.remove('open');
+  drawer.classList.toggle('open');
+  if (drawer.classList.contains('open')) renderBookmarks();
+}
+
+function renderBookmarks() {
+  const list = document.getElementById('bookmark-list');
+  list.innerHTML = '';
+  const book = books.find(b => b.id === currentBookId);
+
+  if (!book || !book.bookmarks || book.bookmarks.length === 0) {
+    list.innerHTML = '<li style="padding:10px; opacity:0.6;">No bookmarks saved yet.</li>';
+    return;
+  }
+
+  book.bookmarks.forEach((bm, index) => {
+    const li = document.createElement('li');
+    li.className = 'bookmark-item';
+    li.innerHTML = `
+      <span onclick="jumpToCfi('${bm.cfi}')">📌 ${bm.time}</span>
+      <button class="bookmark-del" onclick="deleteBookmark(${index})">✕</button>
     `;
-    doc.head.appendChild(style);
+    list.appendChild(li);
   });
+}
 
-  applyTheme(currentTheme);
-  applyFontSize();
+async function deleteBookmark(index) {
+  const book = books.find(b => b.id === currentBookId);
+  if (book && book.bookmarks) {
+    book.bookmarks.splice(index, 1);
+    await saveBooksMeta();
+    renderBookmarks();
+  }
+}
 
-  const navigation = await book.loaded.navigation;
-  tocList.innerHTML = '';
-  navigation.toc.forEach((chapter) => {
+function jumpToCfi(cfi) {
+  if (currentRendition) {
+    currentRendition.display(cfi);
+    document.getElementById('bookmark-drawer').classList.remove('open');
+  }
+}
+
+// Navigation & View Switching
+function switchView(view) {
+  if (view === 'shelf') {
+    document.getElementById('shelf-view').style.display = 'flex';
+    document.getElementById('reader-view').style.display = 'none';
+    document.getElementById('nav-shelf').classList.add('active');
+    document.getElementById('nav-reader').classList.remove('active');
+    renderBookshelf();
+  } else {
+    document.getElementById('shelf-view').style.display = 'none';
+    document.getElementById('reader-view').style.display = 'flex';
+    document.getElementById('nav-reader').style.display = 'inline-block';
+    document.getElementById('nav-reader').classList.add('active');
+    document.getElementById('nav-shelf').classList.remove('active');
+  }
+}
+
+function prevPage() { if (currentRendition) currentRendition.prev(); }
+function nextPage() { if (currentRendition) currentRendition.next(); }
+
+function changeFontSize(delta) {
+  currentFontSize += delta;
+  if (currentFontSize < 60) currentFontSize = 60;
+  if (currentFontSize > 200) currentFontSize = 200;
+  if (currentRendition) currentRendition.themes.fontSize(`${currentFontSize}%`);
+}
+
+function applyThemeToRendition() {
+  if (!currentRendition) return;
+  let bg = '#fffaf0', color = '#1f2937';
+  if (currentTheme === 'theme-sepia') { bg = '#f7eedb'; color = '#433422'; }
+  if (currentTheme === 'theme-purple') { bg = '#241633'; color = '#f3e8ff'; }
+  if (currentTheme === 'theme-navy') { bg = '#121c2e'; color = '#e0e6ed'; }
+  if (currentTheme === 'theme-dark') { bg = '#1e1e1e'; color = '#e0e0e0'; }
+
+  currentRendition.themes.register("current", {
+    "body": { "background": bg, "color": color, "padding": "10px !important" },
+    "p": { "color": color }
+  });
+  currentRendition.themes.select("current");
+}
+
+function toggleToc() {
+  document.getElementById('bookmark-drawer').classList.remove('open');
+  document.getElementById('toc-drawer').classList.toggle('open');
+}
+
+async function loadToc() {
+  const toc = await currentEpub.loaded.navigation;
+  const list = document.getElementById('toc-list');
+  list.innerHTML = '';
+  toc.forEach(item => {
     const li = document.createElement('li');
     li.className = 'toc-item';
-    li.textContent = chapter.label.trim();
-    li.addEventListener('click', () => {
-      rendition.display(chapter.href);
-      tocDrawer.classList.remove('open');
-    });
-    tocList.appendChild(li);
+    li.textContent = item.label;
+    li.onclick = () => {
+      currentRendition.display(item.href);
+      toggleToc();
+    };
+    list.appendChild(li);
   });
-
-  book.ready.then(() => {
-    return book.locations.generate(1000);
-  }).then(() => {
-    if (selectedBook.location) {
-      rendition.display(selectedBook.location);
-    } else {
-      rendition.display();
-    }
-  }).catch(() => {
-    rendition.display();
-  });
-
-  rendition.on("relocated", (location) => {
-    if (book.locations && book.locations.total) {
-      const percent = book.locations.percentageFromCfi(location.start.cfi) * 100;
-      const rounded = Math.round(percent);
-      
-      progressBar.style.width = `${percent}%`;
-      pageInfo.textContent = `Reading: ${selectedBook.title} (${rounded}%)`;
-
-      saveBookProgress(bookId, location.start.cfi, percent);
-    }
-  });
-
-  rendition.on("selected", (cfiRange, contents) => {
-    const selection = contents.window.getSelection();
-    const text = selection.toString().trim();
-
-    if (text.length > 0 && text.length < 150) {
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-      const iframeRect = contents.document.defaultView.frameElement.getBoundingClientRect();
-
-      showAiPopup(text, iframeRect.left + rect.left, iframeRect.top + rect.bottom + 10);
-    }
-  });
-
-  showView('reader');
-
-  // Auto-hide headers immediately upon opening for instant immersion
-  controlsVisible = false;
-  readerControls.style.display = 'none';
-  readerFooter.style.display = 'none';
 }
 
-tapLeft.onclick = () => { if (rendition) rendition.prev(); hideAiPopup(); };
-tapRight.onclick = () => { if (rendition) rendition.next(); hideAiPopup(); };
-tapCenter.onclick = () => { toggleControls(); hideAiPopup(); };
-
-function toggleControls() {
-  controlsVisible = !controlsVisible;
-  if (controlsVisible) {
-    readerControls.style.display = 'flex';
-    readerFooter.style.display = 'flex';
+// Text to Speech
+function toggleTTS() {
+  if (isTTSPlaying) {
+    window.speechSynthesis.cancel();
+    isTTSPlaying = false;
+    document.getElementById('tts-btn').textContent = '🔊 Listen';
   } else {
-    readerControls.style.display = 'none';
-    readerFooter.style.display = 'none';
-    tocDrawer.classList.remove('open');
+    const visibleText = currentRendition.getRange().toString();
+    if (!visibleText || !visibleText.trim()) return alert("No readable text found on this page.");
+
+    ttsUtterance = new SpeechSynthesisUtterance(visibleText);
+    ttsUtterance.onend = () => {
+      isTTSPlaying = false;
+      document.getElementById('tts-btn').textContent = '🔊 Listen';
+    };
+    window.speechSynthesis.speak(ttsUtterance);
+    isTTSPlaying = true;
+    document.getElementById('tts-btn').textContent = '⏹ Stop';
   }
 }
-
-audiobookBtn.addEventListener('click', () => {
-  if (isSpeaking) {
-    stopAudiobook();
-  } else {
-    startAudiobook();
-  }
-});
-
-async function startAudiobook() {
-  if (!rendition) return;
-  const contents = rendition.getContents()[0];
-  if (!contents || !contents.document) return;
-
-  const text = contents.document.body.innerText.trim();
-  if (!text) return;
-
-  speechSynth.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  
-  utterance.onstart = () => {
-    isSpeaking = true;
-    audiobookBtn.textContent = "⏹ Stop";
-    audiobookBtn.style.background = "#dc2626";
-  };
-
-  utterance.onend = () => {
-    stopAudiobook();
-    if (rendition) rendition.next();
-  };
-
-  speechSynth.speak(utterance);
-}
-
-function stopAudiobook() {
-  if (speechSynth) speechSynth.cancel();
-  isSpeaking = false;
-  audiobookBtn.textContent = "🎧 Listen";
-  audiobookBtn.style.background = "";
-}
-
-async function saveBookProgress(bookId, cfi, progress) {
-  let savedBooks = (await localforage.getItem('library_books')) || [];
-  const idx = savedBooks.findIndex(b => b.id === bookId);
-  if (idx !== -1) {
-    savedBooks[idx].location = cfi;
-    savedBooks[idx].progress = progress;
-    await localforage.setItem('library_books', savedBooks);
-  }
-}
-
-async function showAiPopup(text, posX, posY) {
-  aiWord.textContent = `"${text}"`;
-  aiTranslation.textContent = "Translating...";
-  aiPopup.style.left = `${Math.min(posX, window.innerWidth - 300)}px`;
-  aiPopup.style.top = `${posY}px`;
-  aiPopup.style.display = 'block';
-
-  try {
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(text)}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    
-    if (data && data[0] && data[0][0] && data[0][0][0]) {
-      const translatedText = data[0].map(item => item[0]).join('');
-      const detectedLang = (data[2] || 'auto').toUpperCase();
-      aiTranslation.innerHTML = `<b>Translation (${detectedLang} → EN):</b><br/>${translatedText}`;
-    } else {
-      aiTranslation.textContent = "Could not find translation.";
-    }
-  } catch (err) {
-    aiTranslation.textContent = "Translation offline / unavailable.";
-  }
-}
-
-function hideAiPopup() {
-  aiPopup.style.display = 'none';
-}
-
-async function deleteBook(event, bookId) {
-  event.stopPropagation();
-  let savedBooks = (await localforage.getItem('library_books')) || [];
-  savedBooks = savedBooks.filter(b => b.id !== bookId);
-  await localforage.setItem('library_books', savedBooks);
-  renderShelf();
-}
-
-tocBtn.addEventListener('click', () => tocDrawer.classList.toggle('open'));
-closeToc.addEventListener('click', () => tocDrawer.classList.remove('open'));
-
-async function applyTheme(theme) {
-  currentTheme = theme;
-  document.body.className = `theme-${theme}`;
-
-  const col = themeColors[theme] || themeColors.light;
-  if (viewer) viewer.style.backgroundColor = col.bg;
-  if (rendition) rendition.themes.select(theme);
-
-  themeLight.classList.toggle('active', theme === 'light');
-  themeSepia.classList.toggle('active', theme === 'sepia');
-  themePurple.classList.toggle('active', theme === 'purple');
-  themeNavy.classList.toggle('active', theme === 'navy');
-  themeDark.classList.toggle('active', theme === 'dark');
-
-  await localforage.setItem('selected_theme', theme);
-}
-
-themeLight.addEventListener('click', () => applyTheme('light'));
-themeSepia.addEventListener('click', () => applyTheme('sepia'));
-themePurple.addEventListener('click', () => applyTheme('purple'));
-themeNavy.addEventListener('click', () => applyTheme('navy'));
-themeDark.addEventListener('click', () => applyTheme('dark'));
-
-document.getElementById('font-inc').addEventListener('click', () => { fontSize += 10; applyFontSize(); });
-document.getElementById('font-dec').addEventListener('click', () => { if (fontSize > 60) fontSize -= 10; applyFontSize(); });
-
-function applyFontSize() {
-  if (rendition) rendition.themes.fontSize(`${fontSize}%`);
-}
-
-prevBtn.addEventListener('click', () => { if (rendition) rendition.prev(); hideAiPopup(); });
-nextBtn.addEventListener('click', () => { if (rendition) rendition.next(); hideAiPopup(); });
-
-document.addEventListener('keydown', (e) => {
-  if (readerView.style.display === 'flex') {
-    if (e.key === 'ArrowRight') { if (rendition) rendition.next(); hideAiPopup(); }
-    else if (e.key === 'ArrowLeft') { if (rendition) rendition.prev(); hideAiPopup(); }
-  }
-});
-
-window.addEventListener('load', async () => {
-  const savedTheme = (await localforage.getItem('selected_theme')) || 'light';
-  applyTheme(savedTheme);
-  renderShelf();
-});

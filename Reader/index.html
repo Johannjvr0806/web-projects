@@ -3,89 +3,115 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ReadEra Pro - EPUB Reader</title>
-  <link rel="manifest" href="manifest.json">
+  <title>Reader</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Reader">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <!-- ePub.js & LocalForage -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
 </head>
-<body class="theme-light">
+<body class="theme-purple">
 
+  <!-- APP HEADER -->
   <header id="app-header">
     <div class="nav-tabs">
-      <button id="tab-library" class="tab-btn active">📚 Bookshelf</button>
-      <button id="tab-reader" class="tab-btn" style="display:none;">📖 Reader</button>
+      <button id="nav-shelf" class="tab-btn active" onclick="switchView('shelf')">📚 Bookshelf</button>
+      <button id="nav-reader" class="tab-btn" onclick="switchView('reader')" style="display:none;">📖 Reader</button>
     </div>
+
+    <!-- Theme Picker on Header (Applies to Landing & Shelf) -->
+    <div class="theme-picker">
+      <div class="theme-dot light" onclick="setTheme('theme-light')"></div>
+      <div class="theme-dot sepia" onclick="setTheme('theme-sepia')"></div>
+      <div class="theme-dot purple" onclick="setTheme('theme-purple')"></div>
+      <div class="theme-dot navy" onclick="setTheme('theme-navy')"></div>
+      <div class="theme-dot dark" onclick="setTheme('theme-dark')"></div>
+    </div>
+
     <div class="header-actions">
       <a href="https://oceanofpdf.com" target="_blank" class="action-btn ocean-btn" title="Download books from OceanOfPDF">📥 OceanOfPDF</a>
-      <label for="file-input" class="action-btn upload-btn">+ Add Books</label>
-      <input type="file" id="file-input" accept=".epub" multiple style="display: none;" />
+      <label for="epub-input" class="action-btn upload-btn">📁 Add Book</label>
+      <input type="file" id="epub-input" accept=".epub" multiple style="display:none;">
     </div>
   </header>
 
-  <main id="library-view" class="view-container">
-    <div class="filter-bar">
-      <button class="filter-btn active" onclick="filterShelf('all', this)">All Books</button>
-      <button class="filter-btn" onclick="filterShelf('unread', this)">Unread</button>
-      <button class="filter-btn" onclick="filterShelf('reading', this)">Reading</button>
-      <button class="filter-btn" onclick="filterShelf('finished', this)">Finished</button>
+  <!-- BOOKSHELF VIEW -->
+  <div id="shelf-view" class="view-container">
+    <div class="filter-bar" id="filter-bar">
+      <button class="filter-btn active" onclick="filterCategory('all', this)">All</button>
+      <button class="filter-btn" onclick="filterCategory('unread', this)">Unread</button>
+      <button class="filter-btn" onclick="filterCategory('reading', this)">Reading</button>
+      <button class="filter-btn" onclick="filterCategory('finished', this)">Finished</button>
+      <!-- Dynamic custom category tabs render here -->
+      <button class="filter-btn add-cat-btn" onclick="promptAddCategory()">+ Shelf</button>
     </div>
-    <div id="shelf-grid" class="shelf-grid"></div>
-  </main>
+    <div class="shelf-grid" id="shelf-grid">
+      <!-- Books dynamically added here -->
+    </div>
+  </div>
 
-  <div id="reader-view" class="view-container" style="display: none;">
-    <div id="reader-controls" class="reader-header">
-      <button id="toc-btn" class="control-btn" title="Table of Contents">📑 TOC</button>
-      <button id="audiobook-btn" class="control-btn" title="Listen to Audiobook">🎧 Listen</button>
-      <span id="live-clock" class="reader-clock">00:00</span>
+  <!-- READER VIEW -->
+  <div id="reader-view" class="view-container" style="display:none;">
+    
+    <!-- Reader Top Bar -->
+    <div class="reader-header" id="reader-topbar">
+      <button class="control-btn" onclick="toggleToc()">☰ Contents</button>
+      <button class="control-btn" onclick="toggleBookmarkDrawer()">🔖 Bookmarks</button>
+      <button class="control-btn" onclick="addBookmark()">➕ Add Bookmark</button>
+      <div class="reader-clock" id="live-clock">00:00</div>
       <div class="font-controls">
-        <button id="font-dec" class="control-btn">A-</button>
-        <button id="font-inc" class="control-btn">A+</button>
+        <button class="control-btn" onclick="changeFontSize(-2)">A-</button>
+        <button class="control-btn" onclick="changeFontSize(2)">A+</button>
       </div>
       <div class="theme-picker">
-        <button id="theme-light" class="theme-dot light" title="Light"></button>
-        <button id="theme-sepia" class="theme-dot sepia" title="Sepia"></button>
-        <button id="theme-purple" class="theme-dot purple" title="Wife's Purple Theme"></button>
-        <button id="theme-navy" class="theme-dot navy" title="Navy"></button>
-        <button id="theme-dark" class="theme-dot dark" title="Dark"></button>
+        <div class="theme-dot light" onclick="setTheme('theme-light')"></div>
+        <div class="theme-dot sepia" onclick="setTheme('theme-sepia')"></div>
+        <div class="theme-dot purple" onclick="setTheme('theme-purple')"></div>
+        <div class="theme-dot navy" onclick="setTheme('theme-navy')"></div>
+        <div class="theme-dot dark" onclick="setTheme('theme-dark')"></div>
       </div>
     </div>
 
-    <div id="viewer-container" style="position: relative; width: 100%; height: 100%; flex: 1; overflow: hidden;">
-      <div id="viewer" style="width: 100%; height: 100%;"></div>
-      <div id="tap-left" style="position: absolute; top: 0; left: 0; width: 35%; height: 100%; z-index: 5;"></div>
-      <div id="tap-center" style="position: absolute; top: 0; left: 35%; width: 30%; height: 100%; z-index: 5;"></div>
-      <div id="tap-right" style="position: absolute; top: 0; left: 65%; width: 35%; height: 100%; z-index: 5;"></div>
-    </div>
+    <!-- EPUB Viewer Area -->
+    <div id="viewer" class="epub-viewer"></div>
 
-    <div id="reader-footer" class="reader-footer">
-      <button id="prev-btn" class="control-btn">◀ Prev</button>
+    <!-- Reader Bottom Control Bar -->
+    <div class="reader-footer" id="reader-bottombar">
+      <button class="control-btn" onclick="prevPage()">◀ Prev</button>
+      <button id="tts-btn" class="control-btn" onclick="toggleTTS()">🔊 Listen</button>
       <div class="progress-info">
         <span id="page-info">Loading...</span>
-        <div class="progress-track"><div id="progress-bar"></div></div>
+        <div class="progress-track">
+          <div id="progress-bar"></div>
+        </div>
       </div>
-      <button id="next-btn" class="control-btn">Next ▶</button>
+      <button class="control-btn" onclick="nextPage()">Next ▶</button>
     </div>
-  </div>
 
-  <div id="toc-drawer" class="toc-drawer">
-    <div class="toc-header">
-      <h3>Table of Contents</h3>
-      <button id="close-toc" class="control-btn">✕</button>
+    <!-- Table of Contents Drawer -->
+    <div id="toc-drawer" class="toc-drawer">
+      <div class="toc-header">
+        <h3>Contents</h3>
+        <button class="control-btn" onclick="toggleToc()">✕</button>
+      </div>
+      <ul id="toc-list"></ul>
     </div>
-    <ul id="toc-list"></ul>
-  </div>
 
-  <div id="ai-popup" class="ai-popup" style="display: none;">
-    <div class="ai-header">
-      <span id="ai-word">Selected Text</span>
-      <button onclick="hideAiPopup()" style="background:none; border:none; cursor:pointer; color:inherit;">✕</button>
+    <!-- Bookmarks Drawer -->
+    <div id="bookmark-drawer" class="toc-drawer">
+      <div class="toc-header">
+        <h3>Saved Bookmarks</h3>
+        <button class="control-btn" onclick="toggleBookmarkDrawer()">✕</button>
+      </div>
+      <ul id="bookmark-list"></ul>
     </div>
-    <div id="ai-translation" class="ai-body">Translating...</div>
+
   </div>
 
   <script src="app.js"></script>
-  <script src="sw.js"></script>
 </body>
 </html>

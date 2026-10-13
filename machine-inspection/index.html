@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Machine Inspection & Job Card Certificate System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #17173a;
+      --muted: #55587a;
+      --line: #cdcfe3;
+      --soft: #f1f1f9;
+      --paper: #ffffff;
+      --page: #e8e9f4;
+      --accent: #2323b5;
+      --pale: #c9caf0;
+      --accent-dark: #000099;
+      --danger: #b3261e;
+      --danger-soft: #fdecea;
+      --ok: #1f6b45;
+      --ok-soft: #e6f4ed;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+      padding: 20px 12px 60px;
+    }
+    .sheet {
+      max-width: 860px;
+      margin: 0 auto;
+      background: var(--paper);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(10, 10, 60, .12), 0 1px 3px rgba(10, 10, 60, .08);
+      margin-bottom: 24px;
+    }
+    header.top {
+      background: var(--accent-dark);
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 24px 32px;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .brand-title {
+      font-family: "IBM Plex Sans Condensed", sans-serif;
+      font-weight: 600;
+      font-size: 26px;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      margin: 0;
+    }
+    .brand-subtitle {
+      font-size: 13px;
+      color: var(--pale);
+      margin: 4px 0 0;
+    }
+    .ref-box {
+      text-align: right;
+    }
+    .ref-box label { color: var(--pale); font-size: 12px; margin-bottom: 2px; display: block; }
+    .ref-box .job-id-display {
+      font-family: "IBM Plex Sans Condensed", sans-serif;
+      font-size: 24px;
+      font-weight: 600;
+      color: #fff;
+      background: rgba(255,255,255,0.1);
+      padding: 4px 12px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    section { padding: 24px 32px; border-bottom: 1px solid var(--line); }
+    section:last-of-type { border-bottom: 0; }
+    
+    h2 {
+      margin: 0 0 16px;
+      font-family: "IBM Plex Sans Condensed", sans-serif;
+      font-weight: 600;
+      font-size: 18px;
+      color: var(--accent-dark);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+    h2 span.step-badge {
+      background: var(--accent);
+      color: #fff;
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-family: "IBM Plex Sans", sans-serif;
+    }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid.three { grid-template-columns: repeat(3, 1fr); }
+    .full { grid-column: 1 / -1; }
+
+    label, .lbl { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 6px; }
+    .req::after { content: " *"; color: var(--danger); }
+
+    input, select, textarea {
+      width: 100%;
+      font: inherit;
+      color: var(--ink);
+      background: #fff;
+      border: 1px solid #a9aecb;
+      border-radius: 4px;
+      padding: 10px 12px;
+      min-height: 44px;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: 3px solid rgba(0, 0, 153, .2);
+      border-color: var(--accent);
+    }
+    textarea { resize: vertical; min-height: 90px; }
+
+    /* Prefix selector controls */
+    .prefix-row {
+      display: flex;
+      gap: 10px;
+    }
+    .prefix-row select { flex: 0 0 135px; }
+
+    /* Checklist Table */
+    .checklist-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+    .checklist-table th, .checklist-table td {
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 14px;
+    }
+    .checklist-table th {
+      background: var(--soft);
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .checklist-table td:nth-child(2) {
+      width: 180px;
+      text-align: center;
+    }
+    .status-group {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+    }
+    .status-btn {
+      flex: 1;
+      padding: 6px 4px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.1s ease;
+    }
+    .status-btn.pass.active { background: var(--ok); color: #fff; border-color: var(--ok); }
+    .status-btn.fail.active { background: var(--danger); color: #fff; border-color: var(--danger); }
+    .status-btn.na.active { background: var(--muted); color: #fff; border-color: var(--muted); }
+
+    /* Status Banner */
+    .status-banner {
+      padding: 14px 18px;
+      border-radius: 6px;
+      margin-top: 16px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .status-banner.pending { background: var(--soft); color: var(--muted); border: 1px dashed var(--line); }
+    .status-banner.passed { background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok); }
+    .status-banner.failed { background: var(--danger-soft); color: var(--danger); border: 1px solid var(--danger); }
+
+    /* Signature Canvas Area */
+    .sig-container {
+      border: 1px solid #a9aecb;
+      border-radius: 4px;
+      background: #fff;
+      position: relative;
+      touch-action: none;
+    }
+    canvas {
+      width: 100%;
+      height: 150px;
+      display: block;
+      cursor: crosshair;
+    }
+    .sig-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 10px;
+      background: var(--soft);
+      border-top: 1px solid var(--line);
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .clear-sig {
+      background: none;
+      border: none;
+      color: var(--danger);
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 2px 6px;
+    }
+    .clear-sig:hover { text-decoration: underline; }
+
+    /* Action Buttons Bar */
+    .actions-bar {
+      max-width: 860px;
+      margin: 0 auto 40px;
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+    .btn {
+      font: inherit;
+      font-weight: 600;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.15s;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-dark); }
+    .btn-secondary { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+    .btn-secondary:hover { background: var(--soft); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Hidden certificate elements until pass */
+    .cert-locked {
+      opacity: 0.4;
+      pointer-events: none;
+      filter: grayscale(100%);
+      transition: all 0.3s ease;
+    }
+    .cert-unlocked {
+      opacity: 1;
+      pointer-events: auto;
+      filter: none;
+    }
+
+    @media(max-width: 680px) {
+      .grid, .grid.three { grid-template-columns: 1fr; }
+      body { padding: 8px 4px 30px; }
+      section { padding: 18px 16px; }
+      header.top { padding: 18px 16px; }
+    }
+
+    /* Print Styles */
+    @media print {
+      body { background: #fff; padding: 0; color: #000; }
+      .sheet { box-shadow: none; border-radius: 0; margin: 0; max-width: 100%; }
+      .actions-bar, .clear-sig, button, select, input[type="text"] { display: none !important; }
+      input, select, textarea { border: none; background: transparent; padding: 0; min-height: auto; font-weight: 500; }
+      .checklist-table th, .checklist-table td { padding: 6px 8px; }
+      .status-btn { display: none; }
+      section { page-break-inside: avoid; padding: 16px 24px; }
+      header.top { background: #000099 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="sheet" id="appSheet">
+    <!-- HEADER -->
+    <header class="top">
+      <div>
+        <h1 class="brand-title" id="companyTitle">Field Service & Compliance</h1>
+        <p class="brand-subtitle">Machine Inspection & Job Card Certificate</p>
+      </div>
+      <div class="ref-box">
+        <label>Job Card Reference</label>
+        <div><span class="job-id-display" id="displayJobId">H01</span></div>
+        <div style="font-size:11px; color:var(--pale); margin-top:2px;" id="displayCertId">Cert: Pending Inspection</div>
+      </div>
+    </header>
+
+    <!-- SECTION 1: JOB CARD & MACHINE INFO -->
+    <section>
+      <h2><span class="step-badge">Step 1</span> Job Card & Machine Details</h2>
+      <div class="grid three">
+        <div>
+          <label class="req">Technician / Prefix</label>
+          <div class="prefix-row">
+            <select id="jobPrefix" onchange="onPrefixChange()">
+              <option value="H">H - Herman</option>
+              <option value="K">K - Kobus</option>
+            </select>
+            <input type="text" id="jobSeq" value="01" oninput="updateJobIdDisplay()" />
+          </div>
+        </div>
+        <div>
+          <label class="req">Client Name</label>
+          <input type="text" id="clientName" placeholder="e.g. ABC Plant Hire" />
+        </div>
+        <div>
+          <label class="req">Site Location</label>
+          <input type="text" id="siteLocation" placeholder="e.g. Yard / Site 4" />
+        </div>
+        <div>
+          <label class="req">Machine Make & Model</label>
+          <input type="text" id="machineModel" placeholder="e.g. CAT 320D Excavator" />
+        </div>
+        <div>
+          <label class="req">Machine Serial / VIN / Asset ID</label>
+          <input type="text" id="machineSerial" placeholder="e.g. CAT-320-98421" />
+        </div>
+        <div>
+          <label>Operating Hours / Meter</label>
+          <input type="text" id="machineHours" placeholder="e.g. 4,850 hrs" />
+        </div>
+        <div>
+          <label class="req">Lead Technician</label>
+          <input type="text" id="techName" placeholder="e.g. Herman / Kobus" />
+        </div>
+        <div>
+          <label class="req">Date of Inspection</label>
+          <input type="date" id="inspectionDate" />
+        </div>
+        <div>
+          <label>Order / PO Reference</label>
+          <input type="text" id="poRef" placeholder="Optional PO #" />
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: INSPECTION CHECKLIST -->
+    <section>
+      <h2><span class="step-badge">Step 2</span> On-Site Safety & Operational Checklist</h2>
+      <p style="font-size:13px; color:var(--muted); margin-top:0; margin-bottom:14px;">
+        Inspect each component thoroughly. All required items must pass to issue a compliance certificate.
+      </p>
+
+      <table class="checklist-table">
+        <thead>
+          <tr>
+            <th>Inspection Component / Item</th>
+            <th>Status</th>
+            <th>Remarks / Corrective Action</th>
+          </tr>
+        </thead>
+        <tbody id="checklistBody">
+          <!-- Dynamically populated rows -->
+        </tbody>
+      </table>
+
+      <div id="inspectionBanner" class="status-banner pending">
+        ⏳ Checklist incomplete or items failed. Complete all checks with PASS to unlock certificate generation.
+      </div>
+    </section>
+
+    <!-- SECTION 3: CERTIFICATE & SIGN-OFF (Locked until pass) -->
+    <div id="certSection" class="cert-locked">
+      <section style="background: #fafafc;">
+        <h2><span class="step-badge">Step 3</span> Certificate of Compliance & Sign-Off</h2>
+        <div style="background: var(--ok-soft); border: 1px solid var(--ok); padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; color: var(--ok); font-weight: 500;">
+          ✔ <strong>Machine Certified Compliant:</strong> All safety and operational inspection points have successfully passed evaluation. This unit is cleared for safe operation.
+        </div>
+
+        <div class="grid">
+          <div>
+            <label class="req">Technician Signature</label>
+            <div class="sig-container">
+              <canvas id="techSigCanvas"></canvas>
+              <div class="sig-footer">
+                <span>Sign above using mouse or touch</span>
+                <button type="button" class="clear-sig" onclick="clearCanvas('techSigCanvas')">Clear</button>
+              </div>
+            </div>
+          </div>
+          <div>
+            <label class="req">Client / Representative Sign-Off</label>
+            <div class="sig-container">
+              <canvas id="clientSigCanvas"></canvas>
+              <div class="sig-footer">
+                <span>Client signature & acceptance</span>
+                <button type="button" class="clear-sig" onclick="clearCanvas('clientSigCanvas')">Clear</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 16px;">
+          <label>Final Summary / Service Notes</label>
+          <textarea id="finalNotes" placeholder="Enter any additional recommendations, notes, or next service intervals..."></textarea>
+        </div>
+      </section>
+    </div>
+
+  </div>
+
+  <!-- ACTION BUTTONS -->
+  <div class="actions-bar">
+    <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset Form</button>
+    <button type="button" class="btn btn-primary" id="printBtn" onclick="printCertificate()" disabled>
+      🖨️ Print / Download PDF Certificate
+    </button>
+  </div>
+
+<script>
+  const inspectionItems = [
+    "Hydraulic Cylinders, Hoses, Pumps & Fittings",
+    "Emergency Stop Buttons & Safety Interlocks",
+    "Braking System, Parking Brake & Hold Test",
+    "Structural Integrity, Chassis, Booms & Welds",
+    "Engine Fluid Levels, Coolant & Leak Inspection",
+    "Warning Lights, Alarms, Horn & Reverse Beepers",
+    "Operator Controls, Dashboard Gauges & Seatbelts",
+    "Tyres / Tracks, Rims & Undercarriage Condition"
+  ];
+
+  window.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('inspectionDate').valueAsDate = new Date();
+    loadNextSequence('H');
+
+    const tbody = document.getElementById('checklistBody');
+    inspectionItems.forEach((item, index) => {
+      let tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${index + 1}.</strong> ${item}</td>
+        <td>
+          <div class="status-group" data-index="${index}">
+            <button type="button" class="status-btn pass" onclick="setStatus(${index}, 'PASS')">PASS</button>
+            <button type="button" class="status-btn fail" onclick="setStatus(${index}, 'FAIL')">FAIL</button>
+            <button type="button" class="status-btn na" onclick="setStatus(${index}, 'N/A')">N/A</button>
+          </div>
+        </td>
+        <td><input type="text" placeholder="Optional notes..." style="min-height:36px; padding:6px 10px;" id="remark_${index}" /></td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    initSignatures();
+    updateJobIdDisplay();
+  });
+
+  function getStorageKey(prefix) {
+    return 'machine_job_seq_' + prefix;
+  }
+
+  function loadNextSequence(prefix) {
+    let lastSeq = localStorage.getItem(getStorageKey(prefix));
+    let nextNum = 1;
+    if (lastSeq) {
+      nextNum = parseInt(lastSeq, 10) + 1;
+    }
+    document.getElementById('jobSeq').value = String(nextNum).padStart(2, '0');
+  }
+
+  function onPrefixChange() {
+    let prefix = document.getElementById('jobPrefix').value;
+    loadNextSequence(prefix);
+    
+    // Automatically fill technician name suggestion based on selection
+    if (prefix === 'H') {
+      document.getElementById('techName').value = 'Herman';
+    } else if (prefix === 'K') {
+      document.getElementById('techName').value = 'Kobus';
+    }
+
+    updateJobIdDisplay();
+  }
+
+  function updateJobIdDisplay() {
+    let prefix = document.getElementById('jobPrefix').value;
+    let seq = document.getElementById('jobSeq').value.trim() || '01';
+    let fullId = prefix + seq;
+    document.getElementById('displayJobId').innerText = fullId;
+  }
+
+  let itemStatuses = {};
+
+  function setStatus(index, status) {
+    itemStatuses[index] = status;
+    let group = document.querySelector(`.status-group[data-index="${index}"]`);
+    group.querySelectorAll('.status-btn').forEach(btn => btn.classList.remove('active'));
+    
+    if (status === 'PASS') group.querySelector('.pass').classList.add('active');
+    if (status === 'FAIL') group.querySelector('.fail').classList.add('active');
+    if (status === 'N/A') group.querySelector('.na').classList.add('active');
+
+    evaluateInspection();
+  }
+
+  function evaluateInspection() {
+    let totalItems = inspectionItems.length;
+    let evaluatedCount = Object.keys(itemStatuses).length;
+    let hasFail = Object.values(itemStatuses).includes('FAIL');
+    let allPassed = evaluatedCount === totalItems && !hasFail && Object.values(itemStatuses).every(s => s === 'PASS' || s === 'N/A');
+    let passCount = Object.values(itemStatuses).filter(s => s === 'PASS').length;
+
+    let banner = document.getElementById('inspectionBanner');
+    let certSection = document.getElementById('certSection');
+    let printBtn = document.getElementById('printBtn');
+    let prefix = document.getElementById('jobPrefix').value;
+    let seq = document.getElementById('jobSeq').value.trim() || '01';
+    let fullId = prefix + seq;
+
+    if (hasFail) {
+      banner.className = "status-banner failed";
+      banner.innerHTML = "❌ Inspection Failed: One or more safety items have failed. Certificate generation is blocked until corrective actions are resolved.";
+      certSection.className = "cert-locked";
+      printBtn.disabled = true;
+      document.getElementById('displayCertId').innerText = "Cert: Blocked (Failed Check)";
+    } else if (allPassed && passCount > 0) {
+      banner.className = "status-banner passed";
+      banner.innerHTML = "✔ All Inspection Items Passed! Certificate unlocked and ready for sign-off.";
+      certSection.className = "cert-unlocked";
+      printBtn.disabled = false;
+      let todayStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
+      document.getElementById('displayCertId').innerText = `Cert No: CERT-${fullId}-${todayStr}`;
+    } else {
+      banner.className = "status-banner pending";
+      banner.innerHTML = `⏳ Evaluation in progress (${evaluatedCount}/${totalItems} checked). Please assign PASS, FAIL, or N/A to all items.`;
+      certSection.className = "cert-locked";
+      printBtn.disabled = true;
+      document.getElementById('displayCertId').innerText = "Cert: Pending Inspection";
+    }
+  }
+
+  function initSignatures() {
+    setupCanvas('techSigCanvas');
+    setupCanvas('clientSigCanvas');
+  }
+
+  function setupCanvas(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function getPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    }
+
+    function startDraw(e) {
+      drawing = true;
+      ctx.beginPath();
+      const pos = getPos(e);
+      ctx.moveTo(pos.x, pos.y);
+      e.preventDefault();
+    }
+
+    function draw(e) {
+      if (!drawing) return;
+      const pos = getPos(e);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.strokeStyle = '#17173a';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+      e.preventDefault();
+    }
+
+    function stopDraw() {
+      drawing = false;
+    }
+
+    canvas.addEventListener('mousedown', startDraw);
+    canvas.addEventListener('mousemove', draw);
+    window.addEventListener('mouseup', stopDraw);
+
+    canvas.addEventListener('touchstart', startDraw, { passive: false });
+    canvas.addEventListener('touchmove', draw, { passive: false });
+    canvas.addEventListener('touchend', stopDraw);
+  }
+
+  function clearCanvas(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function printCertificate() {
+    let prefix = document.getElementById('jobPrefix').value;
+    let seq = document.getElementById('jobSeq').value.trim();
+    
+    let num = parseInt(seq, 10);
+    if (!isNaN(num)) {
+      localStorage.setItem(getStorageKey(prefix), num);
+    }
+
+    window.print();
+  }
+
+  function resetForm() {
+    if (confirm("Are you sure you want to reset this inspection form?")) {
+      location.reload();
+    }
+  }
+</script>
+
+</body>
+</html>

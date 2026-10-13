@@ -322,7 +322,9 @@
       header.top { padding: 18px 16px; }
     }
 
+    /* Print & PDF Export Settings */
     @media print {
+      @page { size: A4; margin: 6mm; }
       body { background: #fff; padding: 0; color: #000; font-size: 11px; }
       .nav-bar, .actions-bar, .clear-sig, button, .btn-row-del, .status-banner { display: none !important; }
       .app-page { display: block !important; page-break-after: always; }
@@ -568,8 +570,8 @@
   </div>
 
 <script>
-  // GOOGLE APPS SCRIPT WEB APP URL:
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwMl7XG1fsrb05VdmaMrKOHeyJ22kp8_TigqKcPGMWTQ2CE4e0bgsMQnavKEvmPWaVzig/exec";
+  // HERMAN'S GOOGLE APPS SCRIPT WEB APP URL:
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz_T5zYd-VlfPMFGnF0Ndf_ucauNUelKsmQihWww1xPpBOT_e8wEIk7zZFlCumLlFkAJg/exec";
 
   let isPage2Valid = false;
 
@@ -786,7 +788,7 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     }).then(() => {
-      alert("✔ Successfully saved to Google Sheet & Email sent!");
+      alert("✔ Successfully saved to Google Sheet & PDF Email sent!");
       btn.disabled = false;
       btn.innerText = "☁️ Submit to Google Sheet & Email";
       

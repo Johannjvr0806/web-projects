@@ -144,6 +144,20 @@
     label, .lbl { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 6px; }
     .req::after { content: " *"; color: var(--danger); }
 
+    .input-field-wrapper {
+      position: relative;
+      width: 100%;
+    }
+
+    .print-val {
+      display: none;
+      font-weight: 600;
+      color: var(--ink);
+      font-size: 13px;
+      padding: 4px 0;
+      word-break: break-word;
+    }
+
     input, select, textarea {
       width: 100%;
       font: inherit;
@@ -166,7 +180,7 @@
     }
     .prefix-row select { flex: 0 0 135px; }
 
-    /* Excel-Style Spreadsheet Table */
+    /* Excel Table */
     .excel-table-container {
       overflow-x: auto;
       margin-top: 10px;
@@ -189,16 +203,6 @@
       text-transform: uppercase;
       font-size: 11px;
       letter-spacing: .03em;
-    }
-    .excel-table input {
-      border: none;
-      background: transparent;
-      padding: 4px;
-      min-height: 32px;
-    }
-    .excel-table input:focus {
-      background: #fff;
-      border: 1px solid var(--accent);
     }
     .btn-row-del {
       background: var(--danger-soft);
@@ -315,15 +319,23 @@
       header.top { padding: 18px 16px; }
     }
 
+    /* Print Styles Optimized to Display Filled Text */
     @media print {
-      body { background: #fff; padding: 0; color: #000; font-size: 12px; }
-      .nav-bar, .actions-bar, .clear-sig, button, select, input[type="text"], input[type="date"], input[type="time"], .btn-row-del { display: none !important; }
+      body { background: #fff; padding: 0; color: #000; font-size: 11px; }
+      .nav-bar, .actions-bar, .clear-sig, button, .btn-row-del, .status-banner { display: none !important; }
       .app-page { display: block !important; page-break-after: always; }
       .sheet { box-shadow: none; border-radius: 0; margin: 0; max-width: 100%; width: 100%; }
-      input, select, textarea { border: none; background: transparent; padding: 0; min-height: auto; font-weight: 500; font-size: 12px; }
-      .excel-table input { border: none !important; background: transparent !important; }
-      section { page-break-inside: avoid; padding: 16px 24px; }
-      header.top { background: #000099 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      
+      input, select, textarea { display: none !important; }
+      .print-val { display: block !important; }
+
+      .excel-table-container { overflow-x: visible !important; }
+      .excel-table { min-width: 100% !important; }
+      .excel-table th, .excel-table td { padding: 4px 6px !important; font-size: 10px !important; border: 1px solid #000 !important; }
+      .excel-table th:last-child, .excel-table td:last-child { display: none !important; }
+
+      section { page-break-inside: avoid; padding: 12px 18px; }
+      header.top { background: #000099 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 12px 18px; }
     }
   </style>
 </head>
@@ -361,28 +373,46 @@
                 <option value="H">H - Herman</option>
                 <option value="K">K - Kobus</option>
               </select>
-              <input type="text" id="jobSeq" value="01" oninput="updateJobIdDisplay()" placeholder="e.g. 01" />
+              <div class="input-field-wrapper">
+                <input type="text" id="jobSeq" value="01" oninput="updateJobIdDisplay()" placeholder="e.g. 01" />
+                <span class="print-val" id="p_jobSeq">01</span>
+              </div>
             </div>
           </div>
           <div>
             <label class="req">Inspection Company / Provider</label>
-            <input type="text" id="providerName" value="Inspection Services" oninput="updateHeaderProvider()" placeholder="e.g. Company Name" />
+            <div class="input-field-wrapper">
+              <input type="text" id="providerName" value="Inspection Services" oninput="updateHeaderProvider()" placeholder="e.g. Company Name" />
+              <span class="print-val" id="p_providerName">Inspection Services</span>
+            </div>
           </div>
           <div>
             <label class="req">Client Name</label>
-            <input type="text" id="clientName" placeholder="e.g. Afrit" />
+            <div class="input-field-wrapper">
+              <input type="text" id="clientName" placeholder="e.g. Afrit" />
+              <span class="print-val" id="p_clientName">-</span>
+            </div>
           </div>
           <div>
             <label class="req">Site Location</label>
-            <input type="text" id="siteLocation" placeholder="e.g. Rosslyn" />
+            <div class="input-field-wrapper">
+              <input type="text" id="siteLocation" placeholder="e.g. Rosslyn" />
+              <span class="print-val" id="p_siteLocation">-</span>
+            </div>
           </div>
           <div>
             <label class="req">Date of Service</label>
-            <input type="date" id="inspectionDate" />
+            <div class="input-field-wrapper">
+              <input type="date" id="inspectionDate" />
+              <span class="print-val" id="p_inspectionDate">-</span>
+            </div>
           </div>
           <div>
             <label class="req">Lead Technician</label>
-            <input type="text" id="techName" value="Herman" />
+            <div class="input-field-wrapper">
+              <input type="text" id="techName" value="Herman" />
+              <span class="print-val" id="p_techName">Herman</span>
+            </div>
           </div>
         </div>
 
@@ -390,29 +420,44 @@
         <div class="grid four" style="margin-top: 16px; background: var(--soft); padding: 16px; border-radius: 6px;">
           <div>
             <label>Start Time</label>
-            <input type="time" id="startTime" value="07:00" />
+            <div class="input-field-wrapper">
+              <input type="time" id="startTime" value="07:00" />
+              <span class="print-val" id="p_startTime">07:00</span>
+            </div>
           </div>
           <div>
             <label>Finish Time</label>
-            <input type="time" id="finishTime" value="13:20" />
+            <div class="input-field-wrapper">
+              <input type="time" id="finishTime" value="13:20" />
+              <span class="print-val" id="p_finishTime">13:20</span>
+            </div>
           </div>
           <div>
             <label>Break (Mins)</label>
-            <input type="number" id="breakMins" value="20" />
+            <div class="input-field-wrapper">
+              <input type="number" id="breakMins" value="20" />
+              <span class="print-val" id="p_breakMins">20 mins</span>
+            </div>
           </div>
           <div>
             <label>Travelling Time</label>
-            <input type="text" id="travelTime" value="1h 20m" placeholder="e.g. 1h 20m" />
+            <div class="input-field-wrapper">
+              <input type="text" id="travelTime" value="1h 20m" placeholder="e.g. 1h 20m" />
+              <span class="print-val" id="p_travelTime">1h 20m</span>
+            </div>
           </div>
         </div>
       </section>
 
       <section>
         <h2>Work Carried Out</h2>
-        <textarea id="workCarriedOut" placeholder="Describe the service, maintenance, or repair work performed..."></textarea>
+        <div class="input-field-wrapper">
+          <textarea id="workCarriedOut" placeholder="Describe the service, maintenance, or repair work performed..."></textarea>
+          <span class="print-val" id="p_workCarriedOut">-</span>
+        </div>
       </section>
 
-      <!-- SIGN-OFF SECTION (LOCKED UNTIL PAGE 2 EQUIPMENT IS ADDED) -->
+      <!-- SIGN-OFF SECTION -->
       <div id="certSection" class="cert-locked">
         <section style="background: #fafafc;">
           <h2><span class="step-badge">Sign-Off</span> Client Approval & Signatures</h2>
@@ -461,7 +506,7 @@
       <section>
         <h2><span class="step-badge">Page 2</span> Equipment & Tackle Spreadsheet</h2>
         <p style="font-size:13px; color:var(--muted); margin-top:0; margin-bottom:14px;">
-          Add, edit, and manage equipment items just like an Excel spreadsheet. At least one item with an Item Name and Serial Number is required to unlock Page 1 sign-off.
+          Add, edit, and manage equipment items just like an Excel spreadsheet.
         </p>
 
         <div class="excel-table-container">
@@ -481,7 +526,7 @@
               </tr>
             </thead>
             <tbody id="excelTableBody">
-              <!-- Dynamically added rows -->
+              <!-- Dynamic Rows -->
             </tbody>
           </table>
         </div>
@@ -518,7 +563,6 @@
     loadNextSequence('H');
     updateHeaderProvider();
     
-    // Add default initial row
     addExcelRow();
     
     initSignatures();
@@ -553,14 +597,38 @@
 
     tr.innerHTML = `
       <td style="text-align: center; font-weight: 600; color: var(--muted);" class="row-num">${rowCount}</td>
-      <td><input type="text" class="eq-item" value="${data.item || ''}" placeholder="e.g. Chain Sling" oninput="evaluateSpreadsheet()"></td>
-      <td><input type="text" class="eq-ser" value="${data.ser || ''}" placeholder="e.g. CS-9842" oninput="evaluateSpreadsheet()"></td>
-      <td><input type="text" class="eq-lanyard" value="${data.lanyard || ''}" placeholder="e.g. Yes/No"></td>
-      <td><input type="text" class="eq-make" value="${data.make || ''}" placeholder="e.g. Crosby"></td>
-      <td><input type="text" class="eq-swl" value="${data.swl || ''}" placeholder="e.g. 2000kg"></td>
-      <td><input type="text" class="eq-length" value="${data.length || ''}" placeholder="e.g. 3m"></td>
-      <td><input type="text" class="eq-size" value="${data.size || ''}" placeholder="e.g. 10mm"></td>
-      <td><input type="text" class="eq-legs" value="${data.legs || ''}" placeholder="e.g. 2"></td>
+      <td>
+        <input type="text" class="eq-item" value="${data.item || ''}" placeholder="e.g. Chain Sling" oninput="evaluateSpreadsheet()">
+        <span class="print-val"></span>
+      </td>
+      <td>
+        <input type="text" class="eq-ser" value="${data.ser || ''}" placeholder="e.g. CS-9842" oninput="evaluateSpreadsheet()">
+        <span class="print-val"></span>
+      </td>
+      <td>
+        <input type="text" class="eq-lanyard" value="${data.lanyard || ''}" placeholder="e.g. Yes/No">
+        <span class="print-val"></span>
+      </td>
+      <td>
+        <input type="text" class="eq-make" value="${data.make || ''}" placeholder="e.g. Crosby">
+        <span class="print-val"></span>
+      </td>
+      <td>
+        <input type="text" class="eq-swl" value="${data.swl || ''}" placeholder="e.g. 2000kg">
+        <span class="print-val"></span>
+      </td>
+      <td>
+        <input type="text" class="eq-length" value="${data.length || ''}" placeholder="e.g. 3m">
+        <span class="print-val"></span>
+      </td>
+      <td>
+        <input type="text" class="eq-size" value="${data.size || ''}" placeholder="e.g. 10mm">
+        <span class="print-val"></span>
+      </td>
+      <td>
+        <input type="text" class="eq-legs" value="${data.legs || ''}" placeholder="e.g. 2">
+        <span class="print-val"></span>
+      </td>
       <td style="text-align: center;"><button type="button" class="btn-row-del" onclick="deleteExcelRow(this)">X</button></td>
     `;
     tbody.appendChild(tr);
@@ -627,6 +695,34 @@
     } else {
       alert("Please ensure at least one equipment row has both an Item description and a Serial Number filled in before proceeding to Page 1 sign-off.");
     }
+  }
+
+  function syncFormValuesForPrint() {
+    const fields = [
+      'jobSeq', 'providerName', 'clientName', 'siteLocation', 
+      'inspectionDate', 'techName', 'startTime', 'finishTime', 
+      'breakMins', 'travelTime', 'workCarriedOut'
+    ];
+
+    fields.forEach(id => {
+      const input = document.getElementById(id);
+      const printSpan = document.getElementById('p_' + id);
+      if (input && printSpan) {
+        printSpan.innerText = input.value.trim() || '-';
+      }
+    });
+
+    // Sync Excel Rows
+    let tbody = document.getElementById('excelTableBody');
+    Array.from(tbody.rows).forEach(row => {
+      let inputs = row.querySelectorAll('input');
+      inputs.forEach(inp => {
+        let span = inp.nextElementSibling;
+        if (span && span.classList.contains('print-val')) {
+          span.innerText = inp.value.trim() || '-';
+        }
+      });
+    });
   }
 
   function getStorageKey(prefix) {
@@ -729,6 +825,8 @@
   }
 
   function printCertificate() {
+    syncFormValuesForPrint();
+
     let prefix = document.getElementById('jobPrefix').value;
     let seq = document.getElementById('jobSeq').value.trim();
     

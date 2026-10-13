@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Machine Inspection & Job Card Certificate System</title>
+  <title>Machine Inspection & Compliance Certificate System</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&display=swap" rel="stylesheet">
@@ -128,7 +128,6 @@
     }
     textarea { resize: vertical; min-height: 90px; }
 
-    /* Prefix selector controls */
     .prefix-row {
       display: flex;
       gap: 10px;
@@ -251,7 +250,6 @@
     .btn-secondary:hover { background: var(--soft); }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    /* Hidden certificate elements until pass */
     .cert-locked {
       opacity: 0.4;
       pointer-events: none;
@@ -264,6 +262,16 @@
       filter: none;
     }
 
+    .legal-notice {
+      font-size: 11px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+      margin-top: 20px;
+      text-align: center;
+      line-height: 1.4;
+    }
+
     @media(max-width: 680px) {
       .grid, .grid.three { grid-template-columns: 1fr; }
       body { padding: 8px 4px 30px; }
@@ -271,7 +279,6 @@
       header.top { padding: 18px 16px; }
     }
 
-    /* Print Styles */
     @media print {
       body { background: #fff; padding: 0; color: #000; }
       .sheet { box-shadow: none; border-radius: 0; margin: 0; max-width: 100%; }
@@ -290,8 +297,8 @@
     <!-- HEADER -->
     <header class="top">
       <div>
-        <h1 class="brand-title" id="companyTitle">Field Service & Compliance</h1>
-        <p class="brand-subtitle">Machine Inspection & Job Card Certificate</p>
+        <h1 class="brand-title" id="headerProviderDisplay">Field Service & Compliance</h1>
+        <p class="brand-subtitle">Inspection Report & Compliance Certificate</p>
       </div>
       <div class="ref-box">
         <label>Job Card Reference</label>
@@ -314,45 +321,68 @@
             <input type="text" id="jobSeq" value="01" oninput="updateJobIdDisplay()" />
           </div>
         </div>
+
+        <!-- NEW: Inspection Company / Provider -->
         <div>
-          <label class="req">Client Name</label>
+          <label class="req">Inspection Company / Provider</label>
+          <input type="text" id="providerName" value="Kgolagano Inspection Services" oninput="updateHeaderProvider()" placeholder="e.g. Company Name" />
+        </div>
+
+        <div>
+          <label class="req">Client Name (Inspected For)</label>
           <input type="text" id="clientName" placeholder="e.g. ABC Plant Hire" />
         </div>
         <div>
           <label class="req">Site Location</label>
           <input type="text" id="siteLocation" placeholder="e.g. Yard / Site 4" />
         </div>
+
+        <div>
+          <label class="req">Equipment Category</label>
+          <select id="machineCategory" onchange="onCategoryChange()">
+            <option value="Mobile Machinery">Mobile Machinery</option>
+            <option value="Lifting Machinery">Lifting Machinery</option>
+            <option value="Tackle Equipment">Tackle / Lifting Equipment</option>
+          </select>
+        </div>
+
+        <!-- Dynamic Sub-Type Container (Shows for Lifting Machinery) -->
+        <div id="subTypeContainer" style="display: none;">
+          <label class="req">Lifting Machine Sub-Type</label>
+          <select id="liftingSubType" onchange="renderChecklist()">
+            <option value="Mobile Crane">Mobile Crane</option>
+            <option value="Forklift">Forklift / Telehandler</option>
+            <option value="Overhead Crane">Overhead / Gantry Crane</option>
+          </select>
+        </div>
+
         <div>
           <label class="req">Machine Make & Model</label>
-          <input type="text" id="machineModel" placeholder="e.g. CAT 320D Excavator" />
+          <input type="text" id="machineModel" placeholder="e.g. CAT 320D / Grove Crane" />
         </div>
         <div>
           <label class="req">Machine Serial / VIN / Asset ID</label>
           <input type="text" id="machineSerial" placeholder="e.g. CAT-320-98421" />
         </div>
         <div>
-          <label>Operating Hours / Meter</label>
-          <input type="text" id="machineHours" placeholder="e.g. 4,850 hrs" />
+          <label>Operating Hours / Safe Working Load (SWL)</label>
+          <input type="text" id="machineHours" placeholder="e.g. 4,850 hrs / 25 Tonne" />
         </div>
         <div>
-          <label class="req">Lead Technician</label>
-          <input type="text" id="techName" placeholder="e.g. Herman / Kobus" />
+          <label class="req">Lead Technician / LMI</label>
+          <input type="text" id="techName" value="Herman" placeholder="e.g. Herman / Kobus" />
         </div>
         <div>
           <label class="req">Date of Inspection</label>
           <input type="date" id="inspectionDate" />
-        </div>
-        <div>
-          <label>Order / PO Reference</label>
-          <input type="text" id="poRef" placeholder="Optional PO #" />
         </div>
       </div>
     </section>
 
     <!-- SECTION 2: INSPECTION CHECKLIST -->
     <section>
-      <h2><span class="step-badge">Step 2</span> On-Site Safety & Operational Checklist</h2>
-      <p style="font-size:13px; color:var(--muted); margin-top:0; margin-bottom:14px;">
+      <h2><span class="step-badge">Step 2</span> <span id="checklistTitle">On-Site Safety & Operational Checklist</span></h2>
+      <p style="font-size:13px; color:var(--muted); margin-top:0; margin-bottom:14px;" id="checklistSubtitle">
         Inspect each component thoroughly. All required items must pass to issue a compliance certificate.
       </p>
 
@@ -384,7 +414,7 @@
 
         <div class="grid">
           <div>
-            <label class="req">Technician Signature</label>
+            <label class="req">Technician / LMI Signature</label>
             <div class="sig-container">
               <canvas id="techSigCanvas"></canvas>
               <div class="sig-footer">
@@ -409,6 +439,11 @@
           <label>Final Summary / Service Notes</label>
           <textarea id="finalNotes" placeholder="Enter any additional recommendations, notes, or next service intervals..."></textarea>
         </div>
+
+        <div class="legal-notice">
+          <strong>Certificate valid for 6 months (180 days) from date of issue[cite: 6].</strong><br>
+          THE INSPECTION WAS CONDUCTED ACCORDING TO REQUIREMENTS OF THE OSH ACT 85 OF 1993, DRIVEN MACHINE REGULATION ACT 18.5[cite: 6].
+        </div>
       </section>
     </div>
 
@@ -423,23 +458,120 @@
   </div>
 
 <script>
-  const inspectionItems = [
-    "Hydraulic Cylinders, Hoses, Pumps & Fittings",
-    "Emergency Stop Buttons & Safety Interlocks",
-    "Braking System, Parking Brake & Hold Test",
-    "Structural Integrity, Chassis, Booms & Welds",
-    "Engine Fluid Levels, Coolant & Leak Inspection",
-    "Warning Lights, Alarms, Horn & Reverse Beepers",
-    "Operator Controls, Dashboard Gauges & Seatbelts",
-    "Tyres / Tracks, Rims & Undercarriage Condition"
-  ];
+  const checklistsData = {
+    "Mobile Machinery": [
+      "Visual Inspection of Machine & Chassis",
+      "Current Load Test Certificate & Documentation[cite: 6]",
+      "Number Plates & License Disk[cite: 6]",
+      "Outriggers, Pads and Pans[cite: 6]",
+      "Axles, Transmission & Final Drives[cite: 6]",
+      "Track Adjustment, Rollers & Sprockets[cite: 6]",
+      "Steering, Suspension Bars & Locking Pins[cite: 6]",
+      "Tyres, Rims, Thread Condition & Wheel Nuts[cite: 6]",
+      "Hydraulic Cylinders, Hoses & Connections[cite: 6]",
+      "Braking System, Parking Brake & Hold Test",
+      "Engine Fluid Levels, Coolant & Leak Inspection[cite: 6]",
+      "Warning Lights, Horn, Reverse Beepers & Beacon[cite: 6]",
+      "Operator Controls, Dashboard Gauges & Seatbelts[cite: 6]"
+    ],
+    "Mobile Crane": [
+      "Visual Inspection of Machine[cite: 6]",
+      "Current Load Test Certificate[cite: 6]",
+      "Number Plates & License Disk[cite: 6]",
+      "Abnormal Boards & Outriggers[cite: 6]",
+      "Outrigger Pads and Pans[cite: 6]",
+      "Axles, Transmission & Locking Pins[cite: 6]",
+      "Condition of Tyres, Thread & Wheel Nuts[cite: 6]",
+      "Steering, Suspension Bars & Hub Oil Leaks[cite: 6]",
+      "Hydraulic Cylinders, Hoses and Connections[cite: 6]",
+      "Carrier: Drive Line, Universals & Centre Bearing[cite: 6]",
+      "Slew Ring Lubrication & Slew Motor[cite: 6]",
+      "Swing Lock/Brake, Mud Guards & Decking[cite: 6]",
+      "Cabs: Operator Seat, Controls & Access Steps[cite: 6]",
+      "Electrical: Running Lights, Indicators & Hooter[cite: 6]",
+      "Reverse Lights/Hooter & Rotating Beacons[cite: 6]",
+      "Boom: Lubrication, Sheaves & Rope Guides[cite: 6]",
+      "Wire Rope Guide, Rollers & Boom Head Attachments[cite: 6]",
+      "Boom Structural Condition & Wear Pads[cite: 6]",
+      "Counter Weight Structure, Selection & Pins[cite: 6]",
+      "Anti-Two-Block Devices & Limit Switches[cite: 6]",
+      "SLI or Load Moment Systems & Load Charts[cite: 6]",
+      "Hook Dimensions, Safety Catch & Sheaves[cite: 6]"
+    ],
+    "Forklift": [
+      "Mast Assembly, Chains & Carriage Rollers",
+      "Forks, Latch Pins & Structural Integrity",
+      "Hydraulic Lift/Tilt Cylinders & Hoses",
+      "Overhead Guard & Load Backrest",
+      "Tyres (Pneumatic/Solid) & Wheel Nut Torque",
+      "Steering Axle, Kingpins & Bearings",
+      "Service Brakes & Parking Brake Efficiency",
+      "Horn, Reverse Alarm, Strobe Light & Headlights",
+      "Operator Seat, Seatbelt & Controls",
+      "Engine Fluid Levels, Battery & LPG/Diesel System"
+    ],
+    "Overhead Crane": [
+      "Bridge Girder Structural Condition & Welds",
+      "End Truck Alignment, Wheels & Drive Motors",
+      "Hoist Unit, Gearbox, Brake & Drum Condition",
+      "Wire Rope / Chain Wear, Lubrication & Reeving",
+      "Hook Assembly, Safety Latch & Swivel Rotation",
+      "Upper & Lower Limit Switches / Anti-Two-Block",
+      "Pendant / Remote Control Station & Emergency Stop",
+      "Crane Runway Rails, End Stops & Power Supply Festoon"
+    ],
+    "Tackle Equipment": [
+      "Visual Inspection of Webbing Slings / Wire Ropes / Chains",
+      "Identification Tags, SWL Markings & Traceability",
+      "Check for Cuts, Tears, Abrasions or Heat Damage",
+      "Shackle Pins, Bows, Hooks & Rigging Hardware Condition",
+      "Deformation, Cracks or Excessive Wear Inspection",
+      "Current Load Test & Proof Test Certification Compliance[cite: 6]"
+    ]
+  };
 
   window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('inspectionDate').valueAsDate = new Date();
     loadNextSequence('H');
+    updateHeaderProvider();
+    renderChecklist();
+    initSignatures();
+    updateJobIdDisplay();
+  });
 
-    const tbody = document.getElementById('checklistBody');
-    inspectionItems.forEach((item, index) => {
+  function updateHeaderProvider() {
+    let name = document.getElementById('providerName').value.trim();
+    document.getElementById('headerProviderDisplay').innerText = name || 'Inspection Services';
+  }
+
+  function onCategoryChange() {
+    let cat = document.getElementById('machineCategory').value;
+    let subTypeContainer = document.getElementById('subTypeContainer');
+    
+    if (cat === 'Lifting Machinery') {
+      subTypeContainer.style.display = 'block';
+    } else {
+      subTypeContainer.style.display = 'none';
+    }
+    renderChecklist();
+  }
+
+  function getActiveChecklistItems() {
+    let cat = document.getElementById('machineCategory').value;
+    if (cat === 'Lifting Machinery') {
+      let subType = document.getElementById('liftingSubType').value;
+      return checklistsData[subType] || checklistsData['Mobile Crane'];
+    }
+    return checklistsData[cat] || checklistsData['Mobile Machinery'];
+  }
+
+  function renderChecklist() {
+    let items = getActiveChecklistItems();
+    let tbody = document.getElementById('checklistBody');
+    tbody.innerHTML = '';
+    itemStatuses = {};
+
+    items.forEach((item, index) => {
       let tr = document.createElement('tr');
       tr.innerHTML = `
         <td><strong>${index + 1}.</strong> ${item}</td>
@@ -454,10 +586,8 @@
       `;
       tbody.appendChild(tr);
     });
-
-    initSignatures();
-    updateJobIdDisplay();
-  });
+    evaluateInspection();
+  }
 
   function getStorageKey(prefix) {
     return 'machine_job_seq_' + prefix;
@@ -476,7 +606,6 @@
     let prefix = document.getElementById('jobPrefix').value;
     loadNextSequence(prefix);
     
-    // Automatically fill technician name suggestion based on selection
     if (prefix === 'H') {
       document.getElementById('techName').value = 'Herman';
     } else if (prefix === 'K') {
@@ -508,7 +637,8 @@
   }
 
   function evaluateInspection() {
-    let totalItems = inspectionItems.length;
+    let items = getActiveChecklistItems();
+    let totalItems = items.length;
     let evaluatedCount = Object.keys(itemStatuses).length;
     let hasFail = Object.values(itemStatuses).includes('FAIL');
     let allPassed = evaluatedCount === totalItems && !hasFail && Object.values(itemStatuses).every(s => s === 'PASS' || s === 'N/A');
@@ -590,17 +720,17 @@
       e.preventDefault();
     }
 
-    function stopDraw() {
+    function stopDrop() {
       drawing = false;
     }
 
     canvas.addEventListener('mousedown', startDraw);
     canvas.addEventListener('mousemove', draw);
-    window.addEventListener('mouseup', stopDraw);
+    window.addEventListener('mouseup', stopDrop);
 
     canvas.addEventListener('touchstart', startDraw, { passive: false });
     canvas.addEventListener('touchmove', draw, { passive: false });
-    canvas.addEventListener('touchend', stopDraw);
+    canvas.addEventListener('touchend', stopDrop);
   }
 
   function clearCanvas(canvasId) {

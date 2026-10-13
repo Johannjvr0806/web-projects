@@ -9,7 +9,7 @@ body.theme-purple { background-color: #241633 !important; color: #f3e8ff !import
 body.theme-navy { background-color: #121c2e; color: #e0e6ed; }
 body.theme-dark { background-color: #1e1e1e; color: #e0e0e0; }
 
-/* Header & Navigation (Theme Aware) */
+/* Header & Navigation */
 header#app-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: #fff; border-bottom: 1px solid #e5e7eb; height: 60px; color: inherit; }
 .nav-tabs { display: flex; gap: 8px; }
 .tab-btn, .action-btn, .control-btn { padding: 8px 14px; border: none; border-radius: 6px; background: rgba(128, 128, 128, 0.15); color: inherit; font-size: 14px; cursor: pointer; font-weight: 500; }
@@ -44,9 +44,20 @@ header#app-header { display: flex; justify-content: space-between; align-items: 
 .delete-btn { position: absolute; top: 6px; right: 6px; background: #ef4444; color: white; border: none; width: 22px; height: 22px; border-radius: 50%; font-size: 11px; cursor: pointer; display: none; }
 .book-card:hover .delete-btn { display: flex; align-items: center; justify-content: center; }
 
-/* Reader Header & Footer */
-.epub-viewer { width: 100%; flex: 1; height: 100%; }
-.reader-header, .reader-footer { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: inherit; border-top: 1px solid rgba(128,128,128,0.2); border-bottom: 1px solid rgba(128,128,128,0.2); z-index: 10; }
+/* Reader Viewer & Tap Zones */
+.viewer-wrapper { position: relative; flex: 1; width: 100%; height: 100%; overflow: hidden; }
+.epub-viewer { width: 100%; height: 100%; }
+
+.tap-zone { position: absolute; top: 0; bottom: 0; z-index: 5; background: transparent; cursor: pointer; }
+.tap-left { left: 0; width: 25%; }
+.tap-center { left: 25%; width: 50%; }
+.tap-right { left: 75%; width: 25%; }
+
+/* Reader Header & Footer with Auto-Hide Transition */
+.reader-header, .reader-footer { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: inherit; border-top: 1px solid rgba(128,128,128,0.2); border-bottom: 1px solid rgba(128,128,128,0.2); z-index: 10; transition: transform 0.3s ease, opacity 0.3s ease; }
+.reader-header.hidden { transform: translateY(-100%); opacity: 0; pointer-events: none; }
+.reader-footer.hidden { transform: translateY(100%); opacity: 0; pointer-events: none; }
+
 .reader-clock { font-size: 13px; font-weight: 600; opacity: 0.85; padding: 0 8px; white-space: nowrap; }
 .font-controls { display: flex; gap: 4px; }
 .theme-picker { display: flex; gap: 6px; align-items: center; }

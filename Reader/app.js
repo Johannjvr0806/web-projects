@@ -7,6 +7,7 @@ let currentRendition = null;
 let currentFontSize = 100;
 let currentTheme = 'theme-purple';
 let activeFilter = 'all';
+let controlsVisible = true;
 let ttsUtterance = null;
 let isTTSPlaying = false;
 
@@ -16,7 +17,7 @@ localforage.config({ name: 'ReaderApp', storeName: 'library' });
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
   startClock();
-  await loadSavedTheme(); // Loads saved theme immediately on startup
+  await loadSavedTheme();
   await loadCategories();
   await loadBooks();
   setupFileInput();
@@ -287,6 +288,15 @@ function setupRenditionEvents() {
       document.getElementById('page-info').textContent = `${Math.round(progress * 100)}% completed`;
     }
   });
+}
+
+// Tap Controls Auto-Hide
+function toggleControls() {
+  controlsVisible = !controlsVisible;
+  const topbar = document.getElementById('reader-topbar');
+  const bottombar = document.getElementById('reader-bottombar');
+  if (topbar) topbar.classList.toggle('hidden', !controlsVisible);
+  if (bottombar) bottombar.classList.toggle('hidden', !controlsVisible);
 }
 
 // Smart Bookmarks

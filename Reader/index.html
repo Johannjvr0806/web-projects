@@ -23,7 +23,7 @@
       <button id="nav-reader" class="tab-btn" onclick="switchView('reader')" style="display:none;">📖 Reader</button>
     </div>
 
-    <!-- Theme Picker on Header (Applies to Landing & Shelf) -->
+    <!-- Theme Picker on Landing/Shelf Header -->
     <div class="theme-picker">
       <div class="theme-dot light" onclick="setTheme('theme-light')"></div>
       <div class="theme-dot sepia" onclick="setTheme('theme-sepia')"></div>
@@ -46,7 +46,6 @@
       <button class="filter-btn" onclick="filterCategory('unread', this)">Unread</button>
       <button class="filter-btn" onclick="filterCategory('reading', this)">Reading</button>
       <button class="filter-btn" onclick="filterCategory('finished', this)">Finished</button>
-      <!-- Dynamic custom category tabs render here -->
       <button class="filter-btn add-cat-btn" onclick="promptAddCategory()">+ Shelf</button>
     </div>
     <div class="shelf-grid" id="shelf-grid">
@@ -76,8 +75,13 @@
       </div>
     </div>
 
-    <!-- EPUB Viewer Area -->
-    <div id="viewer" class="epub-viewer"></div>
+    <!-- EPUB Viewer Area with Tap Zones -->
+    <div class="viewer-wrapper">
+      <div id="viewer" class="epub-viewer"></div>
+      <div class="tap-zone tap-left" onclick="prevPage()"></div>
+      <div class="tap-zone tap-center" onclick="toggleControls()"></div>
+      <div class="tap-zone tap-right" onclick="nextPage()"></div>
+    </div>
 
     <!-- Reader Bottom Control Bar -->
     <div class="reader-footer" id="reader-bottombar">

@@ -271,6 +271,7 @@
       display: flex;
       gap: 12px;
       justify-content: flex-end;
+      flex-wrap: wrap;
     }
     .btn {
       font: inherit;
@@ -286,6 +287,8 @@
     }
     .btn-primary { background: var(--accent); color: #fff; }
     .btn-primary:hover { background: var(--accent-dark); }
+    .btn-success { background: var(--ok); color: #fff; }
+    .btn-success:hover { background: #164e32; }
     .btn-secondary { background: #fff; color: var(--ink); border: 1px solid var(--line); }
     .btn-secondary:hover { background: var(--soft); }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -319,7 +322,6 @@
       header.top { padding: 18px 16px; }
     }
 
-    /* Print Styles Optimized to Display Filled Text */
     @media print {
       body { background: #fff; padding: 0; color: #000; font-size: 11px; }
       .nav-bar, .actions-bar, .clear-sig, button, .btn-row-del, .status-banner { display: none !important; }
@@ -412,6 +414,13 @@
             <div class="input-field-wrapper">
               <input type="text" id="techName" value="Herman" />
               <span class="print-val" id="p_techName">Herman</span>
+            </div>
+          </div>
+          <div class="full">
+            <label>Send Report Copy To Email (Optional)</label>
+            <div class="input-field-wrapper">
+              <input type="email" id="recipientEmail" placeholder="e.g. client@email.co.za" />
+              <span class="print-val" id="p_recipientEmail">-</span>
             </div>
           </div>
         </div>
@@ -550,12 +559,18 @@
   <!-- ACTION BUTTONS BAR -->
   <div class="actions-bar">
     <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset Form</button>
+    <button type="button" class="btn btn-success" id="submitCloudBtn" onclick="submitToCloud()" disabled>
+      ☁️ Submit to Google Sheet & Email
+    </button>
     <button type="button" class="btn btn-primary" id="printBtn" onclick="printCertificate()" disabled>
       🖨️ Print / Download PDF Report
     </button>
   </div>
 
 <script>
+  // GOOGLE APPS SCRIPT WEB APP URL:
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwMl7XG1fsrb05VdmaMrKOHeyJ22kp8_TigqKcPGMWTQ2CE4e0bgsMQnavKEvmPWaVzig/exec";
+
   let isPage2Valid = false;
 
   window.addEventListener('DOMContentLoaded', () => {
@@ -683,12 +698,14 @@
     evaluateSpreadsheet();
     let certSection = document.getElementById('certSection');
     let printBtn = document.getElementById('printBtn');
+    let submitCloudBtn = document.getElementById('submitCloudBtn');
     let statusText = document.getElementById('displayStatusText');
     let alertBox = document.getElementById('page1Alert');
 
     if (isPage2Valid) {
       certSection.className = "cert-unlocked";
       printBtn.disabled = false;
+      submitCloudBtn.disabled = false;
       statusText.innerText = "Status: Equipment Spreadsheet Verified ✔";
       alertBox.style.display = "block";
       switchPage(1);
@@ -700,7 +717,7 @@
   function syncFormValuesForPrint() {
     const fields = [
       'jobSeq', 'providerName', 'clientName', 'siteLocation', 
-      'inspectionDate', 'techName', 'startTime', 'finishTime', 
+      'inspectionDate', 'techName', 'recipientEmail', 'startTime', 'finishTime', 
       'breakMins', 'travelTime', 'workCarriedOut'
     ];
 
@@ -712,7 +729,6 @@
       }
     });
 
-    // Sync Excel Rows
     let tbody = document.getElementById('excelTableBody');
     Array.from(tbody.rows).forEach(row => {
       let inputs = row.querySelectorAll('input');
@@ -722,6 +738,69 @@
           span.innerText = inp.value.trim() || '-';
         }
       });
+    });
+  }
+
+  function submitToCloud() {
+    let prefix = document.getElementById('jobPrefix').value;
+    let seq = document.getElementById('jobSeq').value.trim();
+
+    let equipmentRows = [];
+    let tbody = document.getElementById('excelTableBody');
+    Array.from(tbody.rows).forEach(row => {
+      equipmentRows.push({
+        item: row.querySelector('.eq-item').value,
+        ser: row.querySelector('.eq-ser').value,
+        lanyard: row.querySelector('.eq-lanyard').value,
+        make: row.querySelector('.eq-make').value,
+        swl: row.querySelector('.eq-swl').value,
+        length: row.querySelector('.eq-length').value,
+        size: row.querySelector('.eq-size').value,
+        legs: row.querySelector('.eq-legs').value
+      });
+    });
+
+    let payload = {
+      jobId: prefix + seq,
+      provider: document.getElementById('providerName').value,
+      client: document.getElementById('clientName').value,
+      site: document.getElementById('siteLocation').value,
+      date: document.getElementById('inspectionDate').value,
+      tech: document.getElementById('techName').value,
+      recipientEmail: document.getElementById('recipientEmail').value,
+      startTime: document.getElementById('startTime').value,
+      finishTime: document.getElementById('finishTime').value,
+      breakMins: document.getElementById('breakMins').value,
+      travelTime: document.getElementById('travelTime').value,
+      workCarriedOut: document.getElementById('workCarriedOut').value,
+      equipmentRows: equipmentRows
+    };
+
+    let btn = document.getElementById('submitCloudBtn');
+    btn.disabled = true;
+    btn.innerText = "⏳ Saving to Google Cloud...";
+
+    fetch(SCRIPT_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }).then(() => {
+      alert("✔ Successfully saved to Google Sheet & Email sent!");
+      btn.disabled = false;
+      btn.innerText = "☁️ Submit to Google Sheet & Email";
+      
+      let num = parseInt(seq, 10);
+      if (!isNaN(num)) {
+        let currentStored = parseInt(localStorage.getItem(getStorageKey(prefix)) || '0', 10);
+        if (num > currentStored) {
+          localStorage.setItem(getStorageKey(prefix), num);
+        }
+      }
+    }).catch(err => {
+      alert("❌ Error saving to cloud: " + err);
+      btn.disabled = false;
+      btn.innerText = "☁️ Submit to Google Sheet & Email";
     });
   }
 
@@ -826,18 +905,6 @@
 
   function printCertificate() {
     syncFormValuesForPrint();
-
-    let prefix = document.getElementById('jobPrefix').value;
-    let seq = document.getElementById('jobSeq').value.trim();
-    
-    let num = parseInt(seq, 10);
-    if (!isNaN(num)) {
-      let currentStored = parseInt(localStorage.getItem(getStorageKey(prefix)) || '0', 10);
-      if (num > currentStored) {
-        localStorage.setItem(getStorageKey(prefix), num);
-      }
-    }
-
     window.print();
   }
 

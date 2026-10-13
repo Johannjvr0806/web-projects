@@ -1,5 +1,5 @@
 /* Reset & Base Styles */
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
 body, html { width: 100%; height: 100%; overflow: hidden; }
 
 /* Themes */
@@ -47,6 +47,7 @@ header#app-header { display: flex; justify-content: space-between; align-items: 
 /* Viewer Wrapper & Touch Shield */
 .viewer-wrapper { position: relative; flex: 1; width: 100%; height: 100%; overflow: hidden; }
 .epub-viewer { width: 100%; height: 100%; }
+.epub-viewer iframe { background: transparent !important; }
 #tap-shield { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; background: transparent; cursor: pointer; }
 
 /* Reader Header & Footer with Auto-Hide Transition */

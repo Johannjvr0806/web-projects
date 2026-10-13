@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Machine Inspection & Job Card Timesheet System</title>
+  <title>Machine & Equipment Inspection Timesheet System</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&display=swap" rel="stylesheet">
@@ -30,12 +30,12 @@
       background: var(--page);
       color: var(--ink);
       font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
-      font-size: 15px;
-      line-height: 1.5;
+      font-size: 14px;
+      line-height: 1.4;
       padding: 20px 12px 60px;
     }
     .sheet {
-      max-width: 860px;
+      max-width: 1060px;
       margin: 0 auto;
       background: var(--paper);
       border-radius: 8px;
@@ -81,9 +81,9 @@
       display: inline-block;
     }
 
-    /* Navigation Tabs / Page Switcher Bar */
+    /* Navigation Tabs */
     .nav-bar {
-      max-width: 860px;
+      max-width: 1060px;
       margin: 0 auto 16px;
       display: flex;
       gap: 8px;
@@ -151,14 +151,14 @@
       background: #fff;
       border: 1px solid #a9aecb;
       border-radius: 4px;
-      padding: 10px 12px;
-      min-height: 44px;
+      padding: 8px 10px;
+      min-height: 40px;
     }
     input:focus, select:focus, textarea:focus {
       outline: 3px solid rgba(0, 0, 153, .2);
       border-color: var(--accent);
     }
-    textarea { resize: vertical; min-height: 90px; }
+    textarea { resize: vertical; min-height: 80px; }
 
     .prefix-row {
       display: flex;
@@ -166,50 +166,55 @@
     }
     .prefix-row select { flex: 0 0 135px; }
 
-    /* Tables */
-    .data-table, .checklist-table {
+    /* Excel-Style Spreadsheet Table */
+    .excel-table-container {
+      overflow-x: auto;
+      margin-top: 10px;
+    }
+    .excel-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 8px;
+      min-width: 900px;
     }
-    .data-table th, .data-table td, .checklist-table th, .checklist-table td {
+    .excel-table th, .excel-table td {
       border: 1px solid var(--line);
-      padding: 10px 12px;
+      padding: 6px 8px;
       text-align: left;
-      font-size: 14px;
+      font-size: 13px;
     }
-    .data-table th, .checklist-table th {
+    .excel-table th {
       background: var(--soft);
       font-weight: 600;
       color: var(--ink);
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: .03em;
     }
-    .checklist-table td:nth-child(2) {
-      width: 180px;
-      text-align: center;
+    .excel-table input {
+      border: none;
+      background: transparent;
+      padding: 4px;
+      min-height: 32px;
     }
-    .status-group {
-      display: flex;
-      gap: 6px;
-      justify-content: center;
-    }
-    .status-btn {
-      flex: 1;
-      padding: 6px 4px;
-      font-size: 12px;
-      font-weight: 600;
-      border: 1px solid var(--line);
+    .excel-table input:focus {
       background: #fff;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: all 0.1s ease;
+      border: 1px solid var(--accent);
     }
-    .status-btn.pass.active { background: var(--ok); color: #fff; border-color: var(--ok); }
-    .status-btn.fail.active { background: var(--danger); color: #fff; border-color: var(--danger); }
-    .status-btn.na.active { background: var(--muted); color: #fff; border-color: var(--muted); }
+    .btn-row-del {
+      background: var(--danger-soft);
+      color: var(--danger);
+      border: 1px solid var(--danger);
+      border-radius: 4px;
+      padding: 4px 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 12px;
+    }
+    .btn-row-del:hover { background: var(--danger); color: #fff; }
 
     /* Status Banner */
     .status-banner {
-      padding: 14px 18px;
+      padding: 12px 16px;
       border-radius: 6px;
       margin-top: 16px;
       font-weight: 600;
@@ -219,7 +224,6 @@
     }
     .status-banner.pending { background: var(--soft); color: var(--muted); border: 1px dashed var(--line); }
     .status-banner.passed { background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok); }
-    .status-banner.failed { background: var(--danger-soft); color: var(--danger); border: 1px solid var(--danger); }
 
     /* Signature Canvas Area */
     .sig-container {
@@ -231,7 +235,7 @@
     }
     canvas {
       width: 100%;
-      height: 150px;
+      height: 140px;
       display: block;
       cursor: crosshair;
     }
@@ -258,7 +262,7 @@
 
     /* Action Buttons Bar */
     .actions-bar {
-      max-width: 860px;
+      max-width: 1060px;
       margin: 16px auto 40px;
       display: flex;
       gap: 12px;
@@ -267,7 +271,7 @@
     .btn {
       font: inherit;
       font-weight: 600;
-      padding: 12px 24px;
+      padding: 10px 20px;
       border-radius: 6px;
       cursor: pointer;
       border: none;
@@ -312,11 +316,12 @@
     }
 
     @media print {
-      body { background: #fff; padding: 0; color: #000; }
-      .nav-bar, .actions-bar, .clear-sig, button, select, input[type="text"], input[type="date"], input[type="time"] { display: none !important; }
+      body { background: #fff; padding: 0; color: #000; font-size: 12px; }
+      .nav-bar, .actions-bar, .clear-sig, button, select, input[type="text"], input[type="date"], input[type="time"], .btn-row-del { display: none !important; }
       .app-page { display: block !important; page-break-after: always; }
-      .sheet { box-shadow: none; border-radius: 0; margin: 0; max-width: 100%; }
-      input, select, textarea { border: none; background: transparent; padding: 0; min-height: auto; font-weight: 500; }
+      .sheet { box-shadow: none; border-radius: 0; margin: 0; max-width: 100%; width: 100%; }
+      input, select, textarea { border: none; background: transparent; padding: 0; min-height: auto; font-weight: 500; font-size: 12px; }
+      .excel-table input { border: none !important; background: transparent !important; }
       section { page-break-inside: avoid; padding: 16px 24px; }
       header.top { background: #000099 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
@@ -327,7 +332,7 @@
   <!-- NAVIGATION TABS -->
   <div class="nav-bar">
     <button type="button" class="nav-tab active" onclick="switchPage(1)">📄 Page 1: Job Card, Timesheet & Sign-Off</button>
-    <button type="button" class="nav-tab" onclick="switchPage(2)">⚙️ Page 2: Equipment & Inspection Checklist</button>
+    <button type="button" class="nav-tab" onclick="switchPage(2)">📊 Page 2: Excel Equipment Spreadsheet</button>
   </div>
 
   <div class="sheet" id="appSheet">
@@ -340,7 +345,7 @@
       <div class="ref-box">
         <label>Job Card Reference</label>
         <div><span class="job-id-display" id="displayJobId">H01</span></div>
-        <div style="font-size:11px; color:var(--pale); margin-top:2px;" id="displayStatusText">Status: Page 2 Incomplete</div>
+        <div style="font-size:11px; color:var(--pale); margin-top:2px;" id="displayStatusText">Status: Equipment List Incomplete</div>
       </div>
     </header>
 
@@ -385,15 +390,15 @@
         <div class="grid four" style="margin-top: 16px; background: var(--soft); padding: 16px; border-radius: 6px;">
           <div>
             <label>Start Time</label>
-            <input type="time" id="startTime" value="07:00" onchange="calculateHours()" />
+            <input type="time" id="startTime" value="07:00" />
           </div>
           <div>
             <label>Finish Time</label>
-            <input type="time" id="finishTime" value="13:20" onchange="calculateHours()" />
+            <input type="time" id="finishTime" value="13:20" />
           </div>
           <div>
             <label>Break (Mins)</label>
-            <input type="number" id="breakMins" value="20" onchange="calculateHours()" />
+            <input type="number" id="breakMins" value="20" />
           </div>
           <div>
             <label>Travelling Time</label>
@@ -407,12 +412,12 @@
         <textarea id="workCarriedOut" placeholder="Describe the service, maintenance, or repair work performed..."></textarea>
       </section>
 
-      <!-- SIGN-OFF SECTION (LOCKED UNTIL PAGE 2 IS COMPLETE) -->
+      <!-- SIGN-OFF SECTION (LOCKED UNTIL PAGE 2 EQUIPMENT IS ADDED) -->
       <div id="certSection" class="cert-locked">
         <section style="background: #fafafc;">
           <h2><span class="step-badge">Sign-Off</span> Client Approval & Signatures</h2>
           <div id="page1Alert" style="background: var(--ok-soft); border: 1px solid var(--ok); padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; color: var(--ok); font-weight: 500;">
-            ✔ <strong>Page 2 Complete:</strong> All equipment specifications and safety checks are verified. Sign-off unlocked.
+            ✔ <strong>Equipment Spreadsheet Verified:</strong> All items listed successfully. Sign-off unlocked.
           </div>
 
           <div class="grid">
@@ -446,82 +451,46 @@
       </div>
 
       <div style="padding: 20px 32px; text-align: center;">
-        <button type="button" class="btn btn-primary" onclick="switchPage(2)">Proceed to Page 2 (Equipment & Checklist) ➔</button>
+        <button type="button" class="btn btn-primary" onclick="switchPage(2)">Proceed to Page 2 (Excel Equipment Spreadsheet) ➔</button>
       </div>
     </div>
 
 
-    <!-- ================= PAGE 2: EQUIPMENT & CHECKLIST ================= -->
+    <!-- ================= PAGE 2: EXCEL SPREADSHEET EQUIPMENT TABLE ================= -->
     <div id="page2" class="app-page">
       <section>
-        <h2><span class="step-badge">Page 2</span> Equipment & Inspection Checklist</h2>
-        
-        <div class="grid three">
-          <div>
-            <label class="req">Equipment Category</label>
-            <select id="machineCategory" onchange="onCategoryChange()">
-              <option value="Mobile Machinery">Mobile Machinery</option>
-              <option value="Lifting Machinery">Lifting Machinery</option>
-              <option value="Tackle Equipment">Tackle Equipment (Job Card Only)</option>
-            </select>
-          </div>
-
-          <div id="subTypeContainer">
-            <label class="req" id="subTypeLabel">Machinery Sub-Type</label>
-            <select id="machinerySubType" onchange="renderChecklist()">
-              <!-- Populated dynamically -->
-            </select>
-          </div>
-
-          <div>
-            <label class="req">Fleet Number</label>
-            <input type="text" id="eqFleetNo" placeholder="e.g. FL-04" />
-          </div>
-          <div>
-            <label class="req">Serial Number / VIN</label>
-            <input type="text" id="eqSerial" placeholder="e.g. CAT-320-98421" />
-          </div>
-          <div>
-            <label>Safe Working Load (SWL)</label>
-            <input type="text" id="eqSwl" placeholder="e.g. 25 Tonne" />
-          </div>
-          <div>
-            <label>Length / Reach</label>
-            <input type="text" id="eqLength" placeholder="e.g. 12 Meters" />
-          </div>
-          <div>
-            <label>Variance / Shortage Notes</label>
-            <input type="text" id="eqVariance" placeholder="e.g. Normal / Minor wear" />
-          </div>
-          <div class="full">
-            <label class="req">Equipment Description & Make/Model</label>
-            <input type="text" id="eqDescription" placeholder="e.g. CAT 320D Excavator" />
-          </div>
-        </div>
-      </section>
-
-      <!-- CHECKLIST SECTION -->
-      <section id="checklistSection">
-        <h2>On-Site Safety & Operational Checklist</h2>
+        <h2><span class="step-badge">Page 2</span> Equipment & Tackle Spreadsheet</h2>
         <p style="font-size:13px; color:var(--muted); margin-top:0; margin-bottom:14px;">
-          Inspect each component thoroughly. All required items must pass to unlock Page 1 sign-off.
+          Add, edit, and manage equipment items just like an Excel spreadsheet. At least one item with an Item Name and Serial Number is required to unlock Page 1 sign-off.
         </p>
 
-        <table class="checklist-table">
-          <thead>
-            <tr>
-              <th>Inspection Component / Item</th>
-              <th>Status</th>
-              <th>Remarks / Corrective Action</th>
-            </tr>
-          </thead>
-          <tbody id="checklistBody">
-            <!-- Dynamically populated -->
-          </tbody>
-        </table>
+        <div class="excel-table-container">
+          <table class="excel-table">
+            <thead>
+              <tr>
+                <th style="width: 40px;">#</th>
+                <th>Item / Description</th>
+                <th>Ser No</th>
+                <th>Lanyard</th>
+                <th>Make</th>
+                <th>SWL / KG</th>
+                <th>Length / m</th>
+                <th>Chain / Rope Size (mm)</th>
+                <th>No of Legs</th>
+                <th style="width: 60px; text-align: center;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="excelTableBody">
+              <!-- Dynamically added rows -->
+            </tbody>
+          </table>
+        </div>
 
-        <div id="inspectionBanner" class="status-banner pending">
-          ⏳ Checklist incomplete. Complete all items with PASS or N/A to unlock Page 1 sign-off.
+        <div style="margin-top: 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+          <button type="button" class="btn btn-secondary" onclick="addExcelRow()">➕ Add Row</button>
+          <div id="spreadsheetStatusBanner" class="status-banner pending" style="margin-top: 0; flex: 1;">
+            ⏳ Spreadsheet empty. Please add at least one equipment item.
+          </div>
         </div>
       </section>
 
@@ -542,66 +511,19 @@
   </div>
 
 <script>
-  const checklistsData = {
-    "Mobile Crane": [
-      "Visual Inspection of Machine[cite: 6]",
-      "Current Load Test Certificate[cite: 6]",
-      "Number Plates & License Disk[cite: 6]",
-      "Abnormal Boards & Outriggers[cite: 6]",
-      "Outrigger Pads and Pans[cite: 6]",
-      "Axles, Transmission & Locking Pins[cite: 6]",
-      "Condition of Tyres, Thread & Wheel Nuts[cite: 6]",
-      "Steering, Suspension Bars & Hub Oil Leaks[cite: 6]",
-      "Hydraulic Cylinders, Hoses and Connections[cite: 6]",
-      "Carrier: Drive Line, Universals & Centre Bearing[cite: 6]",
-      "Slew Ring Lubrication & Slew Motor[cite: 6]",
-      "Swing Lock/Brake, Mud Guards & Decking[cite: 6]",
-      "Cabs: Operator Seat, Controls & Access Steps[cite: 6]",
-      "Electrical: Running Lights, Indicators & Hooter[cite: 6]",
-      "Reverse Lights/Hooter & Rotating Beacons[cite: 6]",
-      "Boom: Lubrication, Sheaves & Rope Guides[cite: 6]",
-      "Wire Rope Guide, Rollers & Boom Head Attachments[cite: 6]",
-      "Boom Structural Condition & Wear Pads[cite: 6]",
-      "Counter Weight Structure, Selection & Pins[cite: 6]",
-      "Anti-Two-Block Devices & Limit Switches[cite: 6]",
-      "SLI or Load Moment Systems & Load Charts[cite: 6]",
-      "Hook Dimensions, Safety Catch & Sheaves[cite: 6]"
-    ],
-    "Forklift": [
-      "Mast Assembly, Chains & Carriage Rollers",
-      "Forks, Latch Pins & Structural Integrity",
-      "Hydraulic Lift/Tilt Cylinders & Hoses",
-      "Overhead Guard & Load Backrest",
-      "Tyres (Pneumatic/Solid) & Wheel Nut Torque",
-      "Steering Axle, Kingpins & Bearings",
-      "Service Brakes & Parking Brake Efficiency",
-      "Horn, Reverse Alarm, Strobe Light & Headlights",
-      "Operator Seat, Seatbelt & Controls",
-      "Engine Fluid Levels, Battery & LPG/Diesel System"
-    ],
-    "Overhead Crane": [
-      "Bridge Girder Structural Condition & Welds",
-      "End Truck Alignment, Wheels & Drive Motors",
-      "Hoist Unit, Gearbox, Brake & Drum Condition",
-      "Wire Rope / Chain Wear, Lubrication & Reeving",
-      "Hook Assembly, Safety Latch & Swivel Rotation",
-      "Upper & Lower Limit Switches / Anti-Two-Block",
-      "Pendant / Remote Control Station & Emergency Stop",
-      "Crane Runway Rails, End Stops & Power Supply Festoon"
-    ]
-  };
-
   let isPage2Valid = false;
-  let itemStatuses = {};
 
   window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('inspectionDate').valueAsDate = new Date();
     loadNextSequence('H');
     updateHeaderProvider();
-    onCategoryChange();
+    
+    // Add default initial row
+    addExcelRow();
+    
     initSignatures();
     updateJobIdDisplay();
-    evaluatePage2();
+    evaluateSpreadsheet();
   });
 
   function switchPage(pageNum) {
@@ -624,120 +546,73 @@
     document.getElementById('headerProviderDisplay').innerText = name || 'Field Service';
   }
 
-  function onCategoryChange() {
-    let cat = document.getElementById('machineCategory').value;
-    let subTypeContainer = document.getElementById('subTypeContainer');
-    let subTypeSelect = document.getElementById('machinerySubType');
-    let checklistSection = document.getElementById('checklistSection');
+  function addExcelRow(data = {}) {
+    let tbody = document.getElementById('excelTableBody');
+    let rowCount = tbody.rows.length + 1;
+    let tr = document.createElement('tr');
 
-    if (cat === 'Mobile Machinery') {
-      subTypeContainer.style.display = 'block';
-      subTypeSelect.innerHTML = `
-        <option value="Mobile Crane">Mobile Crane</option>
-        <option value="Forklift">Forklift / Telehandler</option>
-      `;
-      checklistSection.style.display = 'block';
-      renderChecklist();
-    } else if (cat === 'Lifting Machinery') {
-      subTypeContainer.style.display = 'block';
-      subTypeSelect.innerHTML = `
-        <option value="Overhead Crane">Overhead / Gantry Crane</option>
-      `;
-      checklistSection.style.display = 'block';
-      renderChecklist();
-    } else if (cat === 'Tackle Equipment') {
-      subTypeContainer.style.display = 'none';
-      checklistSection.style.display = 'none';
-      isPage2Valid = true;
-      evaluatePage2();
-    }
+    tr.innerHTML = `
+      <td style="text-align: center; font-weight: 600; color: var(--muted);" class="row-num">${rowCount}</td>
+      <td><input type="text" class="eq-item" value="${data.item || ''}" placeholder="e.g. Chain Sling" oninput="evaluateSpreadsheet()"></td>
+      <td><input type="text" class="eq-ser" value="${data.ser || ''}" placeholder="e.g. CS-9842" oninput="evaluateSpreadsheet()"></td>
+      <td><input type="text" class="eq-lanyard" value="${data.lanyard || ''}" placeholder="e.g. Yes/No"></td>
+      <td><input type="text" class="eq-make" value="${data.make || ''}" placeholder="e.g. Crosby"></td>
+      <td><input type="text" class="eq-swl" value="${data.swl || ''}" placeholder="e.g. 2000kg"></td>
+      <td><input type="text" class="eq-length" value="${data.length || ''}" placeholder="e.g. 3m"></td>
+      <td><input type="text" class="eq-size" value="${data.size || ''}" placeholder="e.g. 10mm"></td>
+      <td><input type="text" class="eq-legs" value="${data.legs || ''}" placeholder="e.g. 2"></td>
+      <td style="text-align: center;"><button type="button" class="btn-row-del" onclick="deleteExcelRow(this)">X</button></td>
+    `;
+    tbody.appendChild(tr);
+    updateRowNumbers();
+    evaluateSpreadsheet();
   }
 
-  function renderChecklist() {
-    let cat = document.getElementById('machineCategory').value;
-    if (cat === 'Tackle Equipment') return;
-
-    let subType = document.getElementById('machinerySubType').value;
-    let items = checklistsData[subType] || [];
-    let tbody = document.getElementById('checklistBody');
-    tbody.innerHTML = '';
-    itemStatuses = {};
-
-    items.forEach((item, index) => {
-      let tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><strong>${index + 1}.</strong> ${item}</td>
-        <td>
-          <div class="status-group" data-index="${index}">
-            <button type="button" class="status-btn pass" onclick="setStatus(${index}, 'PASS')">PASS</button>
-            <button type="button" class="status-btn fail" onclick="setStatus(${index}, 'FAIL')">FAIL</button>
-            <button type="button" class="status-btn na" onclick="setStatus(${index}, 'N/A')">N/A</button>
-          </div>
-        </td>
-        <td><input type="text" placeholder="Optional notes..." style="min-height:36px; padding:6px 10px;" id="remark_${index}" /></td>
-      `;
-      tbody.appendChild(tr);
-    });
-    evaluatePage2();
-  }
-
-  function setStatus(index, status) {
-    itemStatuses[index] = status;
-    let group = document.querySelector(`.status-group[data-index="${index}"]`);
-    group.querySelectorAll('.status-btn').forEach(btn => btn.classList.remove('active'));
-    
-    if (status === 'PASS') group.querySelector('.pass').classList.add('active');
-    if (status === 'FAIL') group.querySelector('.fail').classList.add('active');
-    if (status === 'N/A') group.querySelector('.na').classList.add('active');
-
-    evaluatePage2();
-  }
-
-  function evaluatePage2() {
-    let cat = document.getElementById('machineCategory').value;
-    let fleetNo = document.getElementById('eqFleetNo').value.trim();
-    let serial = document.getElementById('eqSerial').value.trim();
-    let desc = document.getElementById('eqDescription').value.trim();
-
-    let basicValid = (fleetNo !== '' && serial !== '' && desc !== '');
-
-    if (cat === 'Tackle Equipment') {
-      isPage2Valid = basicValid;
-      let banner = document.getElementById('inspectionBanner');
-      if (banner) banner.innerHTML = basicValid ? "✔ Tackle Equipment job card ready." : "⚠️ Please fill in Fleet No, Serial No, and Description.";
+  function deleteExcelRow(btn) {
+    let tbody = document.getElementById('excelTableBody');
+    if (tbody.rows.length <= 1) {
+      alert("You must keep at least one row in the equipment spreadsheet.");
       return;
     }
+    btn.closest('tr').remove();
+    updateRowNumbers();
+    evaluateSpreadsheet();
+  }
 
-    let subType = document.getElementById('machinerySubType').value;
-    let items = checklistsData[subType] || [];
-    let totalItems = items.length;
-    let evaluatedCount = Object.keys(itemStatuses).length;
-    let hasFail = Object.values(itemStatuses).includes('FAIL');
-    let allPassed = evaluatedCount === totalItems && !hasFail && Object.values(itemStatuses).every(s => s === 'PASS' || s === 'N/A');
+  function updateRowNumbers() {
+    let tbody = document.getElementById('excelTableBody');
+    Array.from(tbody.rows).forEach((row, index) => {
+      row.querySelector('.row-num').innerText = index + 1;
+    });
+  }
 
-    let banner = document.getElementById('inspectionBanner');
+  function evaluateSpreadsheet() {
+    let tbody = document.getElementById('excelTableBody');
+    let rows = tbody.rows;
+    let validCount = 0;
 
-    if (!basicValid) {
-      banner.className = "status-banner failed";
-      banner.innerHTML = "❌ Please complete required equipment details (Fleet No., Serial No., Description).";
-      isPage2Valid = false;
-    } else if (hasFail) {
-      banner.className = "status-banner failed";
-      banner.innerHTML = "❌ Inspection Failed: One or more safety items have failed.";
-      isPage2Valid = false;
-    } else if (allPassed) {
+    for (let i = 0; i < rows.length; i++) {
+      let itemVal = rows[i].querySelector('.eq-item').value.trim();
+      let serVal = rows[i].querySelector('.eq-ser').value.trim();
+      if (itemVal !== '' && serVal !== '') {
+        validCount++;
+      }
+    }
+
+    let banner = document.getElementById('spreadsheetStatusBanner');
+    if (validCount > 0) {
       banner.className = "status-banner passed";
-      banner.innerHTML = "✔ All Equipment & Checklist items successfully verified!";
+      banner.innerHTML = `✔ Equipment spreadsheet verified (${validCount} valid item(s) listed).`;
       isPage2Valid = true;
     } else {
       banner.className = "status-banner pending";
-      banner.innerHTML = `⏳ Evaluation in progress (${evaluatedCount}/${totalItems} checked). Complete all checks.`;
+      banner.innerHTML = `⏳ Spreadsheet incomplete. Please fill in at least Item and Ser No for one row.`;
       isPage2Valid = false;
     }
   }
 
   function validateAndReturnToPage1() {
-    evaluatePage2();
+    evaluateSpreadsheet();
     let certSection = document.getElementById('certSection');
     let printBtn = document.getElementById('printBtn');
     let statusText = document.getElementById('displayStatusText');
@@ -746,15 +621,13 @@
     if (isPage2Valid) {
       certSection.className = "cert-unlocked";
       printBtn.disabled = false;
-      statusText.innerText = "Status: Page 2 Verified ✔";
+      statusText.innerText = "Status: Equipment Spreadsheet Verified ✔";
       alertBox.style.display = "block";
       switchPage(1);
     } else {
-      alert("Please ensure all required equipment fields and checklist items are successfully completed before proceeding to Page 1 sign-off.");
+      alert("Please ensure at least one equipment row has both an Item description and a Serial Number filled in before proceeding to Page 1 sign-off.");
     }
   }
-
-  function calculateHours() {}
 
   function getStorageKey(prefix) {
     return 'machine_job_seq_' + prefix;
@@ -766,7 +639,6 @@
     if (lastSeq) {
       nextNum = parseInt(lastSeq, 10) + 1;
     }
-    // Default suggestion, but user can freely overwrite/type 01 or any number
     document.getElementById('jobSeq').value = String(nextNum).padStart(2, '0');
   }
 

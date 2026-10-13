@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Store Visit & Audit Note Vault</title>
+
+  <!-- PWA Manifest & Meta -->
+  <link rel="manifest" href='data:application/json,{"name":"Store Audit Vault","short_name":"AuditVault","start_url":".","display":"standalone","background_color":"#0f172a","theme_color":"#4f46e5"}'>
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#4f46e5">
+
+  <!-- LocalForage CDN for IndexedDB Persistence -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --bg-hover: #334155;
+      --border-color: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --danger: #ef4444;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --sidebar-width: 360px;
+    }
+
+    body.light-mode {
+      --bg-main: #f8fafc;
+      --bg-card: #ffffff;
+      --bg-hover: #f1f5f9;
+      --border-color: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --accent: #4f46e5;
+      --accent-hover: #4338ca;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+    }
+
+    /* HEADER */
+    header {
+      height: 64px;
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 30;
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 1.15rem;
+    }
+
+    .header-brand span {
+      font-size: 1.5rem;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .search-box {
+      position: relative;
+      width: 240px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 8px 12px 8px 34px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    .search-box::before {
+      content: "🔍";
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.8rem;
+      opacity: 0.6;
+    }
+
+    .clock {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg-main);
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-icon {
+      background: var(--bg-main);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    .btn-icon:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .btn-primary {
+      background-color: var(--accent);
+      color: white;
+      border: none;
+      padding: 9px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--accent-hover);
+    }
+
+    /* MAIN APP CONTAINER */
+    .app-container {
+      display: flex;
+      height: calc(100vh - 64px);
+      width: 100%;
+      position: relative;
+    }
+
+    /* SIDEBAR / NOTE LIST */
+    .sidebar {
+      width: var(--sidebar-width);
+      background-color: var(--bg-card);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      flex-shrink: 0;
+      transition: transform 0.3s ease;
+      z-index: 20;
+    }
+
+    .filter-section {
+      padding: 12px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .filter-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .filter-select {
+      flex: 1;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-size: 0.8rem;
+      outline: none;
+    }
+
+    .sidebar-action-row {
+      display: flex;
+      gap: 8px;
+      padding: 0 12px 12px 12px;
+      border-bottom: 1px solid var(--border-color);
+      align-items: center;
+    }
+
+    .notes-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .note-card {
+      padding: 12px;
+      border-radius: 8px;
+      background-color: var(--bg-main);
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.1s;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .note-card:hover {
+      border-color: var(--accent);
+    }
+
+    .note-card.active {
+      border-color: var(--accent);
+      box-shadow: inset 3px 0 0 var(--accent);
+    }
+
+    .note-card-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .note-card-meta {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+      font-size: 0.75rem;
+    }
+
+    .tag {
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .tag-store { background: rgba(99, 102, 241, 0.2); color: #818cf8; }
+    .tag-tpl { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+
+    .note-card-date {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* EDITOR AREA */
+    .editor-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background-color: var(--bg-main);
+      overflow: hidden;
+    }
+
+    .editor-toolbar {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .meta-selectors {
+      display: flex;
+      gap: 8px;
+      flex: 1;
+      max-width: 520px;
+    }
+
+    .editor-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .editor-title-input {
+      width: 100%;
+      padding: 16px;
+      font-size: 1.3rem;
+      font-weight: 700;
+      border: none;
+      background: transparent;
+      color: var(--text-main);
+      outline: none;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .template-bar {
+      padding: 10px 16px;
+      background-color: var(--bg-main);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      overflow-x: auto;
+    }
+
+    .template-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .btn-template {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 5px 12px;
+      border-radius: 14px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.2s;
+    }
+
+    .btn-template:hover {
+      background: var(--accent);
+      color: white;
+    }
+
+    .editor-body {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    textarea.editor-textarea {
+      width: 100%;
+      height: 100%;
+      min-height: 220px;
+      background: transparent;
+      color: var(--text-main);
+      border: none;
+      outline: none;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      resize: none;
+    }
+
+    /* CHECKLIST / RICH ITEMS */
+    .checklist-container {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .checklist-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background-color: var(--bg-card);
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+    }
+
+    .checklist-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .checklist-item input[type="text"] {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      outline: none;
+      font-size: 0.9rem;
+    }
+
+    .checklist-item.completed input[type="text"] {
+      text-decoration: line-through;
+      color: var(--text-muted);
+    }
+
+    /* MODAL OVERLAY */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      width: 90%;
+      max-width: 400px;
+      padding: 24px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+
+    .modal-card h3 {
+      font-size: 1.1rem;
+    }
+
+    .modal-card input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    .modal-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    /* TOAST NOTIFICATION */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background-color: var(--success);
+      color: white;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      z-index: 200;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* RESPONSIVE TOGGLES & BREAKPOINTS */
+    .mobile-nav-btn {
+      display: none;
+    }
+
+    @media (max-width: 768px) {
+      .search-box {
+        display: none;
+      }
+
+      .mobile-nav-btn {
+        display: inline-flex;
+      }
+
+      .sidebar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 100%;
+        transform: translateX(-100%);
+      }
+
+      .sidebar.open {
+        transform: translateX(0);
+      }
+
+      .meta-selectors {
+        flex-direction: column;
+        max-width: 100%;
+      }
+    }
+
+    /* EMPTY STATE */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-muted);
+      gap: 12px;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .empty-state span {
+      font-size: 3.5rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-brand">
+      <button class="btn-icon mobile-nav-btn" onclick="toggleSidebar()" title="Toggle Sidebar">☰</button>
+      <span>🏬</span> Store Audit Vault
+    </div>
+
+    <div class="search-box">
+      <input type="text" id="search-input" placeholder="Search notes or stores..." oninput="handleSearch()">
+    </div>
+
+    <div class="header-controls">
+      <div class="clock" id="live-clock">00:00</div>
+      <button class="btn-icon" onclick="toggleTheme()" id="theme-btn" title="Toggle Light/Dark Theme">🌙</button>
+      <button class="btn-primary" onclick="createNewNote()">➕ New Note</button>
+    </div>
+  </header>
+
+  <div class="app-container">
+    <aside class="sidebar" id="sidebar">
+      <div class="filter-section">
+        <div class="filter-row">
+          <select id="filter-store" class="filter-select" onchange="renderNotesList()">
+            <option value="all">All Stores</option>
+          </select>
+          <select id="filter-template" class="filter-select" onchange="renderNotesList()">
+            <option value="all">All Templates</option>
+            <option value="Inventory & Stock Count">Inventory & Stock</option>
+            <option value="Visual Merchandising">Visual Merchandising</option>
+            <option value="Health & Safety / Operations">Health & Safety</option>
+            <option value="General Store Walk">General Walk</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="sidebar-action-row">
+        <button class="btn-icon" style="flex: 1; font-size: 0.8rem;" onclick="openStoreModal()">➕ Add Store Branch</button>
+      </div>
+
+      <div class="notes-list" id="notes-list">
+        <!-- Note Cards render dynamically -->
+      </div>
+    </aside>
+
+    <main class="editor-area">
+      <div id="editor-wrapper" style="display: none; height: 100%; flex-direction: column;">
+        <div class="editor-toolbar">
+          <div class="meta-selectors">
+            <select id="note-store" class="filter-select" onchange="saveCurrentNote()">
+              <!-- Dynamically populated stores -->
+            </select>
+            <select id="note-template" class="filter-select" onchange="saveCurrentNote()">
+              <option value="Inventory & Stock Count">Inventory & Stock Count</option>
+              <option value="Visual Merchandising">Visual Merchandising</option>
+              <option value="Health & Safety / Operations">Health & Safety / Operations</option>
+              <option value="General Store Walk">General Store Walk</option>
+            </select>
+          </div>
+
+          <div class="editor-actions">
+            <button class="btn-icon" onclick="copyNoteText()" title="Copy Note">📋 Copy</button>
+            <button class="btn-icon" onclick="exportNoteMarkdown()" title="Export Note">📥 Export Note</button>
+            <button class="btn-icon" onclick="exportStoreReport()" title="Export Store Report">📊 Store Report</button>
+            <button class="btn-icon" onclick="deleteCurrentNote()" title="Delete Note" style="color: var(--danger);">🗑️</button>
+          </div>
+        </div>
+
+        <div class="template-bar">
+          <span class="template-label">Quick Templates:</span>
+          <button class="btn-template" onclick="applyTemplate('inventory')">📦 Inventory Count</button>
+          <button class="btn-template" onclick="applyTemplate('visual')">✨ Visual Merch</button>
+          <button class="btn-template" onclick="applyTemplate('safety')">🛡️ Health & Safety</button>
+          <button class="btn-template" onclick="applyTemplate('walk')">🚶 General Walk</button>
+        </div>
+
+        <input type="text" id="note-title" class="editor-title-input" placeholder="Audit Note Title..." oninput="saveCurrentNote()">
+
+        <div class="editor-body">
+          <textarea id="note-body" class="editor-textarea" placeholder="Type observations, executive notes, or audit findings..." oninput="saveCurrentNote()"></textarea>
+          
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+            <span style="font-weight: 600; font-size: 0.85rem; color: var(--text-muted);">Checklist Items</span>
+            <button class="btn-template" onclick="addChecklistItem()">+ Add Item</button>
+          </div>
+          <div class="checklist-container" id="checklist-container">
+            <!-- Dynamic checklist items -->
+          </div>
+        </div>
+      </div>
+
+      <div id="empty-state" class="empty-state">
+        <span>🏬</span>
+        <h3>No Note Selected</h3>
+        <p>Select an audit note from the sidebar or click "New Note" to begin your retail store walkthrough.</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- ADD STORE MODAL -->
+  <div class="modal-overlay" id="store-modal">
+    <div class="modal-card">
+      <h3>Add New Store Branch</h3>
+      <input type="text" id="new-store-name" placeholder="e.g. Rosebank Branch, Menlyn Mall...">
+      <div class="modal-buttons">
+        <button class="btn-icon" onclick="closeStoreModal()">Cancel</button>
+        <button class="btn-primary" onclick="addNewStore()">Save Store</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div class="toast" id="toast">Action successful</div>
+
+  <script>
+    // State Variables
+    let notes = [];
+    let stores = ['Gezina Galleries', 'Raslow'];
+    let currentNoteId = null;
+    let isDarkMode = true;
+
+    // LocalForage Config
+    localforage.config({ name: 'StoreAuditVaultPWA', storeName: 'vault_store' });
+
+    // TEMPLATES PRESETS
+    const TEMPLATES = {
+      inventory: {
+        name: 'Inventory & Stock Count',
+        body: '### Inventory & Stock Verification\n- Stock accuracy check conducted across high-turnover bays.\n- Variance noted on system vs physical counts.',
+        checklist: [
+          { text: 'High-value security items verified', done: false },
+          { text: 'Backroom receiving area organized', done: false },
+          { text: 'Damaged / return goods logged', done: false },
+          { text: 'Stock count variance reconciliation completed', done: false }
+        ]
+      },
+      visual: {
+        name: 'Visual Merchandising',
+        body: '### Visual Merchandising Audit\n- Promotional signage and window displays reviewed for alignment with brand standards.',
+        checklist: [
+          { text: 'Window display cleanliness & lighting', done: false },
+          { text: 'Promotional pricing tags accurate', done: false },
+          { text: 'Endcaps fully stocked & faced', done: false },
+          { text: 'Aisles clear of promotional clutter', done: false }
+        ]
+      },
+      safety: {
+        name: 'Health & Safety / Operations',
+        body: '### Health & Safety & Store Operations\n- Emergency exits, fire extinguishers, and register floats inspected.',
+        checklist: [
+          { text: 'Emergency exits unobstructed', done: false },
+          { text: 'Fire extinguishers inspected & tagged', done: false },
+          { text: 'Safe float & till counts verified', done: false },
+          { text: 'Staff PPE & grooming compliant', done: false }
+        ]
+      },
+      walk: {
+        name: 'General Store Walk',
+        body: '### General Store Walkthrough\n- General overview of customer service, cleanliness, and store readiness.',
+        checklist: [
+          { text: 'Entrance & welcome area tidy', done: false },
+          { text: 'Customer service desk operational', done: false },
+          { text: 'Lighting & background audio active', done: false },
+          { text: 'Staff readiness & queue management checked', done: false }
+        ]
+      }
+    };
+
+    // INIT APP
+    document.addEventListener('DOMContentLoaded', async () => {
+      startClock();
+      await loadTheme();
+      await loadData();
+      populateStoreSelectors();
+      renderNotesList();
+    });
+
+    function startClock() {
+      const update = () => {
+        const now = new Date();
+        document.getElementById('live-clock').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      };
+      update();
+      setInterval(update, 1000);
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2500);
+    }
+
+    // THEME SYSTEM
+    async function loadTheme() {
+      const theme = await localforage.getItem('vault_theme');
+      if (theme === 'light') {
+        document.body.classList.add('light-mode');
+        document.getElementById('theme-btn').textContent = '☀️';
+        isDarkMode = false;
+      }
+    }
+
+    async function toggleTheme() {
+      isDarkMode = !isDarkMode;
+      if (isDarkMode) {
+        document.body.classList.remove('light-mode');
+        document.getElementById('theme-btn').textContent = '🌙';
+        await localforage.setItem('vault_theme', 'dark');
+      } else {
+        document.body.classList.add('light-mode');
+        document.getElementById('theme-btn').textContent = '☀️';
+        await localforage.setItem('vault_theme', 'light');
+      }
+    }
+
+    // STORAGE & DATA
+    async function loadData() {
+      const savedStores = await localforage.getItem('vault_stores');
+      if (savedStores) stores = savedStores;
+
+      const savedNotes = await localforage.getItem('vault_notes');
+      notes = savedNotes || [];
+    }
+
+    async function saveData() {
+      await localforage.setItem('vault_stores', stores);
+      await localforage.setItem('vault_notes', notes);
+    }
+
+    function populateStoreSelectors() {
+      const filterStore = document.getElementById('filter-store');
+      const noteStore = document.getElementById('note-store');
+
+      const currentFilterVal = filterStore.value;
+      const currentNoteVal = noteStore.value;
+
+      filterStore.innerHTML = '<option value="all">All Stores</option>';
+      noteStore.innerHTML = '';
+
+      stores.forEach(s => {
+        const opt1 = document.createElement('option');
+        opt1.value = s;
+        opt1.textContent = s;
+        filterStore.appendChild(opt1);
+
+        const opt2 = document.createElement('option');
+        opt2.value = s;
+        opt2.textContent = s;
+        noteStore.appendChild(opt2);
+      });
+
+      if (stores.includes(currentFilterVal)) filterStore.value = currentFilterVal;
+      if (stores.includes(currentNoteVal)) noteStore.value = currentNoteVal;
+    }
+
+    // STORE MODAL
+    function openStoreModal() {
+      document.getElementById('new-store-name').value = '';
+      document.getElementById('store-modal').classList.add('open');
+      document.getElementById('new-store-name').focus();
+    }
+
+    function closeStoreModal() {
+      document.getElementById('store-modal').classList.remove('open');
+    }
+
+    async function addNewStore() {
+      const name = document.getElementById('new-store-name').value.trim();
+      if (!name) return;
+
+      if (!stores.includes(name)) {
+        stores.push(name);
+        await saveData();
+        populateStoreSelectors();
+        showToast(`Store "${name}" added successfully`);
+      }
+      closeStoreModal();
+    }
+
+    // NOTES LIST & FILTERING
+    function renderNotesList() {
+      const listEl = document.getElementById('notes-list');
+      const storeFilter = document.getElementById('filter-store').value;
+      const tplFilter = document.getElementById('filter-template').value;
+      const searchQuery = document.getElementById('search-input').value.toLowerCase();
+
+      listEl.innerHTML = '';
+
+      const filtered = notes.filter(n => {
+        const matchStore = storeFilter === 'all' || n.store === storeFilter;
+        const matchTpl = tplFilter === 'all' || n.template === tplFilter;
+        const matchSearch = n.title.toLowerCase().includes(searchQuery) || 
+                            n.body.toLowerCase().includes(searchQuery) ||
+                            n.store.toLowerCase().includes(searchQuery);
+        return matchStore && matchTpl && matchSearch;
+      });
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px; font-size: 0.85rem;">No audit notes found</div>';
+        return;
+      }
+
+      filtered.sort((a, b) => b.updatedAt - a.updatedAt).forEach(note => {
+        const card = document.createElement('div');
+        card.className = `note-card ${note.id === currentNoteId ? 'active' : ''}`;
+        card.onclick = () => selectNote(note.id);
+
+        const dateStr = new Date(note.updatedAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+        card.innerHTML = `
+          <div class="note-card-title">${note.title || 'Untitled Audit'}</div>
+          <div class="note-card-meta">
+            <span class="tag tag-store">${note.store}</span>
+            <span class="tag tag-tpl">${note.template}</span>
+          </div>
+          <div class="note-card-date">${dateStr}</div>
+        `;
+        listEl.appendChild(card);
+      });
+    }
+
+    async function createNewNote() {
+      const activeStore = document.getElementById('filter-store').value !== 'all' ? document.getElementById('filter-store').value : stores[0];
+      const activeTpl = document.getElementById('filter-template').value !== 'all' ? document.getElementById('filter-template').value : 'General Store Walk';
+
+      const newNote = {
+        id: 'note_' + Date.now(),
+        title: `${activeStore} - Audit Visit`,
+        store: activeStore,
+        template: activeTpl,
+        body: '### Store Walkthrough Notes\n- Observed store conditions and operational standards.',
+        checklist: [
+          { text: 'General area inspection completed', done: false },
+          { text: 'Staff interaction & adherence reviewed', done: false }
+        ],
+        updatedAt: Date.now()
+      };
+
+      notes.unshift(newNote);
+      await saveData();
+      renderNotesList();
+      selectNote(newNote.id);
+      
+      if (window.innerWidth <= 768) {
+        toggleSidebar(false);
+      }
+    }
+
+    function selectNote(id) {
+      currentNoteId = id;
+      const note = notes.find(n => n.id === id);
+      if (!note) return;
+
+      document.getElementById('empty-state').style.display = 'none';
+      document.getElementById('editor-wrapper').style.display = 'flex';
+
+      document.getElementById('note-title').value = note.title;
+      document.getElementById('note-store').value = note.store;
+      document.getElementById('note-template').value = note.template;
+      document.getElementById('note-body').value = note.body;
+
+      renderChecklist(note.checklist || []);
+      renderNotesList();
+
+      if (window.innerWidth <= 768) {
+        toggleSidebar(false);
+      }
+    }
+
+    function saveCurrentNote() {
+      if (!currentNoteId) return;
+      const note = notes.find(n => n.id === currentNoteId);
+      if (!note) return;
+
+      note.title = document.getElementById('note-title').value;
+      note.store = document.getElementById('note-store').value;
+      note.template = document.getElementById('note-template').value;
+      note.body = document.getElementById('note-body').value;
+      note.updatedAt = Date.now();
+
+      saveData();
+      renderNotesList();
+    }
+
+    function renderChecklist(checklist) {
+      const container = document.getElementById('checklist-container');
+      container.innerHTML = '';
+
+      checklist.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = `checklist-item ${item.done ? 'completed' : ''}`;
+        div.innerHTML = `
+          <input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleCheckItem(${index})">
+          <input type="text" value="${item.text}" oninput="updateCheckItemText(${index}, this.value)" placeholder="Checklist requirement...">
+          <button class="btn-icon" style="padding: 2px 6px; font-size: 0.75rem;" onclick="removeCheckItem(${index})">✕</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function addChecklistItem() {
+      if (!currentNoteId) return;
+      const note = notes.find(n => n.id === currentNoteId);
+      if (!note) return;
+
+      if (!note.checklist) note.checklist = [];
+      note.checklist.push({ text: '', done: false });
+
+      saveCurrentNote();
+      renderChecklist(note.checklist);
+    }
+
+    function toggleCheckItem(index) {
+      const note = notes.find(n => n.id === currentNoteId);
+      if (note && note.checklist[index]) {
+        note.checklist[index].done = !note.checklist[index].done;
+        saveCurrentNote();
+        renderChecklist(note.checklist);
+      }
+    }
+
+    function updateCheckItemText(index, text) {
+      const note = notes.find(n => n.id === currentNoteId);
+      if (note && note.checklist[index]) {
+        note.checklist[index].text = text;
+        saveCurrentNote();
+      }
+    }
+
+    function removeCheckItem(index) {
+      const note = notes.find(n => n.id === currentNoteId);
+      if (note && note.checklist) {
+        note.checklist.splice(index, 1);
+        saveCurrentNote();
+        renderChecklist(note.checklist);
+      }
+    }
+
+    function applyTemplate(type) {
+      if (!currentNoteId) return;
+      const note = notes.find(n => n.id === currentNoteId);
+      const tpl = TEMPLATES[type];
+      if (!note || !tpl) return;
+
+      note.template = tpl.name;
+      document.getElementById('note-template').value = tpl.name;
+
+      const bodyEl = document.getElementById('note-body');
+      bodyEl.value = bodyEl.value ? bodyEl.value + '\n\n' + tpl.body : tpl.body;
+
+      if (!note.checklist) note.checklist = [];
+      tpl.checklist.forEach(c => note.checklist.push({ ...c }));
+
+      saveCurrentNote();
+      renderChecklist(note.checklist);
+      showToast(`Applied "${tpl.name}" template`);
+    }
+
+    async function deleteCurrentNote() {
+      if (!currentNoteId) return;
+      notes = notes.filter(n => n.id !== currentNoteId);
+      await saveData();
+      currentNoteId = null;
+
+      document.getElementById('editor-wrapper').style.display = 'none';
+      document.getElementById('empty-state').style.display = 'flex';
+      renderNotesList();
+      showToast("Note deleted");
+    }
+
+    function handleSearch() {
+      renderNotesList();
+    }
+
+    function toggleSidebar(forceState) {
+      const sidebar = document.getElementById('sidebar');
+      if (typeof forceState === 'boolean') {
+        sidebar.classList.toggle('open', forceState);
+      } else {
+        sidebar.classList.toggle('open');
+      }
+    }
+
+    // EXPORT & COPY
+    function copyNoteText() {
+      if (!currentNoteId) return;
+      const note = notes.find(n => n.id === currentNoteId);
+      if (!note) return;
+
+      let exportText = `STORE AUDIT: ${note.title}\nStore: ${note.store}\nTemplate: ${note.template}\nDate: ${new Date(note.updatedAt).toLocaleString()}\n\nNOTES:\n${note.body}\n\n`;
+      if (note.checklist && note.checklist.length > 0) {
+        exportText += `CHECKLIST:\n` + note.checklist.map(c => `[${c.done ? 'X' : ' '}] ${c.text}`).join('\n');
+      }
+
+      navigator.clipboard.writeText(exportText).then(() => {
+        showToast("Copied note to clipboard!");
+      });
+    }
+
+    function exportNoteMarkdown() {
+      if (!currentNoteId) return;
+      const note = notes.find(n => n.id === currentNoteId);
+      if (!note) return;
+
+      let md = `# ${note.title}\n**Store:** ${note.store}  \n**Template:** ${note.template}  \n**Date:** ${new Date(note.updatedAt).toLocaleString()}\n\n---\n\n${note.body}\n\n`;
+      if (note.checklist && note.checklist.length > 0) {
+        md += `### Checklist\n` + note.checklist.map(c => `- [${c.done ? 'x' : ' '}] ${c.text}`).join('\n');
+      }
+
+      const blob = new Blob([md], { type: 'text/markdown' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${note.store.replace(/\s+/g, '_')}_${note.title.replace(/\s+/g, '_')}.md`;
+      a.click();
+      showToast("Markdown exported!");
+    }
+
+    function exportStoreReport() {
+      if (!currentNoteId) return;
+      const activeNote = notes.find(n => n.id === currentNoteId);
+      if (!activeNote) return;
+
+      const storeName = activeNote.store;
+      const storeNotes = notes.filter(n => n.store === storeName);
+
+      let report = `# FULL STORE AUDIT REPORT: ${storeName}\nGenerated: ${new Date().toLocaleString()}\nTotal Audits/Notes: ${storeNotes.length}\n\n========================================\n\n`;
+
+      storeNotes.forEach((n, idx) => {
+        report += `### [${idx + 1}] ${n.title}\n`;
+        report += `**Template:** ${n.template} | **Date:** ${new Date(n.updatedAt).toLocaleString()}\n\n`;
+        report += `${n.body}\n\n`;
+        if (n.checklist && n.checklist.length > 0) {
+          report += `**Checklist:**\n` + n.checklist.map(c => `[${c.done ? 'X' : ' '}] ${c.text}`).join('\n') + `\n`;
+        }
+        report += `\n----------------------------------------\n\n`;
+      });
+
+      const blob = new Blob([report], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${storeName.replace(/\s+/g, '_')}_Full_Audit_Report.txt`;
+      a.click();
+      showToast(`Exported full report for ${storeName}!`);
+    }
+  </script>
+</body>
+</html>

@@ -2,11 +2,12 @@ const CACHE_NAME = 'cozy-reader-v2';
 const ASSETS = [
   './',
   './index.html',
+  './style.css',
   './app.js',
   './manifest.json'
 ];
 
-// Install: Cache new assets and activate immediately
+// Install: Cache all app assets
 self.addEventListener('install', (e) => {
   self.skipWaiting();
   e.waitUntil(
@@ -14,7 +15,7 @@ self.addEventListener('install', (e) => {
   );
 });
 
-// Activate: Clean up old caches and take control of tabs instantly
+// Activate: Clean up old caches and take control
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     Promise.all([
@@ -28,7 +29,7 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// Fetch: Network-First strategy (Tries fresh web version first, falls back to offline cache)
+// Fetch: Network-First (Tries live version, instantly falls back to offline cache if no internet)
 self.addEventListener('fetch', (e) => {
   e.respondWith(
     fetch(e.request)

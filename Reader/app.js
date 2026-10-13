@@ -4,6 +4,9 @@ let currentBookId = null;
 let fontSize = 100;
 let currentTheme = 'light';
 let currentFilter = 'all';
+let controlsVisible = true;
+let speechSynth = window.speechSynthesis;
+let isSpeaking = false;
 
 const fileInput = document.getElementById('file-input');
 const prevBtn = document.getElementById('prev-btn');
@@ -17,22 +20,27 @@ const tabLibrary = document.getElementById('tab-library');
 const tabReader = document.getElementById('tab-reader');
 const shelfGrid = document.getElementById('shelf-grid');
 const readerControls = document.getElementById('reader-controls');
+const readerFooter = document.getElementById('reader-footer');
+const appHeader = document.getElementById('app-header');
 const viewer = document.getElementById('viewer');
 
-// TOC Elements
+const tapLeft = document.getElementById('tap-left');
+const tapCenter = document.getElementById('tap-center');
+const tapRight = document.getElementById('tap-right');
+
 const tocBtn = document.getElementById('toc-btn');
 const tocDrawer = document.getElementById('toc-drawer');
 const closeToc = document.getElementById('close-toc');
 const tocList = document.getElementById('toc-list');
+const audiobookBtn = document.getElementById('audiobook-btn');
+const liveClock = document.getElementById('live-clock');
 
-// Themes
 const themeLight = document.getElementById('theme-light');
 const themeSepia = document.getElementById('theme-sepia');
-const themeEmerald = document.getElementById('theme-emerald');
+const themePurple = document.getElementById('theme-purple');
 const themeNavy = document.getElementById('theme-navy');
 const themeDark = document.getElementById('theme-dark');
 
-// AI Popup
 const aiPopup = document.getElementById('ai-popup');
 const aiWord = document.getElementById('ai-word');
 const aiTranslation = document.getElementById('ai-translation');
@@ -40,20 +48,25 @@ const aiTranslation = document.getElementById('ai-translation');
 const themeColors = {
   light: { bg: '#fffaf0', fg: '#1f2937' },
   sepia: { bg: '#f7eedb', fg: '#433422' },
-  emerald: { bg: '#0f291e', fg: '#e2f0e8' },
+  purple: { bg: '#241633', fg: '#f3e8ff' },
   navy: { bg: '#121c2e', fg: '#e0e6ed' },
   dark: { bg: '#1e1e1e', fg: '#e0e0e0' }
 };
 
-// View Switching
+setInterval(() => {
+  const now = new Date();
+  liveClock.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}, 1000);
+
 tabLibrary.addEventListener('click', () => showView('library'));
 tabReader.addEventListener('click', () => showView('reader'));
 
 function showView(view) {
+  stopAudiobook();
   if (view === 'library') {
     libraryView.style.display = 'block';
     readerView.style.display = 'none';
-    readerControls.style.display = 'none';
+    appHeader.style.display = 'flex';
     tocDrawer.classList.remove('open');
     hideAiPopup();
     tabLibrary.classList.add('active');
@@ -62,13 +75,12 @@ function showView(view) {
   } else {
     libraryView.style.display = 'none';
     readerView.style.display = 'flex';
-    readerControls.style.display = 'flex';
+    appHeader.style.display = 'none';
     tabReader.classList.add('active');
     tabLibrary.classList.remove('active');
   }
 }
 
-// Filter Shelf View
 function filterShelf(filter, btn) {
   currentFilter = filter;
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -76,7 +88,6 @@ function filterShelf(filter, btn) {
   renderShelf();
 }
 
-// Batch Multi-EPUB Upload with Duplicate Protection
 fileInput.addEventListener('change', async function (e) {
   const files = Array.from(e.target.files);
   if (!files || files.length === 0) return;
@@ -125,7 +136,6 @@ fileInput.addEventListener('change', async function (e) {
           tempBook.destroy();
           resolve();
         } catch (err) {
-          console.error("Error loading file:", file.name, err);
           resolve();
         }
       };
@@ -140,11 +150,10 @@ fileInput.addEventListener('change', async function (e) {
   if (addedCount > 0) {
     alert(`Successfully added ${addedCount} book(s) to your bookshelf!`);
   } else {
-    alert('No new books added (selected book(s) already exist on your shelf).');
+    alert('No new books added (already on shelf).');
   }
 });
 
-// Render Bookshelf UI
 async function renderShelf() {
   const savedBooks = (await localforage.getItem('library_books')) || [];
   shelfGrid.innerHTML = '';
@@ -159,7 +168,7 @@ async function renderShelf() {
   }
 
   if (filteredBooks.length === 0) {
-    shelfGrid.innerHTML = `<p style="grid-column: 1/-1; text-align: center; opacity: 0.7; padding: 40px;">No books found in this category!</p>`;
+    shelfGrid.innerHTML = `<p style="grid-column: 1/-1; text-align: center; opacity: 0.7; padding: 40px;">No books found! Click OceanPDF above to download books.</p>`;
     return;
   }
 
@@ -192,7 +201,6 @@ async function renderShelf() {
   });
 }
 
-// Open Selected Book & Restore Saved Location
 async function openBook(bookId) {
   const savedBooks = (await localforage.getItem('library_books')) || [];
   const selectedBook = savedBooks.find(b => b.id === bookId);
@@ -209,7 +217,6 @@ async function openBook(bookId) {
     allowScriptedContent: false
   });
 
-  // Register Themes
   Object.keys(themeColors).forEach(t => {
     rendition.themes.register(t, {
       body: { 
@@ -219,7 +226,6 @@ async function openBook(bookId) {
     });
   });
 
-  // Anti-Flash Hook
   rendition.hooks.content.register((contents) => {
     const doc = contents.document;
     const style = doc.createElement('style');
@@ -236,7 +242,6 @@ async function openBook(bookId) {
   applyTheme(currentTheme);
   applyFontSize();
 
-  // Load Table of Contents
   const navigation = await book.loaded.navigation;
   tocList.innerHTML = '';
   navigation.toc.forEach((chapter) => {
@@ -250,7 +255,6 @@ async function openBook(bookId) {
     tocList.appendChild(li);
   });
 
-  // Track Progress
   book.ready.then(() => {
     return book.locations.generate(1000);
   }).then(() => {
@@ -275,69 +279,11 @@ async function openBook(bookId) {
     }
   });
 
-  // Reliable Window-Relative ReadEra Tap Zones
-  rendition.on("rendered", (section) => {
-    const contents = rendition.getContents()[0];
-    if (contents && contents.document) {
-      const iframeDoc = contents.document;
-
-      let touchStartX = 0;
-      let touchStartY = 0;
-      let isSwiping = false;
-
-      iframeDoc.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 1) {
-          touchStartX = e.touches[0].screenX || e.touches[0].clientX;
-          touchStartY = e.touches[0].screenY || e.touches[0].clientY;
-          isSwiping = false;
-        }
-      }, { passive: true });
-
-      iframeDoc.addEventListener('touchmove', (e) => {
-        if (e.touches.length === 1) {
-          const curX = e.touches[0].screenX || e.touches[0].clientX;
-          const curY = e.touches[0].screenY || e.touches[0].clientY;
-          if (Math.abs(curX - touchStartX) > 15 || Math.abs(curY - touchStartY) > 15) {
-            isSwiping = true;
-          }
-        }
-      }, { passive: true });
-
-      const handleTap = (screenX) => {
-        const fullWidth = window.innerWidth || document.documentElement.clientWidth;
-        const ratio = screenX / fullWidth;
-
-        hideAiPopup();
-
-        if (ratio < 0.35) {
-          rendition.prev();
-        } else if (ratio > 0.65) {
-          rendition.next();
-        } else {
-          tocDrawer.classList.toggle('open');
-        }
-      };
-
-      iframeDoc.addEventListener('touchend', (e) => {
-        if (!isSwiping && e.changedTouches.length === 1) {
-          const touch = e.changedTouches[0];
-          handleTap(touch.screenX || touch.clientX);
-        }
-      });
-
-      iframeDoc.addEventListener('click', (e) => {
-        if (e.pointerType === 'touch') return;
-        handleTap(e.clientX);
-      });
-    }
-  });
-
-  // Translation Selection
   rendition.on("selected", (cfiRange, contents) => {
     const selection = contents.window.getSelection();
     const text = selection.toString().trim();
 
-    if (text.length > 0 && text.length < 100) {
+    if (text.length > 0 && text.length < 150) {
       const range = selection.getRangeAt(0);
       const rect = range.getBoundingClientRect();
       const iframeRect = contents.document.defaultView.frameElement.getBoundingClientRect();
@@ -347,9 +293,69 @@ async function openBook(bookId) {
   });
 
   showView('reader');
+
+  // Auto-hide headers immediately upon opening for instant immersion
+  controlsVisible = false;
+  readerControls.style.display = 'none';
+  readerFooter.style.display = 'none';
 }
 
-// Save Progress
+tapLeft.onclick = () => { if (rendition) rendition.prev(); hideAiPopup(); };
+tapRight.onclick = () => { if (rendition) rendition.next(); hideAiPopup(); };
+tapCenter.onclick = () => { toggleControls(); hideAiPopup(); };
+
+function toggleControls() {
+  controlsVisible = !controlsVisible;
+  if (controlsVisible) {
+    readerControls.style.display = 'flex';
+    readerFooter.style.display = 'flex';
+  } else {
+    readerControls.style.display = 'none';
+    readerFooter.style.display = 'none';
+    tocDrawer.classList.remove('open');
+  }
+}
+
+audiobookBtn.addEventListener('click', () => {
+  if (isSpeaking) {
+    stopAudiobook();
+  } else {
+    startAudiobook();
+  }
+});
+
+async function startAudiobook() {
+  if (!rendition) return;
+  const contents = rendition.getContents()[0];
+  if (!contents || !contents.document) return;
+
+  const text = contents.document.body.innerText.trim();
+  if (!text) return;
+
+  speechSynth.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  
+  utterance.onstart = () => {
+    isSpeaking = true;
+    audiobookBtn.textContent = "⏹ Stop";
+    audiobookBtn.style.background = "#dc2626";
+  };
+
+  utterance.onend = () => {
+    stopAudiobook();
+    if (rendition) rendition.next();
+  };
+
+  speechSynth.speak(utterance);
+}
+
+function stopAudiobook() {
+  if (speechSynth) speechSynth.cancel();
+  isSpeaking = false;
+  audiobookBtn.textContent = "🎧 Listen";
+  audiobookBtn.style.background = "";
+}
+
 async function saveBookProgress(bookId, cfi, progress) {
   let savedBooks = (await localforage.getItem('library_books')) || [];
   const idx = savedBooks.findIndex(b => b.id === bookId);
@@ -360,7 +366,6 @@ async function saveBookProgress(bookId, cfi, progress) {
   }
 }
 
-// Reliable Translation Lookup (Google GTX Endpoint)
 async function showAiPopup(text, posX, posY) {
   aiWord.textContent = `"${text}"`;
   aiTranslation.textContent = "Translating...";
@@ -381,7 +386,7 @@ async function showAiPopup(text, posX, posY) {
       aiTranslation.textContent = "Could not find translation.";
     }
   } catch (err) {
-    aiTranslation.textContent = "Translation service unavailable.";
+    aiTranslation.textContent = "Translation offline / unavailable.";
   }
 }
 
@@ -389,7 +394,6 @@ function hideAiPopup() {
   aiPopup.style.display = 'none';
 }
 
-// Delete Book
 async function deleteBook(event, bookId) {
   event.stopPropagation();
   let savedBooks = (await localforage.getItem('library_books')) || [];
@@ -398,25 +402,20 @@ async function deleteBook(event, bookId) {
   renderShelf();
 }
 
-// TOC Drawer Toggles
 tocBtn.addEventListener('click', () => tocDrawer.classList.toggle('open'));
 closeToc.addEventListener('click', () => tocDrawer.classList.remove('open'));
 
-// Apply Theme
 async function applyTheme(theme) {
   currentTheme = theme;
   document.body.className = `theme-${theme}`;
 
   const col = themeColors[theme] || themeColors.light;
-  if (viewer) {
-    viewer.style.backgroundColor = col.bg;
-  }
-
+  if (viewer) viewer.style.backgroundColor = col.bg;
   if (rendition) rendition.themes.select(theme);
 
   themeLight.classList.toggle('active', theme === 'light');
   themeSepia.classList.toggle('active', theme === 'sepia');
-  themeEmerald.classList.toggle('active', theme === 'emerald');
+  themePurple.classList.toggle('active', theme === 'purple');
   themeNavy.classList.toggle('active', theme === 'navy');
   themeDark.classList.toggle('active', theme === 'dark');
 
@@ -425,50 +424,27 @@ async function applyTheme(theme) {
 
 themeLight.addEventListener('click', () => applyTheme('light'));
 themeSepia.addEventListener('click', () => applyTheme('sepia'));
-themeEmerald.addEventListener('click', () => applyTheme('emerald'));
+themePurple.addEventListener('click', () => applyTheme('purple'));
 themeNavy.addEventListener('click', () => applyTheme('navy'));
 themeDark.addEventListener('click', () => applyTheme('dark'));
 
-document.getElementById('font-inc').addEventListener('click', () => {
-  fontSize += 10;
-  applyFontSize();
-});
-
-document.getElementById('font-dec').addEventListener('click', () => {
-  if (fontSize > 60) fontSize -= 10;
-  applyFontSize();
-});
+document.getElementById('font-inc').addEventListener('click', () => { fontSize += 10; applyFontSize(); });
+document.getElementById('font-dec').addEventListener('click', () => { if (fontSize > 60) fontSize -= 10; applyFontSize(); });
 
 function applyFontSize() {
-  if (rendition) {
-    rendition.themes.fontSize(`${fontSize}%`);
-  }
+  if (rendition) rendition.themes.fontSize(`${fontSize}%`);
 }
 
-// Navigation Controls
-prevBtn.addEventListener('click', () => {
-  if (rendition) rendition.prev();
-  hideAiPopup();
-});
-nextBtn.addEventListener('click', () => {
-  if (rendition) rendition.next();
-  hideAiPopup();
-});
+prevBtn.addEventListener('click', () => { if (rendition) rendition.prev(); hideAiPopup(); });
+nextBtn.addEventListener('click', () => { if (rendition) rendition.next(); hideAiPopup(); });
 
-// Keyboard Navigation
 document.addEventListener('keydown', (e) => {
   if (readerView.style.display === 'flex') {
-    if (e.key === 'ArrowRight') {
-      if (rendition) rendition.next();
-      hideAiPopup();
-    } else if (e.key === 'ArrowLeft') {
-      if (rendition) rendition.prev();
-      hideAiPopup();
-    }
+    if (e.key === 'ArrowRight') { if (rendition) rendition.next(); hideAiPopup(); }
+    else if (e.key === 'ArrowLeft') { if (rendition) rendition.prev(); hideAiPopup(); }
   }
 });
 
-// Initial Load
 window.addEventListener('load', async () => {
   const savedTheme = (await localforage.getItem('selected_theme')) || 'light';
   applyTheme(savedTheme);

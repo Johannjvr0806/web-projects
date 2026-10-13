@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Machine Inspection & Compliance Certificate System</title>
+  <title>Machine Inspection & Job Card Timesheet System</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&display=swap" rel="stylesheet">
@@ -81,6 +81,37 @@
       display: inline-block;
     }
 
+    /* Navigation Tabs / Page Switcher Bar */
+    .nav-bar {
+      max-width: 860px;
+      margin: 0 auto 16px;
+      display: flex;
+      gap: 8px;
+      background: #d8daf0;
+      padding: 6px;
+      border-radius: 6px;
+    }
+    .nav-tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      font-weight: 600;
+      background: #fff;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .nav-tab.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .app-page { display: none; }
+    .app-page.active-page { display: block; }
+
     section { padding: 24px 32px; border-bottom: 1px solid var(--line); }
     section:last-of-type { border-bottom: 0; }
     
@@ -107,6 +138,7 @@
 
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .grid.three { grid-template-columns: repeat(3, 1fr); }
+    .grid.four { grid-template-columns: repeat(4, 1fr); }
     .full { grid-column: 1 / -1; }
 
     label, .lbl { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 6px; }
@@ -134,19 +166,19 @@
     }
     .prefix-row select { flex: 0 0 135px; }
 
-    /* Checklist Table */
-    .checklist-table {
+    /* Tables */
+    .data-table, .checklist-table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 8px;
     }
-    .checklist-table th, .checklist-table td {
+    .data-table th, .data-table td, .checklist-table th, .checklist-table td {
       border: 1px solid var(--line);
       padding: 10px 12px;
       text-align: left;
       font-size: 14px;
     }
-    .checklist-table th {
+    .data-table th, .checklist-table th {
       background: var(--soft);
       font-weight: 600;
       color: var(--ink);
@@ -227,7 +259,7 @@
     /* Action Buttons Bar */
     .actions-bar {
       max-width: 860px;
-      margin: 0 auto 40px;
+      margin: 16px auto 40px;
       display: flex;
       gap: 12px;
       justify-content: flex-end;
@@ -273,7 +305,7 @@
     }
 
     @media(max-width: 680px) {
-      .grid, .grid.three { grid-template-columns: 1fr; }
+      .grid, .grid.three, .grid.four { grid-template-columns: 1fr; }
       body { padding: 8px 4px 30px; }
       section { padding: 18px 16px; }
       header.top { padding: 18px 16px; }
@@ -281,11 +313,10 @@
 
     @media print {
       body { background: #fff; padding: 0; color: #000; }
+      .nav-bar, .actions-bar, .clear-sig, button, select, input[type="text"], input[type="date"], input[type="time"] { display: none !important; }
+      .app-page { display: block !important; page-break-after: always; }
       .sheet { box-shadow: none; border-radius: 0; margin: 0; max-width: 100%; }
-      .actions-bar, .clear-sig, button, select, input[type="text"] { display: none !important; }
       input, select, textarea { border: none; background: transparent; padding: 0; min-height: auto; font-weight: 500; }
-      .checklist-table th, .checklist-table td { padding: 6px 8px; }
-      .status-btn { display: none; }
       section { page-break-inside: avoid; padding: 16px 24px; }
       header.top { background: #000099 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
@@ -293,164 +324,220 @@
 </head>
 <body>
 
+  <!-- NAVIGATION TABS -->
+  <div class="nav-bar">
+    <button type="button" class="nav-tab active" onclick="switchPage(1)">📄 Page 1: Job Card, Timesheet & Sign-Off</button>
+    <button type="button" class="nav-tab" onclick="switchPage(2)">⚙️ Page 2: Equipment & Inspection Checklist</button>
+  </div>
+
   <div class="sheet" id="appSheet">
     <!-- HEADER -->
     <header class="top">
       <div>
         <h1 class="brand-title" id="headerProviderDisplay">Field Service & Compliance</h1>
-        <p class="brand-subtitle">Inspection Report & Job Card Record</p>
+        <p class="brand-subtitle">Inspection Report & Job Card Timesheet</p>
       </div>
       <div class="ref-box">
         <label>Job Card Reference</label>
         <div><span class="job-id-display" id="displayJobId">H01</span></div>
-        <div style="font-size:11px; color:var(--pale); margin-top:2px;" id="displayCertId">Record: Pending</div>
+        <div style="font-size:11px; color:var(--pale); margin-top:2px;" id="displayStatusText">Status: Page 2 Incomplete</div>
       </div>
     </header>
 
-    <!-- SECTION 1: JOB CARD & MACHINE INFO -->
-    <section>
-      <h2><span class="step-badge">Step 1</span> Job Card & Equipment Details</h2>
-      <div class="grid three">
-        <div>
-          <label class="req">Technician / Prefix</label>
-          <div class="prefix-row">
-            <select id="jobPrefix" onchange="onPrefixChange()">
-              <option value="H">H - Herman</option>
-              <option value="K">K - Kobus</option>
-            </select>
-            <input type="text" id="jobSeq" value="01" oninput="updateJobIdDisplay()" />
-          </div>
-        </div>
-
-        <div>
-          <label class="req">Inspection Company / Provider</label>
-          <input type="text" id="providerName" value="Inspection Services" oninput="updateHeaderProvider()" placeholder="e.g. Company Name" />
-        </div>
-
-        <div>
-          <label class="req">Client Name (Serviced For)</label>
-          <input type="text" id="clientName" placeholder="e.g. ABC Plant Hire" />
-        </div>
-        <div>
-          <label class="req">Site Location</label>
-          <input type="text" id="siteLocation" placeholder="e.g. Yard / Site 4" />
-        </div>
-
-        <div>
-          <label class="req">Equipment Category</label>
-          <select id="machineCategory" onchange="onCategoryChange()">
-            <option value="Mobile Machinery">Mobile Machinery</option>
-            <option value="Lifting Machinery">Lifting Machinery</option>
-            <option value="Tackle Equipment">Tackle Equipment (Job Card Only)</option>
-          </select>
-        </div>
-
-        <!-- Dynamic Sub-Type Container -->
-        <div id="subTypeContainer">
-          <label class="req" id="subTypeLabel">Machinery Sub-Type</label>
-          <select id="machinerySubType" onchange="renderChecklist()">
-            <!-- Populated dynamically -->
-          </select>
-        </div>
-
-        <div>
-          <label class="req">Make & Model / Description</label>
-          <input type="text" id="machineModel" placeholder="e.g. CAT 320D / Grove Crane" />
-        </div>
-        <div>
-          <label class="req">Serial / VIN / Asset ID</label>
-          <input type="text" id="machineSerial" placeholder="e.g. CAT-320-98421" />
-        </div>
-        <div>
-          <label>Operating Hours / SWL</label>
-          <input type="text" id="machineHours" placeholder="e.g. 4,850 hrs / 25 Tonne" />
-        </div>
-        <div>
-          <label class="req">Lead Technician / LMI</label>
-          <input type="text" id="techName" value="Herman" placeholder="e.g. Herman / Kobus" />
-        </div>
-        <div>
-          <label class="req">Date of Service / Insp</label>
-          <input type="date" id="inspectionDate" />
-        </div>
-      </div>
-    </section>
-
-    <!-- SECTION 2: INSPECTION CHECKLIST (Hidden for Tackle Equipment) -->
-    <section id="checklistSection">
-      <h2><span class="step-badge">Step 2</span> <span id="checklistTitle">On-Site Safety & Operational Checklist</span></h2>
-      <p style="font-size:13px; color:var(--muted); margin-top:0; margin-bottom:14px;">
-        Inspect each component thoroughly. All required items must pass to issue a compliance certificate.
-      </p>
-
-      <table class="checklist-table">
-        <thead>
-          <tr>
-            <th>Inspection Component / Item</th>
-            <th>Status</th>
-            <th>Remarks / Corrective Action</th>
-          </tr>
-        </thead>
-        <tbody id="checklistBody">
-          <!-- Dynamically populated rows -->
-        </tbody>
-      </table>
-
-      <div id="inspectionBanner" class="status-banner pending">
-        ⏳ Checklist incomplete or items failed. Complete all checks with PASS to unlock certificate generation.
-      </div>
-    </section>
-
-    <!-- SECTION 3: CERTIFICATE & SIGN-OFF -->
-    <div id="certSection" class="cert-locked">
-      <section style="background: #fafafc;">
-        <h2><span class="step-badge">Step 3</span> Sign-Off & Job Card Completion</h2>
-        <div id="statusAlertBox" style="background: var(--ok-soft); border: 1px solid var(--ok); padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; color: var(--ok); font-weight: 500;">
-          ✔ <strong>Record Ready:</strong> All inspection and job card parameters are successfully completed.
-        </div>
-
-        <div class="grid">
+    <!-- ================= PAGE 1: JOB CARD, TIMESHEET & SIGN-OFF ================= -->
+    <div id="page1" class="app-page active-page">
+      <section>
+        <h2><span class="step-badge">Page 1</span> Job Card & Timesheet Details</h2>
+        <div class="grid three">
           <div>
-            <label class="req">Technician / LMI Signature</label>
-            <div class="sig-container">
-              <canvas id="techSigCanvas"></canvas>
-              <div class="sig-footer">
-                <span>Sign above using mouse or touch</span>
-                <button type="button" class="clear-sig" onclick="clearCanvas('techSigCanvas')">Clear</button>
-              </div>
+            <label class="req">Technician / Prefix</label>
+            <div class="prefix-row">
+              <select id="jobPrefix" onchange="onPrefixChange()">
+                <option value="H">H - Herman</option>
+                <option value="K">K - Kobus</option>
+              </select>
+              <input type="text" id="jobSeq" value="01" oninput="updateJobIdDisplay()" placeholder="e.g. 01" />
             </div>
           </div>
           <div>
-            <label class="req">Client / Representative Sign-Off</label>
-            <div class="sig-container">
-              <canvas id="clientSigCanvas"></canvas>
-              <div class="sig-footer">
-                <span>Client signature & acceptance</span>
-                <button type="button" class="clear-sig" onclick="clearCanvas('clientSigCanvas')">Clear</button>
-              </div>
-            </div>
+            <label class="req">Inspection Company / Provider</label>
+            <input type="text" id="providerName" value="Inspection Services" oninput="updateHeaderProvider()" placeholder="e.g. Company Name" />
+          </div>
+          <div>
+            <label class="req">Client Name</label>
+            <input type="text" id="clientName" placeholder="e.g. Afrit" />
+          </div>
+          <div>
+            <label class="req">Site Location</label>
+            <input type="text" id="siteLocation" placeholder="e.g. Rosslyn" />
+          </div>
+          <div>
+            <label class="req">Date of Service</label>
+            <input type="date" id="inspectionDate" />
+          </div>
+          <div>
+            <label class="req">Lead Technician</label>
+            <input type="text" id="techName" value="Herman" />
           </div>
         </div>
 
-        <div style="margin-top: 16px;">
-          <label>Job Card Summary / Service Notes</label>
-          <textarea id="finalNotes" placeholder="Enter work carried out, parts used, or recommendations..."></textarea>
-        </div>
-
-        <div class="legal-notice">
-          <strong>Compliance valid for 6 months (180 days) from date of issue[cite: 6].</strong><br>
-          INSPECTION / SERVICE CONDUCTED ACCORDING TO REQUIREMENTS OF THE OSH ACT 85 OF 1993[cite: 6].
+        <!-- Timesheet Sub-Section -->
+        <div class="grid four" style="margin-top: 16px; background: var(--soft); padding: 16px; border-radius: 6px;">
+          <div>
+            <label>Start Time</label>
+            <input type="time" id="startTime" value="07:00" onchange="calculateHours()" />
+          </div>
+          <div>
+            <label>Finish Time</label>
+            <input type="time" id="finishTime" value="13:20" onchange="calculateHours()" />
+          </div>
+          <div>
+            <label>Break (Mins)</label>
+            <input type="number" id="breakMins" value="20" onchange="calculateHours()" />
+          </div>
+          <div>
+            <label>Travelling Time</label>
+            <input type="text" id="travelTime" value="1h 20m" placeholder="e.g. 1h 20m" />
+          </div>
         </div>
       </section>
+
+      <section>
+        <h2>Work Carried Out</h2>
+        <textarea id="workCarriedOut" placeholder="Describe the service, maintenance, or repair work performed..."></textarea>
+      </section>
+
+      <!-- SIGN-OFF SECTION (LOCKED UNTIL PAGE 2 IS COMPLETE) -->
+      <div id="certSection" class="cert-locked">
+        <section style="background: #fafafc;">
+          <h2><span class="step-badge">Sign-Off</span> Client Approval & Signatures</h2>
+          <div id="page1Alert" style="background: var(--ok-soft); border: 1px solid var(--ok); padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; color: var(--ok); font-weight: 500;">
+            ✔ <strong>Page 2 Complete:</strong> All equipment specifications and safety checks are verified. Sign-off unlocked.
+          </div>
+
+          <div class="grid">
+            <div>
+              <label class="req">Completed By (Technician Signature)</label>
+              <div class="sig-container">
+                <canvas id="techSigCanvas"></canvas>
+                <div class="sig-footer">
+                  <span>Sign above using mouse or touch</span>
+                  <button type="button" class="clear-sig" onclick="clearCanvas('techSigCanvas')">Clear</button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label class="req">Client Representative Approval</label>
+              <div class="sig-container">
+                <canvas id="clientSigCanvas"></canvas>
+                <div class="sig-footer">
+                  <span>Client signature & acceptance</span>
+                  <button type="button" class="clear-sig" onclick="clearCanvas('clientSigCanvas')">Clear</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="legal-notice">
+            <strong>Compliance valid for 6 months (180 days) from date of issue[cite: 6].</strong><br>
+            INSPECTION / SERVICE CONDUCTED ACCORDING TO REQUIREMENTS OF THE OSH ACT 85 OF 1993[cite: 6].
+          </div>
+        </section>
+      </div>
+
+      <div style="padding: 20px 32px; text-align: center;">
+        <button type="button" class="btn btn-primary" onclick="switchPage(2)">Proceed to Page 2 (Equipment & Checklist) ➔</button>
+      </div>
+    </div>
+
+
+    <!-- ================= PAGE 2: EQUIPMENT & CHECKLIST ================= -->
+    <div id="page2" class="app-page">
+      <section>
+        <h2><span class="step-badge">Page 2</span> Equipment & Inspection Checklist</h2>
+        
+        <div class="grid three">
+          <div>
+            <label class="req">Equipment Category</label>
+            <select id="machineCategory" onchange="onCategoryChange()">
+              <option value="Mobile Machinery">Mobile Machinery</option>
+              <option value="Lifting Machinery">Lifting Machinery</option>
+              <option value="Tackle Equipment">Tackle Equipment (Job Card Only)</option>
+            </select>
+          </div>
+
+          <div id="subTypeContainer">
+            <label class="req" id="subTypeLabel">Machinery Sub-Type</label>
+            <select id="machinerySubType" onchange="renderChecklist()">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+
+          <div>
+            <label class="req">Fleet Number</label>
+            <input type="text" id="eqFleetNo" placeholder="e.g. FL-04" />
+          </div>
+          <div>
+            <label class="req">Serial Number / VIN</label>
+            <input type="text" id="eqSerial" placeholder="e.g. CAT-320-98421" />
+          </div>
+          <div>
+            <label>Safe Working Load (SWL)</label>
+            <input type="text" id="eqSwl" placeholder="e.g. 25 Tonne" />
+          </div>
+          <div>
+            <label>Length / Reach</label>
+            <input type="text" id="eqLength" placeholder="e.g. 12 Meters" />
+          </div>
+          <div>
+            <label>Variance / Shortage Notes</label>
+            <input type="text" id="eqVariance" placeholder="e.g. Normal / Minor wear" />
+          </div>
+          <div class="full">
+            <label class="req">Equipment Description & Make/Model</label>
+            <input type="text" id="eqDescription" placeholder="e.g. CAT 320D Excavator" />
+          </div>
+        </div>
+      </section>
+
+      <!-- CHECKLIST SECTION -->
+      <section id="checklistSection">
+        <h2>On-Site Safety & Operational Checklist</h2>
+        <p style="font-size:13px; color:var(--muted); margin-top:0; margin-bottom:14px;">
+          Inspect each component thoroughly. All required items must pass to unlock Page 1 sign-off.
+        </p>
+
+        <table class="checklist-table">
+          <thead>
+            <tr>
+              <th>Inspection Component / Item</th>
+              <th>Status</th>
+              <th>Remarks / Corrective Action</th>
+            </tr>
+          </thead>
+          <tbody id="checklistBody">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+
+        <div id="inspectionBanner" class="status-banner pending">
+          ⏳ Checklist incomplete. Complete all items with PASS or N/A to unlock Page 1 sign-off.
+        </div>
+      </section>
+
+      <div style="padding: 24px 32px; display: flex; justify-content: space-between; align-items: center; background: var(--soft);">
+        <button type="button" class="btn btn-secondary" onclick="switchPage(1)">⬅ Back to Page 1</button>
+        <button type="button" class="btn btn-primary" onclick="validateAndReturnToPage1()">Save & Return to Page 1 for Sign-Off ➔</button>
+      </div>
     </div>
 
   </div>
 
-  <!-- ACTION BUTTONS -->
+  <!-- ACTION BUTTONS BAR -->
   <div class="actions-bar">
     <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset Form</button>
     <button type="button" class="btn btn-primary" id="printBtn" onclick="printCertificate()" disabled>
-      🖨️ Print / Download PDF Job Card
+      🖨️ Print / Download PDF Report
     </button>
   </div>
 
@@ -504,6 +591,9 @@
     ]
   };
 
+  let isPage2Valid = false;
+  let itemStatuses = {};
+
   window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('inspectionDate').valueAsDate = new Date();
     loadNextSequence('H');
@@ -511,7 +601,23 @@
     onCategoryChange();
     initSignatures();
     updateJobIdDisplay();
+    evaluatePage2();
   });
+
+  function switchPage(pageNum) {
+    document.getElementById('page1').classList.remove('active-page');
+    document.getElementById('page2').classList.remove('active-page');
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+
+    if (pageNum === 1) {
+      document.getElementById('page1').classList.add('active-page');
+      document.querySelectorAll('.nav-tab')[0].classList.add('active');
+    } else {
+      document.getElementById('page2').classList.add('active-page');
+      document.querySelectorAll('.nav-tab')[1].classList.add('active');
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
   function updateHeaderProvider() {
     let name = document.getElementById('providerName').value.trim();
@@ -541,8 +647,9 @@
       renderChecklist();
     } else if (cat === 'Tackle Equipment') {
       subTypeContainer.style.display = 'none';
-      checklistSection.style.display = 'none'; // No checklist for tackle
-      evaluateInspection();
+      checklistSection.style.display = 'none';
+      isPage2Valid = true;
+      evaluatePage2();
     }
   }
 
@@ -571,8 +678,83 @@
       `;
       tbody.appendChild(tr);
     });
-    evaluateInspection();
+    evaluatePage2();
   }
+
+  function setStatus(index, status) {
+    itemStatuses[index] = status;
+    let group = document.querySelector(`.status-group[data-index="${index}"]`);
+    group.querySelectorAll('.status-btn').forEach(btn => btn.classList.remove('active'));
+    
+    if (status === 'PASS') group.querySelector('.pass').classList.add('active');
+    if (status === 'FAIL') group.querySelector('.fail').classList.add('active');
+    if (status === 'N/A') group.querySelector('.na').classList.add('active');
+
+    evaluatePage2();
+  }
+
+  function evaluatePage2() {
+    let cat = document.getElementById('machineCategory').value;
+    let fleetNo = document.getElementById('eqFleetNo').value.trim();
+    let serial = document.getElementById('eqSerial').value.trim();
+    let desc = document.getElementById('eqDescription').value.trim();
+
+    let basicValid = (fleetNo !== '' && serial !== '' && desc !== '');
+
+    if (cat === 'Tackle Equipment') {
+      isPage2Valid = basicValid;
+      let banner = document.getElementById('inspectionBanner');
+      if (banner) banner.innerHTML = basicValid ? "✔ Tackle Equipment job card ready." : "⚠️ Please fill in Fleet No, Serial No, and Description.";
+      return;
+    }
+
+    let subType = document.getElementById('machinerySubType').value;
+    let items = checklistsData[subType] || [];
+    let totalItems = items.length;
+    let evaluatedCount = Object.keys(itemStatuses).length;
+    let hasFail = Object.values(itemStatuses).includes('FAIL');
+    let allPassed = evaluatedCount === totalItems && !hasFail && Object.values(itemStatuses).every(s => s === 'PASS' || s === 'N/A');
+
+    let banner = document.getElementById('inspectionBanner');
+
+    if (!basicValid) {
+      banner.className = "status-banner failed";
+      banner.innerHTML = "❌ Please complete required equipment details (Fleet No., Serial No., Description).";
+      isPage2Valid = false;
+    } else if (hasFail) {
+      banner.className = "status-banner failed";
+      banner.innerHTML = "❌ Inspection Failed: One or more safety items have failed.";
+      isPage2Valid = false;
+    } else if (allPassed) {
+      banner.className = "status-banner passed";
+      banner.innerHTML = "✔ All Equipment & Checklist items successfully verified!";
+      isPage2Valid = true;
+    } else {
+      banner.className = "status-banner pending";
+      banner.innerHTML = `⏳ Evaluation in progress (${evaluatedCount}/${totalItems} checked). Complete all checks.`;
+      isPage2Valid = false;
+    }
+  }
+
+  function validateAndReturnToPage1() {
+    evaluatePage2();
+    let certSection = document.getElementById('certSection');
+    let printBtn = document.getElementById('printBtn');
+    let statusText = document.getElementById('displayStatusText');
+    let alertBox = document.getElementById('page1Alert');
+
+    if (isPage2Valid) {
+      certSection.className = "cert-unlocked";
+      printBtn.disabled = false;
+      statusText.innerText = "Status: Page 2 Verified ✔";
+      alertBox.style.display = "block";
+      switchPage(1);
+    } else {
+      alert("Please ensure all required equipment fields and checklist items are successfully completed before proceeding to Page 1 sign-off.");
+    }
+  }
+
+  function calculateHours() {}
 
   function getStorageKey(prefix) {
     return 'machine_job_seq_' + prefix;
@@ -584,6 +766,7 @@
     if (lastSeq) {
       nextNum = parseInt(lastSeq, 10) + 1;
     }
+    // Default suggestion, but user can freely overwrite/type 01 or any number
     document.getElementById('jobSeq').value = String(nextNum).padStart(2, '0');
   }
 
@@ -605,68 +788,6 @@
     let seq = document.getElementById('jobSeq').value.trim() || '01';
     let fullId = prefix + seq;
     document.getElementById('displayJobId').innerText = fullId;
-  }
-
-  let itemStatuses = {};
-
-  function setStatus(index, status) {
-    itemStatuses[index] = status;
-    let group = document.querySelector(`.status-group[data-index="${index}"]`);
-    group.querySelectorAll('.status-btn').forEach(btn => btn.classList.remove('active'));
-    
-    if (status === 'PASS') group.querySelector('.pass').classList.add('active');
-    if (status === 'FAIL') group.querySelector('.fail').classList.add('active');
-    if (status === 'N/A') group.querySelector('.na').classList.add('active');
-
-    evaluateInspection();
-  }
-
-  function evaluateInspection() {
-    let cat = document.getElementById('machineCategory').value;
-    let certSection = document.getElementById('certSection');
-    let printBtn = document.getElementById('printBtn');
-    let prefix = document.getElementById('jobPrefix').value;
-    let seq = document.getElementById('jobSeq').value.trim() || '01';
-    let fullId = prefix + seq;
-    let todayStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
-
-    if (cat === 'Tackle Equipment') {
-      // Tackle uses Job Card only, no checklist
-      certSection.className = "cert-unlocked";
-      printBtn.disabled = false;
-      document.getElementById('displayCertId').innerText = `Job Card: ${fullId}`;
-      return;
-    }
-
-    let subType = document.getElementById('machinerySubType').value;
-    let items = checklistsData[subType] || [];
-    let totalItems = items.length;
-    let evaluatedCount = Object.keys(itemStatuses).length;
-    let hasFail = Object.values(itemStatuses).includes('FAIL');
-    let allPassed = evaluatedCount === totalItems && !hasFail && Object.values(itemStatuses).every(s => s === 'PASS' || s === 'N/A');
-    let passCount = Object.values(itemStatuses).filter(s => s === 'PASS').length;
-
-    let banner = document.getElementById('inspectionBanner');
-
-    if (hasFail) {
-      banner.className = "status-banner failed";
-      banner.innerHTML = "❌ Inspection Failed: One or more safety items have failed. Sign-off is blocked until resolved.";
-      certSection.className = "cert-locked";
-      printBtn.disabled = true;
-      document.getElementById('displayCertId').innerText = "Cert: Blocked (Failed Check)";
-    } else if (allPassed && passCount > 0) {
-      banner.className = "status-banner passed";
-      banner.innerHTML = "✔ All Inspection Items Passed! Sign-off unlocked.";
-      certSection.className = "cert-unlocked";
-      printBtn.disabled = false;
-      document.getElementById('displayCertId').innerText = `Cert No: CERT-${fullId}-${todayStr}`;
-    } else {
-      banner.className = "status-banner pending";
-      banner.innerHTML = `⏳ Evaluation in progress (${evaluatedCount}/${totalItems} checked). Complete all checks to unlock sign-off.`;
-      certSection.className = "cert-locked";
-      printBtn.disabled = true;
-      document.getElementById('displayCertId').innerText = "Cert: Pending Inspection";
-    }
   }
 
   function initSignatures() {
@@ -741,7 +862,10 @@
     
     let num = parseInt(seq, 10);
     if (!isNaN(num)) {
-      localStorage.setItem(getStorageKey(prefix), num);
+      let currentStored = parseInt(localStorage.getItem(getStorageKey(prefix)) || '0', 10);
+      if (num > currentStored) {
+        localStorage.setItem(getStorageKey(prefix), num);
+      }
     }
 
     window.print();

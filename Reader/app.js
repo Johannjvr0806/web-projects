@@ -262,22 +262,6 @@ async function openBook(id) {
 }
 
 function setupRenditionEvents() {
-  // Reliable tap zones inside the ePub iframe content
-  currentRendition.hooks.content.register((contents) => {
-    contents.document.addEventListener('click', (e) => {
-      const width = contents.document.documentElement.clientWidth;
-      const x = e.clientX;
-
-      if (x < width * 0.25) {
-        currentRendition.prev(); // Left 25%: Previous Page
-      } else if (x > width * 0.75) {
-        currentRendition.next(); // Right 25%: Next Page
-      } else {
-        toggleControls();        // Center 50%: Toggle Top/Bottom Bars
-      }
-    });
-  });
-
   currentRendition.on("relocated", location => {
     const cfi = location.start.cfi;
     const book = books.find(b => b.id === currentBookId);
@@ -304,6 +288,21 @@ function setupRenditionEvents() {
       document.getElementById('page-info').textContent = `${Math.round(progress * 100)}% completed`;
     }
   });
+}
+
+// Transparent Touch Shield Tap Handler
+function handleScreenTap(e) {
+  const rect = e.currentTarget.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const width = rect.width;
+
+  if (x < width * 0.25) {
+    if (currentRendition) currentRendition.prev(); // Left 25%: Previous Page
+  } else if (x > width * 0.75) {
+    if (currentRendition) currentRendition.next(); // Right 25%: Next Page
+  } else {
+    toggleControls(); // Center 50%: Toggle Top/Bottom Bars
+  }
 }
 
 // Tap Controls Auto-Hide Toggle

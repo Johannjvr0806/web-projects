@@ -75,8 +75,11 @@
       </div>
     </div>
 
-    <!-- EPUB Viewer Area -->
-    <div id="viewer" class="epub-viewer"></div>
+    <!-- EPUB Viewer Area with Transparent Touch Shield -->
+    <div class="viewer-wrapper">
+      <div id="viewer" class="epub-viewer"></div>
+      <div id="tap-shield" onclick="handleScreenTap(event)"></div>
+    </div>
 
     <!-- Reader Bottom Control Bar -->
     <div class="reader-footer" id="reader-bottombar">

@@ -298,18 +298,18 @@
     <header class="top">
       <div>
         <h1 class="brand-title" id="headerProviderDisplay">Field Service & Compliance</h1>
-        <p class="brand-subtitle">Inspection Report & Compliance Certificate</p>
+        <p class="brand-subtitle">Inspection Report & Job Card Record</p>
       </div>
       <div class="ref-box">
         <label>Job Card Reference</label>
         <div><span class="job-id-display" id="displayJobId">H01</span></div>
-        <div style="font-size:11px; color:var(--pale); margin-top:2px;" id="displayCertId">Cert: Pending Inspection</div>
+        <div style="font-size:11px; color:var(--pale); margin-top:2px;" id="displayCertId">Record: Pending</div>
       </div>
     </header>
 
     <!-- SECTION 1: JOB CARD & MACHINE INFO -->
     <section>
-      <h2><span class="step-badge">Step 1</span> Job Card & Machine Details</h2>
+      <h2><span class="step-badge">Step 1</span> Job Card & Equipment Details</h2>
       <div class="grid three">
         <div>
           <label class="req">Technician / Prefix</label>
@@ -322,14 +322,13 @@
           </div>
         </div>
 
-        <!-- NEW: Inspection Company / Provider -->
         <div>
           <label class="req">Inspection Company / Provider</label>
-          <input type="text" id="providerName" value="Kgolagano Inspection Services" oninput="updateHeaderProvider()" placeholder="e.g. Company Name" />
+          <input type="text" id="providerName" value="Inspection Services" oninput="updateHeaderProvider()" placeholder="e.g. Company Name" />
         </div>
 
         <div>
-          <label class="req">Client Name (Inspected For)</label>
+          <label class="req">Client Name (Serviced For)</label>
           <input type="text" id="clientName" placeholder="e.g. ABC Plant Hire" />
         </div>
         <div>
@@ -342,30 +341,28 @@
           <select id="machineCategory" onchange="onCategoryChange()">
             <option value="Mobile Machinery">Mobile Machinery</option>
             <option value="Lifting Machinery">Lifting Machinery</option>
-            <option value="Tackle Equipment">Tackle / Lifting Equipment</option>
+            <option value="Tackle Equipment">Tackle Equipment (Job Card Only)</option>
           </select>
         </div>
 
-        <!-- Dynamic Sub-Type Container (Shows for Lifting Machinery) -->
-        <div id="subTypeContainer" style="display: none;">
-          <label class="req">Lifting Machine Sub-Type</label>
-          <select id="liftingSubType" onchange="renderChecklist()">
-            <option value="Mobile Crane">Mobile Crane</option>
-            <option value="Forklift">Forklift / Telehandler</option>
-            <option value="Overhead Crane">Overhead / Gantry Crane</option>
+        <!-- Dynamic Sub-Type Container -->
+        <div id="subTypeContainer">
+          <label class="req" id="subTypeLabel">Machinery Sub-Type</label>
+          <select id="machinerySubType" onchange="renderChecklist()">
+            <!-- Populated dynamically -->
           </select>
         </div>
 
         <div>
-          <label class="req">Machine Make & Model</label>
+          <label class="req">Make & Model / Description</label>
           <input type="text" id="machineModel" placeholder="e.g. CAT 320D / Grove Crane" />
         </div>
         <div>
-          <label class="req">Machine Serial / VIN / Asset ID</label>
+          <label class="req">Serial / VIN / Asset ID</label>
           <input type="text" id="machineSerial" placeholder="e.g. CAT-320-98421" />
         </div>
         <div>
-          <label>Operating Hours / Safe Working Load (SWL)</label>
+          <label>Operating Hours / SWL</label>
           <input type="text" id="machineHours" placeholder="e.g. 4,850 hrs / 25 Tonne" />
         </div>
         <div>
@@ -373,16 +370,16 @@
           <input type="text" id="techName" value="Herman" placeholder="e.g. Herman / Kobus" />
         </div>
         <div>
-          <label class="req">Date of Inspection</label>
+          <label class="req">Date of Service / Insp</label>
           <input type="date" id="inspectionDate" />
         </div>
       </div>
     </section>
 
-    <!-- SECTION 2: INSPECTION CHECKLIST -->
-    <section>
+    <!-- SECTION 2: INSPECTION CHECKLIST (Hidden for Tackle Equipment) -->
+    <section id="checklistSection">
       <h2><span class="step-badge">Step 2</span> <span id="checklistTitle">On-Site Safety & Operational Checklist</span></h2>
-      <p style="font-size:13px; color:var(--muted); margin-top:0; margin-bottom:14px;" id="checklistSubtitle">
+      <p style="font-size:13px; color:var(--muted); margin-top:0; margin-bottom:14px;">
         Inspect each component thoroughly. All required items must pass to issue a compliance certificate.
       </p>
 
@@ -404,12 +401,12 @@
       </div>
     </section>
 
-    <!-- SECTION 3: CERTIFICATE & SIGN-OFF (Locked until pass) -->
+    <!-- SECTION 3: CERTIFICATE & SIGN-OFF -->
     <div id="certSection" class="cert-locked">
       <section style="background: #fafafc;">
-        <h2><span class="step-badge">Step 3</span> Certificate of Compliance & Sign-Off</h2>
-        <div style="background: var(--ok-soft); border: 1px solid var(--ok); padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; color: var(--ok); font-weight: 500;">
-          ✔ <strong>Machine Certified Compliant:</strong> All safety and operational inspection points have successfully passed evaluation. This unit is cleared for safe operation.
+        <h2><span class="step-badge">Step 3</span> Sign-Off & Job Card Completion</h2>
+        <div id="statusAlertBox" style="background: var(--ok-soft); border: 1px solid var(--ok); padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; color: var(--ok); font-weight: 500;">
+          ✔ <strong>Record Ready:</strong> All inspection and job card parameters are successfully completed.
         </div>
 
         <div class="grid">
@@ -436,13 +433,13 @@
         </div>
 
         <div style="margin-top: 16px;">
-          <label>Final Summary / Service Notes</label>
-          <textarea id="finalNotes" placeholder="Enter any additional recommendations, notes, or next service intervals..."></textarea>
+          <label>Job Card Summary / Service Notes</label>
+          <textarea id="finalNotes" placeholder="Enter work carried out, parts used, or recommendations..."></textarea>
         </div>
 
         <div class="legal-notice">
-          <strong>Certificate valid for 6 months (180 days) from date of issue[cite: 6].</strong><br>
-          THE INSPECTION WAS CONDUCTED ACCORDING TO REQUIREMENTS OF THE OSH ACT 85 OF 1993, DRIVEN MACHINE REGULATION ACT 18.5[cite: 6].
+          <strong>Compliance valid for 6 months (180 days) from date of issue[cite: 6].</strong><br>
+          INSPECTION / SERVICE CONDUCTED ACCORDING TO REQUIREMENTS OF THE OSH ACT 85 OF 1993[cite: 6].
         </div>
       </section>
     </div>
@@ -453,27 +450,12 @@
   <div class="actions-bar">
     <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset Form</button>
     <button type="button" class="btn btn-primary" id="printBtn" onclick="printCertificate()" disabled>
-      🖨️ Print / Download PDF Certificate
+      🖨️ Print / Download PDF Job Card
     </button>
   </div>
 
 <script>
   const checklistsData = {
-    "Mobile Machinery": [
-      "Visual Inspection of Machine & Chassis",
-      "Current Load Test Certificate & Documentation[cite: 6]",
-      "Number Plates & License Disk[cite: 6]",
-      "Outriggers, Pads and Pans[cite: 6]",
-      "Axles, Transmission & Final Drives[cite: 6]",
-      "Track Adjustment, Rollers & Sprockets[cite: 6]",
-      "Steering, Suspension Bars & Locking Pins[cite: 6]",
-      "Tyres, Rims, Thread Condition & Wheel Nuts[cite: 6]",
-      "Hydraulic Cylinders, Hoses & Connections[cite: 6]",
-      "Braking System, Parking Brake & Hold Test",
-      "Engine Fluid Levels, Coolant & Leak Inspection[cite: 6]",
-      "Warning Lights, Horn, Reverse Beepers & Beacon[cite: 6]",
-      "Operator Controls, Dashboard Gauges & Seatbelts[cite: 6]"
-    ],
     "Mobile Crane": [
       "Visual Inspection of Machine[cite: 6]",
       "Current Load Test Certificate[cite: 6]",
@@ -519,14 +501,6 @@
       "Upper & Lower Limit Switches / Anti-Two-Block",
       "Pendant / Remote Control Station & Emergency Stop",
       "Crane Runway Rails, End Stops & Power Supply Festoon"
-    ],
-    "Tackle Equipment": [
-      "Visual Inspection of Webbing Slings / Wire Ropes / Chains",
-      "Identification Tags, SWL Markings & Traceability",
-      "Check for Cuts, Tears, Abrasions or Heat Damage",
-      "Shackle Pins, Bows, Hooks & Rigging Hardware Condition",
-      "Deformation, Cracks or Excessive Wear Inspection",
-      "Current Load Test & Proof Test Certification Compliance[cite: 6]"
     ]
   };
 
@@ -534,39 +508,50 @@
     document.getElementById('inspectionDate').valueAsDate = new Date();
     loadNextSequence('H');
     updateHeaderProvider();
-    renderChecklist();
+    onCategoryChange();
     initSignatures();
     updateJobIdDisplay();
   });
 
   function updateHeaderProvider() {
     let name = document.getElementById('providerName').value.trim();
-    document.getElementById('headerProviderDisplay').innerText = name || 'Inspection Services';
+    document.getElementById('headerProviderDisplay').innerText = name || 'Field Service';
   }
 
   function onCategoryChange() {
     let cat = document.getElementById('machineCategory').value;
     let subTypeContainer = document.getElementById('subTypeContainer');
-    
-    if (cat === 'Lifting Machinery') {
-      subTypeContainer.style.display = 'block';
-    } else {
-      subTypeContainer.style.display = 'none';
-    }
-    renderChecklist();
-  }
+    let subTypeSelect = document.getElementById('machinerySubType');
+    let checklistSection = document.getElementById('checklistSection');
 
-  function getActiveChecklistItems() {
-    let cat = document.getElementById('machineCategory').value;
-    if (cat === 'Lifting Machinery') {
-      let subType = document.getElementById('liftingSubType').value;
-      return checklistsData[subType] || checklistsData['Mobile Crane'];
+    if (cat === 'Mobile Machinery') {
+      subTypeContainer.style.display = 'block';
+      subTypeSelect.innerHTML = `
+        <option value="Mobile Crane">Mobile Crane</option>
+        <option value="Forklift">Forklift / Telehandler</option>
+      `;
+      checklistSection.style.display = 'block';
+      renderChecklist();
+    } else if (cat === 'Lifting Machinery') {
+      subTypeContainer.style.display = 'block';
+      subTypeSelect.innerHTML = `
+        <option value="Overhead Crane">Overhead / Gantry Crane</option>
+      `;
+      checklistSection.style.display = 'block';
+      renderChecklist();
+    } else if (cat === 'Tackle Equipment') {
+      subTypeContainer.style.display = 'none';
+      checklistSection.style.display = 'none'; // No checklist for tackle
+      evaluateInspection();
     }
-    return checklistsData[cat] || checklistsData['Mobile Machinery'];
   }
 
   function renderChecklist() {
-    let items = getActiveChecklistItems();
+    let cat = document.getElementById('machineCategory').value;
+    if (cat === 'Tackle Equipment') return;
+
+    let subType = document.getElementById('machinerySubType').value;
+    let items = checklistsData[subType] || [];
     let tbody = document.getElementById('checklistBody');
     tbody.innerHTML = '';
     itemStatuses = {};
@@ -637,7 +622,24 @@
   }
 
   function evaluateInspection() {
-    let items = getActiveChecklistItems();
+    let cat = document.getElementById('machineCategory').value;
+    let certSection = document.getElementById('certSection');
+    let printBtn = document.getElementById('printBtn');
+    let prefix = document.getElementById('jobPrefix').value;
+    let seq = document.getElementById('jobSeq').value.trim() || '01';
+    let fullId = prefix + seq;
+    let todayStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
+
+    if (cat === 'Tackle Equipment') {
+      // Tackle uses Job Card only, no checklist
+      certSection.className = "cert-unlocked";
+      printBtn.disabled = false;
+      document.getElementById('displayCertId').innerText = `Job Card: ${fullId}`;
+      return;
+    }
+
+    let subType = document.getElementById('machinerySubType').value;
+    let items = checklistsData[subType] || [];
     let totalItems = items.length;
     let evaluatedCount = Object.keys(itemStatuses).length;
     let hasFail = Object.values(itemStatuses).includes('FAIL');
@@ -645,28 +647,22 @@
     let passCount = Object.values(itemStatuses).filter(s => s === 'PASS').length;
 
     let banner = document.getElementById('inspectionBanner');
-    let certSection = document.getElementById('certSection');
-    let printBtn = document.getElementById('printBtn');
-    let prefix = document.getElementById('jobPrefix').value;
-    let seq = document.getElementById('jobSeq').value.trim() || '01';
-    let fullId = prefix + seq;
 
     if (hasFail) {
       banner.className = "status-banner failed";
-      banner.innerHTML = "❌ Inspection Failed: One or more safety items have failed. Certificate generation is blocked until corrective actions are resolved.";
+      banner.innerHTML = "❌ Inspection Failed: One or more safety items have failed. Sign-off is blocked until resolved.";
       certSection.className = "cert-locked";
       printBtn.disabled = true;
       document.getElementById('displayCertId').innerText = "Cert: Blocked (Failed Check)";
     } else if (allPassed && passCount > 0) {
       banner.className = "status-banner passed";
-      banner.innerHTML = "✔ All Inspection Items Passed! Certificate unlocked and ready for sign-off.";
+      banner.innerHTML = "✔ All Inspection Items Passed! Sign-off unlocked.";
       certSection.className = "cert-unlocked";
       printBtn.disabled = false;
-      let todayStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
       document.getElementById('displayCertId').innerText = `Cert No: CERT-${fullId}-${todayStr}`;
     } else {
       banner.className = "status-banner pending";
-      banner.innerHTML = `⏳ Evaluation in progress (${evaluatedCount}/${totalItems} checked). Please assign PASS, FAIL, or N/A to all items.`;
+      banner.innerHTML = `⏳ Evaluation in progress (${evaluatedCount}/${totalItems} checked). Complete all checks to unlock sign-off.`;
       certSection.className = "cert-locked";
       printBtn.disabled = true;
       document.getElementById('displayCertId').innerText = "Cert: Pending Inspection";
@@ -752,7 +748,7 @@
   }
 
   function resetForm() {
-    if (confirm("Are you sure you want to reset this inspection form?")) {
+    if (confirm("Are you sure you want to reset this form?")) {
       location.reload();
     }
   }

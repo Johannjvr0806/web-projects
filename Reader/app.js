@@ -262,6 +262,22 @@ async function openBook(id) {
 }
 
 function setupRenditionEvents() {
+  // Reliable tap zones inside the ePub iframe content
+  currentRendition.hooks.content.register((contents) => {
+    contents.document.addEventListener('click', (e) => {
+      const width = contents.document.documentElement.clientWidth;
+      const x = e.clientX;
+
+      if (x < width * 0.25) {
+        currentRendition.prev(); // Left 25%: Previous Page
+      } else if (x > width * 0.75) {
+        currentRendition.next(); // Right 25%: Next Page
+      } else {
+        toggleControls();        // Center 50%: Toggle Top/Bottom Bars
+      }
+    });
+  });
+
   currentRendition.on("relocated", location => {
     const cfi = location.start.cfi;
     const book = books.find(b => b.id === currentBookId);
@@ -290,7 +306,7 @@ function setupRenditionEvents() {
   });
 }
 
-// Tap Controls Auto-Hide
+// Tap Controls Auto-Hide Toggle
 function toggleControls() {
   controlsVisible = !controlsVisible;
   const topbar = document.getElementById('reader-topbar');

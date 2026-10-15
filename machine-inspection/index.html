@@ -219,4 +219,255 @@
           <input type="number" id="breakMins" value="30" />
         </div>
         <div class="form-group">
-          <label>Travel Time</label
+          <label>Travel Time</label>
+          <input type="text" id="travelTime" value="1h 00m" />
+        </div>
+      </div>
+      <div class="form-group" style="margin-top: 10px;">
+        <label>Work Carried Out / Observations</label>
+        <textarea id="workCarriedOut" placeholder="Describe work performed..."></textarea>
+      </div>
+    </fieldset>
+
+    <!-- Equipment & Tackle Spreadsheet Table -->
+    <fieldset>
+      <legend>Equipment & Tackle Spreadsheet</legend>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:30px;">#</th>
+              <th>Description</th>
+              <th>Ser No</th>
+              <th>Lanyard</th>
+              <th>Make</th>
+              <th>SWL / KG</th>
+              <th>Length</th>
+              <th>Size</th>
+              <th>Legs</th>
+              <th style="width:40px;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="excelTableBody">
+            <!-- Dynamic Rows added here -->
+          </tbody>
+        </table>
+      </div>
+      <button type="button" class="btn" style="margin-top: 10px;" onclick="addExcelRow()">+ Add Equipment Item</button>
+    </fieldset>
+
+    <!-- Signatures -->
+    <fieldset>
+      <legend>Authorisation & Signatures</legend>
+      <div class="sig-container">
+        <div class="sig-box">
+          <label>Technician Signature</label>
+          <canvas id="techSigCanvas"></canvas>
+          <button type="button" class="btn btn-danger" style="padding:4px 8px; font-size:10px; margin-top:5px;" onclick="clearCanvas('techSigCanvas')">Clear</button>
+        </div>
+        <div class="sig-box">
+          <label>Client Representative Signature</label>
+          <canvas id="clientSigCanvas"></canvas>
+          <button type="button" class="btn btn-danger" style="padding:4px 8px; font-size:10px; margin-top:5px;" onclick="clearCanvas('clientSigCanvas')">Clear</button>
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- Submit Action -->
+    <div class="actions">
+      <button type="button" class="btn" id="submitCloudBtn" onclick="submitToCloud()" style="font-size: 16px; padding: 12px 25px;">☁️ Submit to Google Sheet & Email</button>
+    </div>
+
+  </form>
+</div>
+
+<script>
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz_T5zYd-VlfPMFGnF0Ndf_ucauNUelKsmQihWww1xPpBOT_e8wEIk7zZFlCumLlFkAJg/exec";
+
+  window.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('inspectionDate').valueAsDate = new Date();
+    loadNextSequence('H');
+    
+    let providerInput = document.getElementById('providerName');
+    if (!providerInput.value) {
+      providerInput.value = "CJB Brace Consulting";
+    }
+    updateHeaderProvider();
+    
+    addExcelRow();
+    setupCanvas('techSigCanvas');
+    setupCanvas('clientSigCanvas');
+  });
+
+  function updateHeaderProvider() {
+    let name = document.getElementById('providerName').value.trim();
+    document.getElementById('headerProviderDisplay').innerText = name || 'CJB Brace Consulting';
+  }
+
+  function getStorageKey(prefix) {
+    return 'job_seq_' + prefix;
+  }
+
+  function loadNextSequence(prefix) {
+    let lastSeq = localStorage.getItem(getStorageKey(prefix));
+    let nextNum = 1;
+    if (lastSeq !== null) {
+      let parsed = parseInt(lastSeq, 10);
+      if (!isNaN(parsed)) {
+        nextNum = parsed + 1;
+      }
+    }
+    document.getElementById('jobSeq').value = String(nextNum).padStart(2, '0');
+  }
+
+  function onPrefixChange() {
+    let prefix = document.getElementById('jobPrefix').value;
+    loadNextSequence(prefix);
+    let techSelect = document.getElementById('techName');
+    if (prefix === 'H') techSelect.value = 'Herman';
+    if (prefix === 'K') techSelect.value = 'Kobus';
+  }
+
+  function addExcelRow() {
+    let tbody = document.getElementById('excelTableBody');
+    let rowCount = tbody.rows.length + 1;
+    let row = tbody.insertRow();
+    row.innerHTML = `
+      <td style="text-align:center;">${rowCount}</td>
+      <td><input type="text" class="table-input eq-item" placeholder="Item" /></td>
+      <td><input type="text" class="table-input eq-ser" placeholder="S/N" /></td>
+      <td><input type="text" class="table-input eq-lanyard" placeholder="Lanyard" /></td>
+      <td><input type="text" class="table-input eq-make" placeholder="Make" /></td>
+      <td><input type="text" class="table-input eq-swl" placeholder="SWL" /></td>
+      <td><input type="text" class="table-input eq-length" placeholder="Length" /></td>
+      <td><input type="text" class="table-input eq-size" placeholder="Size" /></td>
+      <td><input type="text" class="table-input eq-legs" placeholder="Legs" /></td>
+      <td style="text-align:center;"><button type="button" class="btn btn-danger" style="padding:2px 5px; font-size:10px;" onclick="deleteRow(this)">X</button></td>
+    `;
+  }
+
+  function deleteRow(btn) {
+    let row = btn.parentNode.parentNode;
+    row.parentNode.removeChild(row);
+    reindexTable();
+  }
+
+  function reindexTable() {
+    let tbody = document.getElementById('excelTableBody');
+    for (let i = 0; i < tbody.rows.length; i++) {
+      tbody.rows[i].cells[0].innerText = i + 1;
+    }
+  }
+
+  // Signature handling
+  let signatures = {};
+  function setupCanvas(canvasId) {
+    let canvas = document.getElementById(canvasId);
+    let ctx = canvas.getContext('2d');
+    let drawing = false;
+
+    // Give layout time to initialize width/height
+    setTimeout(() => {
+      canvas.width = canvas.offsetWidth || 300;
+      canvas.height = canvas.offsetHeight || 120;
+    }, 100);
+
+    function getPos(e) {
+      let rect = canvas.getBoundingClientRect();
+      let clientX = e.clientX || (e.touches && e.touches[0].clientX);
+      let clientY = e.clientY || (e.touches && e.touches[0].clientY);
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    }
+
+    canvas.addEventListener('mousedown', (e) => { drawing = true; ctx.beginPath(); let p = getPos(e); ctx.moveTo(p.x, p.y); });
+    canvas.addEventListener('mousemove', (e) => { if (!drawing) return; let p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); });
+    window.addEventListener('mouseup', () => { drawing = false; });
+
+    canvas.addEventListener('touchstart', (e) => { drawing = true; ctx.beginPath(); let p = getPos(e); ctx.moveTo(p.x, p.y); e.preventDefault(); });
+    canvas.addEventListener('touchmove', (e) => { if (!drawing) return; let p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); });
+    window.addEventListener('touchend', () => { drawing = false; });
+
+    signatures[canvasId] = { canvas, ctx };
+  }
+
+  function clearCanvas(canvasId) {
+    let sig = signatures[canvasId];
+    if (sig) {
+      sig.ctx.clearRect(0, 0, sig.canvas.width, sig.canvas.height);
+    }
+  }
+
+  function submitToCloud() {
+    let prefix = document.getElementById('jobPrefix').value;
+    let seq = document.getElementById('jobSeq').value.trim();
+
+    let equipmentRows = [];
+    let tbody = document.getElementById('excelTableBody');
+    Array.from(tbody.rows).forEach(row => {
+      equipmentRows.push({
+        item: row.querySelector('.eq-item').value,
+        ser: row.querySelector('.eq-ser').value,
+        lanyard: row.querySelector('.eq-lanyard').value,
+        make: row.querySelector('.eq-make').value,
+        swl: row.querySelector('.eq-swl').value,
+        length: row.querySelector('.eq-length').value,
+        size: row.querySelector('.eq-size').value,
+        legs: row.querySelector('.eq-legs').value
+      });
+    });
+
+    let techSigData = document.getElementById('techSigCanvas').toDataURL();
+    let clientSigData = document.getElementById('clientSigCanvas').toDataURL();
+
+    let payload = {
+      jobId: prefix + seq,
+      provider: document.getElementById('providerName').value,
+      client: document.getElementById('clientName').value,
+      site: document.getElementById('siteLocation').value,
+      date: document.getElementById('inspectionDate').value,
+      tech: document.getElementById('techName').value,
+      recipientEmail: document.getElementById('recipientEmail').value,
+      startTime: document.getElementById('startTime').value,
+      finishTime: document.getElementById('finishTime').value,
+      breakMins: document.getElementById('breakMins').value,
+      travelTime: document.getElementById('travelTime').value,
+      workCarriedOut: document.getElementById('workCarriedOut').value,
+      equipmentRows: equipmentRows,
+      techSig: techSigData,
+      clientSig: clientSigData
+    };
+
+    let btn = document.getElementById('submitCloudBtn');
+    btn.disabled = true;
+    btn.innerText = "⏳ Saving to Google Cloud & Sending PDF...";
+
+    fetch(SCRIPT_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }).then(() => {
+      alert("✔ Successfully saved to Google Sheet & PDF Email sent!");
+      btn.disabled = false;
+      btn.innerText = "☁️ Submit to Google Sheet & Email";
+      
+      let num = parseInt(seq, 10);
+      if (!isNaN(num)) {
+        let currentStored = parseInt(localStorage.getItem(getStorageKey(prefix)) || '0', 10);
+        if (num > currentStored) {
+          localStorage.setItem(getStorageKey(prefix), num);
+        }
+      }
+    }).catch(err => {
+      alert("❌ Error saving to cloud: " + err);
+      btn.disabled = false;
+      btn.innerText = "☁️ Submit to Google Sheet & Email";
+    });
+  }
+</script>
+
+</body>
+</html>

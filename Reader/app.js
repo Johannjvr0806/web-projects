@@ -177,7 +177,7 @@ function renderBookshelf() {
   });
 
   if (filtered.length === 0) {
-    grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; opacity: 0.6; padding: 40px;">No books found in "${activeFilter}". Tapping "Add Book" lets you upload EPUB files!</div>`;
+    grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; opacity: 0.6; padding: 40px;">No books found in "${activeFilter}". Tapping "Add" lets you upload EPUB files!</div>`;
     return;
   }
 
@@ -290,7 +290,6 @@ function setupRenditionEvents() {
   });
 }
 
-// Transparent Touch Shield Tap Handler
 function handleScreenTap(e) {
   const rect = e.currentTarget.getBoundingClientRect();
   const x = e.clientX - rect.left;
@@ -305,7 +304,6 @@ function handleScreenTap(e) {
   }
 }
 
-// Tap Controls Auto-Hide Toggle
 function toggleControls() {
   controlsVisible = !controlsVisible;
   const topbar = document.getElementById('reader-topbar');
@@ -314,7 +312,6 @@ function toggleControls() {
   if (bottombar) bottombar.classList.toggle('hidden', !controlsVisible);
 }
 
-// Smart Bookmarks
 async function addBookmark() {
   if (!currentRendition || !currentBookId) return;
   const book = books.find(b => b.id === currentBookId);
@@ -380,7 +377,6 @@ function jumpToCfi(cfi) {
   }
 }
 
-// Navigation & View Switching
 function switchView(view) {
   if (view === 'shelf') {
     document.getElementById('shelf-view').style.display = 'flex';
@@ -444,7 +440,6 @@ async function loadToc() {
   });
 }
 
-// Text to Speech
 function toggleTTS() {
   if (isTTSPlaying) {
     window.speechSynthesis.cancel();
@@ -465,7 +460,7 @@ function toggleTTS() {
   }
 }
 
-// --- Upgraded Reading Log Logic with Grouping & Bulk Import ---
+// --- Fully Working Reading Log & Bulk Import Logic ---
 function toggleReadingLogModal() {
   const modal = document.getElementById('reading-log-modal');
   document.getElementById('toc-drawer').classList.remove('open');
@@ -485,7 +480,7 @@ function toggleImportBox() {
 
 function processBulkImport() {
   const textarea = document.getElementById('bulk-import-text');
-  const rawText = textarea.value.trim();
+  const rawText = textarea.value ? textarea.value.trim() : '';
   if (!rawText) return alert("Please paste your book list first.");
 
   let readingList = [];
@@ -496,7 +491,6 @@ function processBulkImport() {
     readingList = [];
   }
 
-  // Parse line by line (Supports formats like: "1. Love redesigned - Lauren Asher" or "Love redesigned - Lauren Asher")
   const lines = rawText.split('\n');
   let addedCount = 0;
 
@@ -504,10 +498,8 @@ function processBulkImport() {
     let cleanLine = line.trim();
     if (!cleanLine) return;
 
-    // Remove leading numbers like "1.", "32." if present
     cleanLine = cleanLine.replace(/^\d+[\.\)]\s*/, '');
 
-    // Split by hyphen, dash, or " by "
     let parts = cleanLine.split(/\s*[-–—]\s*|\s+by\s+/i);
     if (parts.length >= 2) {
       const title = parts[0].trim();
@@ -517,7 +509,6 @@ function processBulkImport() {
         addedCount++;
       }
     } else if (cleanLine) {
-      // Fallback if no author is separated
       readingList.push({ title: cleanLine, author: 'Unknown' });
       addedCount++;
     }
@@ -577,7 +568,6 @@ function renderReadingLog() {
     return;
   }
 
-  // Check if view mode selector exists, create it if not
   let viewModeSelect = document.getElementById('log-view-mode');
   if (!viewModeSelect) {
     const headerDiv = document.querySelector('#reading-log-modal .toc-header');

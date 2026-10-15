@@ -9,7 +9,6 @@
     
     <!-- Dynamic Web App Manifest for PWA Support -->
     <script>
-        // Using the primary visual element 'PSI' for the install icon
         const manifest = {
             "name": "PSI Law Recordings",
             "short_name": "PSI Law",
@@ -70,7 +69,7 @@
             overflow: hidden;
         }
 
-        /* --- HEADER (Updated with logo and specific text) --- */
+        /* --- HEADER --- */
         header {
             background-color: var(--bg-secondary);
             border-bottom: 2px solid var(--accent-gold);
@@ -87,9 +86,8 @@
             gap: 16px;
         }
 
-        /* Styling for the new logo image */
-        .app-logo-image {
-            height: 50px; /* Reduced slightly to fit header nicely */
+        .brand-svg-logo {
+            height: 48px;
             width: auto;
             display: block;
         }
@@ -100,7 +98,7 @@
         }
 
         .brand-title h1 {
-            font-size: 22px; /* Emphasized as application name */
+            font-size: 22px;
             font-weight: 700;
             letter-spacing: 0.5px;
             color: var(--text-main);
@@ -127,7 +125,7 @@
             border-radius: 6px;
             border: none;
             cursor: pointer;
-            display: none; /* Shown via JS */
+            display: none;
             align-items: center;
             gap: 6px;
             font-size: 13px;
@@ -632,8 +630,19 @@
     <!-- APP HEADER -->
     <header>
         <div class="brand-container">
-            <!-- logo file referenced from image_0.png in prompt context -->
-            <img src="https://raw.githubusercontent.com/the-m-w/canvas-assets/refs/heads/main/assets/image_0_processed.png" alt="PSI Payne & Steynberg Incorporated Logo" class="app-logo-image">
+            <!-- Inline SVG Logo (Guaranteed to display everywhere without external image URLs) -->
+            <svg class="brand-svg-logo" viewBox="0 0 280 180" xmlns="http://www.w3.org/2000/svg">
+                <rect width="280" height="180" fill="#0b111a" rx="12"/>
+                <rect x="22" y="38" width="10" height="110" fill="#c59b27"/>
+                <rect x="36" y="38" width="4" height="110" fill="#c59b27"/>
+                <rect x="44" y="38" width="10" height="110" fill="#c59b27"/>
+                <polygon points="58,148 68,148 68,38 78,38 78,148 88,148 73,165" fill="#c59b27"/>
+                <text x="100" y="75" font-family="'Times New Roman', Georgia, serif" font-weight="bold" font-size="34" fill="#c59b27" letter-spacing="1">PAYNE</text>
+                <text x="100" y="98" font-family="'Times New Roman', Georgia, serif" font-weight="bold" font-size="18" fill="#ffffff" letter-spacing="1.5">&amp; STEYNBERG</text>
+                <text x="100" y="118" font-family="'Segoe UI', sans-serif" font-weight="600" font-size="11" fill="#c59b27" letter-spacing="2">INCORPORATED</text>
+                <text x="100" y="136" font-family="'Segoe UI', sans-serif" font-size="9" fill="#94a3b8" letter-spacing="1.5">ATTORNEYS &bull; NOTARIES &bull; CONVEYANCERS</text>
+            </svg>
+
             <div class="brand-title">
                 <h1>PSI Law Recordings</h1>
                 <span>Legal Dictation & Audio Manager</span>

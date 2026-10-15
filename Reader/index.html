@@ -54,16 +54,11 @@
     </div>
   </div>
 
-  <!-- READER VIEW -->
-  <div id="reader-view" class="view-container" style="display:none;">
-    
-    <!-- Reader Top Bar -->
+  <!-- Reader Top Bar (Clean & Streamlined) -->
     <div class="reader-header" id="reader-topbar">
       <button class="control-btn" onclick="toggleToc()">☰ Contents</button>
       <button class="control-btn" onclick="toggleBookmarkDrawer()">🔖 Bookmarks</button>
       <button class="control-btn" onclick="addBookmark()">➕ Bookmark</button>
-      <button class="control-btn" onclick="addHighlight()" style="background: #f59e0b; color: white;">✨ Highlight</button>
-      <button class="control-btn" onclick="toggleHighlightDrawer()" style="background: #8b5cf6; color: white;">💡 Highlights</button>
       <div class="reader-clock" id="live-clock">00:00</div>
       <div class="font-controls">
         <button class="control-btn" onclick="changeFontSize(-2)">A-</button>
@@ -84,9 +79,11 @@
       <div id="tap-shield" onclick="handleScreenTap(event)"></div>
     </div>
 
-    <!-- Reader Bottom Control Bar -->
+    <!-- Reader Bottom Control Bar (Highlights moved here) -->
     <div class="reader-footer" id="reader-bottombar">
       <button class="control-btn" onclick="prevPage()">◀ Prev</button>
+      <button class="control-btn" onclick="addHighlight()" style="background: #f59e0b; color: white;">✨ Highlight</button>
+      <button class="control-btn" onclick="toggleHighlightDrawer()" style="background: #8b5cf6; color: white;">💡 Highlights</button>
       <button id="tts-btn" class="control-btn" onclick="toggleTTS()">🔊 Listen</button>
       <div class="progress-info">
         <span id="page-info">Loading...</span>

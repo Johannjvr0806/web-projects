@@ -33,6 +33,7 @@
     </div>
 
     <div class="header-actions">
+      <button id="reading-log-tab-btn" class="action-btn" style="background: #3b82f6 !important; color: white !important;" onclick="toggleReadingLogModal()">📚 Reading Log</button>
       <a href="https://oceanofpdf.com" target="_blank" class="action-btn ocean-btn" title="Download books from OceanOfPDF">📥 OceanOfPDF</a>
       <label for="epub-input" class="action-btn upload-btn">📁 Add Book</label>
       <input type="file" id="epub-input" accept=".epub" multiple style="display:none;">
@@ -112,6 +113,20 @@
       <ul id="bookmark-list"></ul>
     </div>
 
+  </div>
+
+  <!-- Reading Log Drawer -->
+  <div id="reading-log-modal" class="toc-drawer" style="left: auto; right: -400px; width: 380px; transition: right 0.3s ease; z-index: 200;">
+    <div class="toc-header">
+      <h3>Reading Log (<span id="safe-total-count">0</span>)</h3>
+      <button class="control-btn" onclick="toggleReadingLogModal()">✕</button>
+    </div>
+    <div style="padding: 12px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid rgba(128,128,128,0.2);">
+      <input type="text" id="safe-book-title" placeholder="Book Title (e.g. Fantasy)" style="padding: 8px; border-radius: 6px; border: 1px solid rgba(128,128,128,0.3); background: inherit; color: inherit; font-size: 14px;">
+      <input type="text" id="safe-book-author" placeholder="Author (e.g. Laura)" style="padding: 8px; border-radius: 6px; border: 1px solid rgba(128,128,128,0.3); background: inherit; color: inherit; font-size: 14px;">
+      <button class="tab-btn active" onclick="addSafeBook()" style="width: 100%;">+ Add Book</button>
+    </div>
+    <ol id="safe-reading-list" style="flex: 1; overflow-y: auto; list-style: decimal; padding: 10px 10px 10px 30px; margin: 0;"></ol>
   </div>
 
   <script src="app.js"></script>

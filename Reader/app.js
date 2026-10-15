@@ -297,11 +297,11 @@ function handleScreenTap(e) {
   const width = rect.width;
 
   if (x < width * 0.25) {
-    if (currentRendition) currentRendition.prev(); // Left 25%: Previous Page
+    if (currentRendition) currentRendition.prev();
   } else if (x > width * 0.75) {
-    if (currentRendition) currentRendition.next(); // Right 25%: Next Page
+    if (currentRendition) currentRendition.next();
   } else {
-    toggleControls(); // Center 50%: Toggle Top/Bottom Bars
+    toggleControls();
   }
 }
 
@@ -338,6 +338,7 @@ async function addBookmark() {
 function toggleBookmarkDrawer() {
   const drawer = document.getElementById('bookmark-drawer');
   document.getElementById('toc-drawer').classList.remove('open');
+  document.getElementById('reading-log-modal').classList.remove('open');
   drawer.classList.toggle('open');
   if (drawer.classList.contains('open')) renderBookmarks();
 }
@@ -423,6 +424,7 @@ function applyThemeToRendition() {
 
 function toggleToc() {
   document.getElementById('bookmark-drawer').classList.remove('open');
+  document.getElementById('reading-log-modal').classList.remove('open');
   document.getElementById('toc-drawer').classList.toggle('open');
 }
 
@@ -461,4 +463,62 @@ function toggleTTS() {
     isTTSPlaying = true;
     document.getElementById('tts-btn').textContent = '⏹ Stop';
   }
+}
+
+// --- Integrated Reading Log Logic ---
+function toggleReadingLogModal() {
+  const modal = document.getElementById('reading-log-modal');
+  document.getElementById('toc-drawer').classList.remove('open');
+  document.getElementById('bookmark-drawer').classList.remove('open');
+  modal.classList.toggle('open');
+  if (modal.classList.contains('open')) {
+    renderReadingLog();
+  }
+}
+
+async function addSafeBook() {
+  const titleInput = document.getElementById('safe-book-title');
+  const authorInput = document.getElementById('safe-book-author');
+  const title = titleInput.value.trim();
+  const author = authorInput.value.trim();
+
+  if (!title) return alert("Please enter a book title.");
+
+  let readingList = JSON.parse(await localforage.getItem('general_reading_list_safe')) || [];
+  readingList.push({ title, author: author || 'Unknown' });
+  await localforage.setItem('general_reading_list_safe', readingList);
+
+  titleInput.value = '';
+  authorInput.value = '';
+  renderReadingLog();
+}
+
+async function renderReadingLog() {
+  const listContainer = document.getElementById('safe-reading-list');
+  const totalCount = document.getElementById('safe-total-count');
+  let readingList = JSON.parse(await localforage.getItem('general_reading_list_safe')) || [];
+
+  listContainer.innerHTML = '';
+  totalCount.textContent = readingList.length;
+
+  if (readingList.length === 0) {
+    listContainer.innerHTML = '<li style="opacity: 0.6; justify-content: center;">No books logged yet. Add your first one above!</li>';
+    return;
+  }
+
+  readingList.forEach((book, index) => {
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <span><strong>${book.title}</strong> by ${book.author}</span>
+      <button class="safe-delete-btn" onclick="removeSafeBook(${index})">✕</button>
+    `;
+    listContainer.appendChild(li);
+  });
+}
+
+async function removeSafeBook(index) {
+  let readingList = JSON.parse(await localforage.getItem('general_reading_list_safe')) || [];
+  readingList.splice(index, 1);
+  await localforage.setItem('general_reading_list_safe', readingList);
+  renderReadingLog();
 }

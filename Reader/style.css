@@ -1,5 +1,5 @@
 /* Reset & Base Styles */
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 body, html { width: 100%; height: 100%; overflow: hidden; }
 
 /* Themes */
@@ -47,7 +47,6 @@ header#app-header { display: flex; justify-content: space-between; align-items: 
 /* Viewer Wrapper & Touch Shield */
 .viewer-wrapper { position: relative; flex: 1; width: 100%; height: 100%; overflow: hidden; }
 .epub-viewer { width: 100%; height: 100%; }
-.epub-viewer iframe { background: transparent !important; }
 #tap-shield { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; background: transparent; cursor: pointer; }
 
 /* Reader Header & Footer with Auto-Hide Transition */
@@ -70,7 +69,7 @@ header#app-header { display: flex; justify-content: space-between; align-items: 
 .progress-track { width: 100%; height: 4px; background: rgba(128,128,128,0.2); border-radius: 2px; overflow: hidden; }
 #progress-bar { width: 0%; height: 100%; background: #4f46e5; transition: width 0.2s; }
 
-/* Drawers (TOC & Bookmarks) */
+/* Drawers (TOC & Bookmarks & Reading Log) */
 .toc-drawer { position: fixed; top: 0; left: -320px; width: 320px; height: 100%; background: inherit; box-shadow: 2px 0 10px rgba(0,0,0,0.3); transition: left 0.3s ease; z-index: 100; display: flex; flex-direction: column; }
 .toc-drawer.open { left: 0; }
 .toc-header { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid rgba(128,128,128,0.2); }
@@ -78,6 +77,26 @@ header#app-header { display: flex; justify-content: space-between; align-items: 
 .toc-item, .bookmark-item { padding: 10px 12px; font-size: 14px; cursor: pointer; border-radius: 6px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; background: rgba(128,128,128,0.1); }
 .toc-item:hover, .bookmark-item:hover { background: rgba(128,128,128,0.2); }
 .bookmark-del { background: #ef4444; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 11px; cursor: pointer; }
+
+/* Reading Log Specific Styles */
+#reading-log-modal.open { right: 0 !important; left: auto !important; }
+#safe-reading-list li {
+    padding: 8px 10px;
+    font-size: 14px;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.15);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.safe-delete-btn {
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+    cursor: pointer;
+}
 
 /* Theme-specific overrides */
 body.theme-purple #app-header, body.theme-purple .reader-header, body.theme-purple .reader-footer, body.theme-purple .toc-drawer { background-color: #1a0f26 !important; color: #f3e8ff !important; border-color: #3b2352 !important; }

@@ -54,22 +54,17 @@
     </div>
   </div>
 
-  <!-- Reader Top Bar (Clean & Streamlined) -->
+  <!-- READER VIEW -->
+  <div id="reader-view" class="view-container" style="display:none;">
+    
+    <!-- Reader Top Bar (Streamlined to prevent wrapping/flashing) -->
     <div class="reader-header" id="reader-topbar">
-      <button class="control-btn" onclick="toggleToc()">☰ Contents</button>
+      <button class="control-btn" onclick="toggleToc()">☰ TOC</button>
       <button class="control-btn" onclick="toggleBookmarkDrawer()">🔖 Bookmarks</button>
       <button class="control-btn" onclick="addBookmark()">➕ Bookmark</button>
-      <div class="reader-clock" id="live-clock">00:00</div>
       <div class="font-controls">
         <button class="control-btn" onclick="changeFontSize(-2)">A-</button>
         <button class="control-btn" onclick="changeFontSize(2)">A+</button>
-      </div>
-      <div class="theme-picker">
-        <div class="theme-dot light" onclick="setTheme('theme-light')"></div>
-        <div class="theme-dot sepia" onclick="setTheme('theme-sepia')"></div>
-        <div class="theme-dot purple" onclick="setTheme('theme-purple')"></div>
-        <div class="theme-dot navy" onclick="setTheme('theme-navy')"></div>
-        <div class="theme-dot dark" onclick="setTheme('theme-dark')"></div>
       </div>
     </div>
 
@@ -79,7 +74,7 @@
       <div id="tap-shield" onclick="handleScreenTap(event)"></div>
     </div>
 
-    <!-- Reader Bottom Control Bar (Highlights moved here) -->
+    <!-- Reader Bottom Control Bar -->
     <div class="reader-footer" id="reader-bottombar">
       <button class="control-btn" onclick="prevPage()">◀ Prev</button>
       <button class="control-btn" onclick="addHighlight()" style="background: #f59e0b; color: white;">✨ Highlight</button>

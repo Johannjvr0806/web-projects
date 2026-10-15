@@ -47,10 +47,21 @@ header#app-header, .reader-header { display: flex; justify-content: space-betwee
 /* Viewer Wrapper & Touch Shield */
 .viewer-wrapper { position: relative; flex: 1; width: 100%; height: 100%; overflow: hidden; }
 .epub-viewer { width: 100%; height: 100%; }
-#tap-shield { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; background: transparent; cursor: pointer; }
+#tap-shield { 
+  position: absolute; 
+  top: 0; 
+  left: 0; 
+  width: 100%; 
+  height: 100%; 
+  z-index: 20; 
+  background: transparent; 
+  pointer-events: none; /* Crucial: lets text selection pass through to the reader iframe */
+}
 
 /* Reader Header & Footer with Auto-Hide Transition */
-.reader-header, .reader-footer { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: inherit; border-top: 1px solid rgba(128,128,128,0.2); border-bottom: 1px solid rgba(128,128,128,0.2); z-index: 10; transition: transform 0.3s ease, opacity 0.3s ease; }
+.reader-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: inherit; border-bottom: 1px solid rgba(128,128,128,0.2); z-index: 10; height: 60px; flex-wrap: nowrap; transform: translateY(0); opacity: 1; transition: transform 0.3s ease, opacity 0.3s ease; }
+.reader-footer { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: inherit; border-top: 1px solid rgba(128,128,128,0.2); z-index: 10; height: 60px; flex-wrap: nowrap; transform: translateY(0); opacity: 1; transition: transform 0.3s ease, opacity 0.3s ease; }
+
 .reader-header.hidden { transform: translateY(-100%); opacity: 0; pointer-events: none; }
 .reader-footer.hidden { transform: translateY(100%); opacity: 0; pointer-events: none; }
 
@@ -103,5 +114,3 @@ body.theme-purple #app-header, body.theme-purple .reader-header, body.theme-purp
 body.theme-navy #app-header, body.theme-navy .reader-header, body.theme-navy .reader-footer, body.theme-navy .toc-drawer { background-color: #0b1320 !important; color: #e0e6ed !important; border-color: #1e293b !important; }
 body.theme-dark #app-header, body.theme-dark .reader-header, body.theme-dark .reader-footer, body.theme-dark .toc-drawer { background-color: #121212 !important; color: #e0e0e0 !important; border-color: #2a2a2a !important; }
 body.theme-sepia #app-header, body.theme-sepia .reader-header, body.theme-sepia .reader-footer, body.theme-sepia .toc-drawer { background-color: #ece3cc !important; color: #433422 !important; border-color: #d4c5a9 !important; }
-header#app-header, .reader-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: #fff; border-bottom: 1px solid #e5e7eb; height: 60px; color: inherit; flex-wrap: nowrap; overflow: hidden; }
-.reader-footer { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: inherit; border-top: 1px solid rgba(128,128,128,0.2); border-bottom: 1px solid rgba(128,128,128,0.2); z-index: 10; height: 60px; flex-wrap: nowrap; }

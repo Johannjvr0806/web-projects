@@ -1,921 +1,222 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Machine & Equipment Inspection Timesheet System</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Field Service Job Card & Inspection Report</title>
   <style>
     :root {
-      --ink: #17173a;
-      --muted: #55587a;
-      --line: #cdcfe3;
-      --soft: #f1f1f9;
-      --paper: #ffffff;
-      --page: #e8e9f4;
+      --primary: #000099;
+      --primary-light: #e8e9f4;
       --accent: #2323b5;
-      --pale: #c9caf0;
-      --accent-dark: #000099;
-      --danger: #b3261e;
-      --danger-soft: #fdecea;
-      --ok: #1f6b45;
-      --ok-soft: #e6f4ed;
+      --text: #17173a;
+      --bg: #f4f4f9;
+      --white: #ffffff;
+      --border: #ccc;
     }
-    * { box-sizing: border-box; }
-    html { -webkit-text-size-adjust: 100%; }
     body {
+      font-family: Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
       margin: 0;
-      background: var(--page);
-      color: var(--ink);
-      font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
-      font-size: 14px;
-      line-height: 1.4;
-      padding: 20px 12px 60px;
-    }
-    .sheet {
-      max-width: 1060px;
-      margin: 0 auto;
-      background: var(--paper);
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 4px 12px rgba(10, 10, 60, .12), 0 1px 3px rgba(10, 10, 60, .08);
-      margin-bottom: 24px;
-    }
-    header.top {
-      background: var(--accent-dark);
-      color: #fff;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 24px 32px;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-    .brand-title {
-      font-family: "IBM Plex Sans Condensed", sans-serif;
-      font-weight: 600;
-      font-size: 26px;
-      letter-spacing: .04em;
-      text-transform: uppercase;
-      margin: 0;
-    }
-    .brand-subtitle {
-      font-size: 13px;
-      color: var(--pale);
-      margin: 4px 0 0;
-    }
-    .ref-box {
-      text-align: right;
-    }
-    .ref-box label { color: var(--pale); font-size: 12px; margin-bottom: 2px; display: block; }
-    .ref-box .job-id-display {
-      font-family: "IBM Plex Sans Condensed", sans-serif;
-      font-size: 24px;
-      font-weight: 600;
-      color: #fff;
-      background: rgba(255,255,255,0.1);
-      padding: 4px 12px;
-      border-radius: 4px;
-      display: inline-block;
-    }
-
-    /* Navigation Tabs */
-    .nav-bar {
-      max-width: 1060px;
-      margin: 0 auto 16px;
-      display: flex;
-      gap: 8px;
-      background: #d8daf0;
-      padding: 6px;
-      border-radius: 6px;
-    }
-    .nav-tab {
-      flex: 1;
       padding: 10px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: var(--white);
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    header {
+      background: var(--primary);
+      color: var(--white);
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
       text-align: center;
-      font-weight: 600;
-      background: #fff;
-      color: var(--muted);
-      border: 1px solid var(--line);
-      border-radius: 4px;
-      cursor: pointer;
-      transition: all 0.2s;
     }
-    .nav-tab.active {
-      background: var(--accent);
-      color: #fff;
-      border-color: var(--accent);
-    }
-
-    .app-page { display: none; }
-    .app-page.active-page { display: block; }
-
-    section { padding: 24px 32px; border-bottom: 1px solid var(--line); }
-    section:last-of-type { border-bottom: 0; }
+    header h1 { margin: 0; font-size: 20px; text-transform: uppercase; }
+    header p { margin: 5px 0 0 0; font-size: 12px; color: #c9caf0; }
     
-    h2 {
-      margin: 0 0 16px;
-      font-family: "IBM Plex Sans Condensed", sans-serif;
-      font-weight: 600;
-      font-size: 18px;
-      color: var(--accent-dark);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      text-transform: uppercase;
-      letter-spacing: .03em;
+    fieldset {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 15px;
+      margin-bottom: 15px;
     }
-    h2 span.step-badge {
-      background: var(--accent);
-      color: #fff;
+    legend {
+      font-weight: bold;
+      color: var(--primary);
+      padding: 0 5px;
+    }
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .form-group {
+      flex: 1;
+      min-width: 200px;
+      display: flex;
+      flex-direction: column;
+    }
+    label {
       font-size: 12px;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-family: "IBM Plex Sans", sans-serif;
+      font-weight: bold;
+      margin-bottom: 3px;
     }
-
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .grid.three { grid-template-columns: repeat(3, 1fr); }
-    .grid.four { grid-template-columns: repeat(4, 1fr); }
-    .full { grid-column: 1 / -1; }
-
-    label, .lbl { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 6px; }
-    .req::after { content: " *"; color: var(--danger); }
-
-    .input-field-wrapper {
-      position: relative;
-      width: 100%;
-    }
-
-    .print-val {
-      display: none;
-      font-weight: 600;
-      color: var(--ink);
-      font-size: 13px;
-      padding: 4px 0;
-      word-break: break-word;
-    }
-
     input, select, textarea {
-      width: 100%;
-      font: inherit;
-      color: var(--ink);
-      background: #fff;
-      border: 1px solid #a9aecb;
+      padding: 8px;
+      border: 1px solid var(--border);
       border-radius: 4px;
-      padding: 8px 10px;
-      min-height: 40px;
+      font-size: 13px;
     }
-    input:focus, select:focus, textarea:focus {
-      outline: 3px solid rgba(0, 0, 153, .2);
-      border-color: var(--accent);
-    }
-    textarea { resize: vertical; min-height: 80px; }
-
-    .prefix-row {
-      display: flex;
-      gap: 10px;
-    }
-    .prefix-row select { flex: 0 0 135px; }
-
-    /* Excel Table */
-    .excel-table-container {
+    textarea { resize: vertical; height: 70px; }
+    
+    /* Table styling */
+    .table-container {
       overflow-x: auto;
       margin-top: 10px;
     }
-    .excel-table {
+    table {
       width: 100%;
       border-collapse: collapse;
-      min-width: 900px;
-    }
-    .excel-table th, .excel-table td {
-      border: 1px solid var(--line);
-      padding: 6px 8px;
-      text-align: left;
-      font-size: 13px;
-    }
-    .excel-table th {
-      background: var(--soft);
-      font-weight: 600;
-      color: var(--ink);
-      text-transform: uppercase;
       font-size: 11px;
-      letter-spacing: .03em;
     }
-    .btn-row-del {
-      background: var(--danger-soft);
-      color: var(--danger);
-      border: 1px solid var(--danger);
-      border-radius: 4px;
-      padding: 4px 8px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 12px;
+    th, td {
+      border: 1px solid var(--border);
+      padding: 6px;
+      text-align: left;
     }
-    .btn-row-del:hover { background: var(--danger); color: #fff; }
-
-    /* Status Banner */
-    .status-banner {
-      padding: 12px 16px;
-      border-radius: 6px;
-      margin-top: 16px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 12px;
+    th {
+      background-color: var(--primary-light);
     }
-    .status-banner.pending { background: var(--soft); color: var(--muted); border: 1px dashed var(--line); }
-    .status-banner.passed { background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok); }
-
-    /* Signature Canvas Area */
+    input.table-input {
+      width: 100%;
+      box-sizing: border-box;
+      border: none;
+      background: transparent;
+      padding: 4px;
+      font-size: 11px;
+    }
+    
+    /* Signature Canvas */
     .sig-container {
-      border: 1px solid #a9aecb;
-      border-radius: 4px;
-      background: #fff;
-      position: relative;
-      touch-action: none;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .sig-box {
+      flex: 1;
+      min-width: 250px;
     }
     canvas {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: #fff;
       width: 100%;
-      height: 140px;
-      display: block;
-      cursor: crosshair;
+      height: 120px;
+      touch-action: none;
     }
-    .sig-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 6px 10px;
-      background: var(--soft);
-      border-top: 1px solid var(--line);
-      font-size: 12px;
-      color: var(--muted);
-    }
-    .clear-sig {
-      background: none;
-      border: none;
-      color: var(--danger);
-      font-weight: 600;
-      cursor: pointer;
-      font-size: 12px;
-      padding: 2px 6px;
-    }
-    .clear-sig:hover { text-decoration: underline; }
-
-    /* Action Buttons Bar */
-    .actions-bar {
-      max-width: 1060px;
-      margin: 16px auto 40px;
-      display: flex;
-      gap: 12px;
-      justify-content: flex-end;
-      flex-wrap: wrap;
-    }
+    
     .btn {
-      font: inherit;
-      font-weight: 600;
-      padding: 10px 20px;
-      border-radius: 6px;
-      cursor: pointer;
+      background: var(--primary);
+      color: var(--white);
       border: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      transition: background 0.15s;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 13px;
     }
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-primary:hover { background: var(--accent-dark); }
-    .btn-success { background: var(--ok); color: #fff; }
-    .btn-success:hover { background: #164e32; }
-    .btn-secondary { background: #fff; color: var(--ink); border: 1px solid var(--line); }
-    .btn-secondary:hover { background: var(--soft); }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .cert-locked {
-      opacity: 0.4;
-      pointer-events: none;
-      filter: grayscale(100%);
-      transition: all 0.3s ease;
-    }
-    .cert-unlocked {
-      opacity: 1;
-      pointer-events: auto;
-      filter: none;
-    }
-
-    .legal-notice {
-      font-size: 11px;
-      color: var(--muted);
-      border-top: 1px solid var(--line);
-      padding-top: 12px;
-      margin-top: 20px;
+    .btn:hover { background: var(--accent); }
+    .btn-danger { background: #b52323; }
+    .btn-danger:hover { background: #901a1a; }
+    
+    .actions {
       text-align: center;
-      line-height: 1.4;
-    }
-
-    @media(max-width: 680px) {
-      .grid, .grid.three, .grid.four { grid-template-columns: 1fr; }
-      body { padding: 8px 4px 30px; }
-      section { padding: 18px 16px; }
-      header.top { padding: 18px 16px; }
-    }
-
-    /* Print & PDF Export Settings */
-    @media print {
-      @page { size: A4; margin: 6mm; }
-      body { background: #fff; padding: 0; color: #000; font-size: 11px; }
-      .nav-bar, .actions-bar, .clear-sig, button, .btn-row-del, .status-banner { display: none !important; }
-      .app-page { display: block !important; page-break-after: always; }
-      .sheet { box-shadow: none; border-radius: 0; margin: 0; max-width: 100%; width: 100%; }
-      
-      input, select, textarea { display: none !important; }
-      .print-val { display: block !important; }
-
-      .excel-table-container { overflow-x: visible !important; }
-      .excel-table { min-width: 100% !important; }
-      .excel-table th, .excel-table td { padding: 4px 6px !important; font-size: 10px !important; border: 1px solid #000 !important; }
-      .excel-table th:last-child, .excel-table td:last-child { display: none !important; }
-
-      section { page-break-inside: avoid; padding: 12px 18px; }
-      header.top { background: #000099 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 12px 18px; }
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
 
-  <!-- NAVIGATION TABS -->
-  <div class="nav-bar">
-    <button type="button" class="nav-tab active" onclick="switchPage(1)">📄 Page 1: Job Card, Timesheet & Sign-Off</button>
-    <button type="button" class="nav-tab" onclick="switchPage(2)">📊 Page 2: Excel Equipment Spreadsheet</button>
-  </div>
+<div class="container">
+  <header>
+    <h1 id="headerProviderDisplay">CJB Brace Consulting</h1>
+    <p>Field Service Job Card & Inspection Report</p>
+  </header>
 
-  <div class="sheet" id="appSheet">
-    <!-- HEADER -->
-    <header class="top">
-      <div>
-        <h1 class="brand-title" id="headerProviderDisplay">Field Service & Compliance</h1>
-        <p class="brand-subtitle">Inspection Report & Job Card Timesheet</p>
-      </div>
-      <div class="ref-box">
-        <label>Job Card Reference</label>
-        <div><span class="job-id-display" id="displayJobId">H01</span></div>
-        <div style="font-size:11px; color:var(--pale); margin-top:2px;" id="displayStatusText">Status: Equipment List Incomplete</div>
-      </div>
-    </header>
-
-    <!-- ================= PAGE 1: JOB CARD, TIMESHEET & SIGN-OFF ================= -->
-    <div id="page1" class="app-page active-page">
-      <section>
-        <h2><span class="step-badge">Page 1</span> Job Card & Timesheet Details</h2>
-        <div class="grid three">
-          <div>
-            <label class="req">Technician / Prefix</label>
-            <div class="prefix-row">
-              <select id="jobPrefix" onchange="onPrefixChange()">
-                <option value="H">H - Herman</option>
-                <option value="K">K - Kobus</option>
-              </select>
-              <div class="input-field-wrapper">
-                <input type="text" id="jobSeq" value="01" oninput="updateJobIdDisplay()" placeholder="e.g. 01" />
-                <span class="print-val" id="p_jobSeq">01</span>
-              </div>
-            </div>
-          </div>
-          <div>
-            <label class="req">Inspection Company / Provider</label>
-            <div class="input-field-wrapper">
-              <input type="text" id="providerName" value="Inspection Services" oninput="updateHeaderProvider()" placeholder="e.g. Company Name" />
-              <span class="print-val" id="p_providerName">Inspection Services</span>
-            </div>
-          </div>
-          <div>
-            <label class="req">Client Name</label>
-            <div class="input-field-wrapper">
-              <input type="text" id="clientName" placeholder="e.g. Afrit" />
-              <span class="print-val" id="p_clientName">-</span>
-            </div>
-          </div>
-          <div>
-            <label class="req">Site Location</label>
-            <div class="input-field-wrapper">
-              <input type="text" id="siteLocation" placeholder="e.g. Rosslyn" />
-              <span class="print-val" id="p_siteLocation">-</span>
-            </div>
-          </div>
-          <div>
-            <label class="req">Date of Service</label>
-            <div class="input-field-wrapper">
-              <input type="date" id="inspectionDate" />
-              <span class="print-val" id="p_inspectionDate">-</span>
-            </div>
-          </div>
-          <div>
-            <label class="req">Lead Technician</label>
-            <div class="input-field-wrapper">
-              <input type="text" id="techName" value="Herman" />
-              <span class="print-val" id="p_techName">Herman</span>
-            </div>
-          </div>
-          <div class="full">
-            <label>Send Report Copy To Email (Optional)</label>
-            <div class="input-field-wrapper">
-              <input type="email" id="recipientEmail" placeholder="e.g. client@email.co.za" />
-              <span class="print-val" id="p_recipientEmail">-</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Timesheet Sub-Section -->
-        <div class="grid four" style="margin-top: 16px; background: var(--soft); padding: 16px; border-radius: 6px;">
-          <div>
-            <label>Start Time</label>
-            <div class="input-field-wrapper">
-              <input type="time" id="startTime" value="07:00" />
-              <span class="print-val" id="p_startTime">07:00</span>
-            </div>
-          </div>
-          <div>
-            <label>Finish Time</label>
-            <div class="input-field-wrapper">
-              <input type="time" id="finishTime" value="13:20" />
-              <span class="print-val" id="p_finishTime">13:20</span>
-            </div>
-          </div>
-          <div>
-            <label>Break (Mins)</label>
-            <div class="input-field-wrapper">
-              <input type="number" id="breakMins" value="20" />
-              <span class="print-val" id="p_breakMins">20 mins</span>
-            </div>
-          </div>
-          <div>
-            <label>Travelling Time</label>
-            <div class="input-field-wrapper">
-              <input type="text" id="travelTime" value="1h 20m" placeholder="e.g. 1h 20m" />
-              <span class="print-val" id="p_travelTime">1h 20m</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <h2>Work Carried Out</h2>
-        <div class="input-field-wrapper">
-          <textarea id="workCarriedOut" placeholder="Describe the service, maintenance, or repair work performed..."></textarea>
-          <span class="print-val" id="p_workCarriedOut">-</span>
-        </div>
-      </section>
-
-      <!-- SIGN-OFF SECTION -->
-      <div id="certSection" class="cert-locked">
-        <section style="background: #fafafc;">
-          <h2><span class="step-badge">Sign-Off</span> Client Approval & Signatures</h2>
-          <div id="page1Alert" style="background: var(--ok-soft); border: 1px solid var(--ok); padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; color: var(--ok); font-weight: 500;">
-            ✔ <strong>Equipment Spreadsheet Verified:</strong> All items listed successfully. Sign-off unlocked.
-          </div>
-
-          <div class="grid">
-            <div>
-              <label class="req">Completed By (Technician Signature)</label>
-              <div class="sig-container">
-                <canvas id="techSigCanvas"></canvas>
-                <div class="sig-footer">
-                  <span>Sign above using mouse or touch</span>
-                  <button type="button" class="clear-sig" onclick="clearCanvas('techSigCanvas')">Clear</button>
-                </div>
-              </div>
-            </div>
-            <div>
-              <label class="req">Client Representative Approval</label>
-              <div class="sig-container">
-                <canvas id="clientSigCanvas"></canvas>
-                <div class="sig-footer">
-                  <span>Client signature & acceptance</span>
-                  <button type="button" class="clear-sig" onclick="clearCanvas('clientSigCanvas')">Clear</button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="legal-notice">
-            <strong>Compliance valid for 6 months (180 days) from date of issue[cite: 6].</strong><br>
-            INSPECTION / SERVICE CONDUCTED ACCORDING TO REQUIREMENTS OF THE OSH ACT 85 OF 1993[cite: 6].
-          </div>
-        </section>
-      </div>
-
-      <div style="padding: 20px 32px; text-align: center;">
-        <button type="button" class="btn btn-primary" onclick="switchPage(2)">Proceed to Page 2 (Excel Equipment Spreadsheet) ➔</button>
-      </div>
-    </div>
-
-
-    <!-- ================= PAGE 2: EXCEL SPREADSHEET EQUIPMENT TABLE ================= -->
-    <div id="page2" class="app-page">
-      <section>
-        <h2><span class="step-badge">Page 2</span> Equipment & Tackle Spreadsheet</h2>
-        <p style="font-size:13px; color:var(--muted); margin-top:0; margin-bottom:14px;">
-          Add, edit, and manage equipment items just like an Excel spreadsheet.
-        </p>
-
-        <div class="excel-table-container">
-          <table class="excel-table">
-            <thead>
-              <tr>
-                <th style="width: 40px;">#</th>
-                <th>Item / Description</th>
-                <th>Ser No</th>
-                <th>Lanyard</th>
-                <th>Make</th>
-                <th>SWL / KG</th>
-                <th>Length / m</th>
-                <th>Chain / Rope Size (mm)</th>
-                <th>No of Legs</th>
-                <th style="width: 60px; text-align: center;">Action</th>
-              </tr>
-            </thead>
-            <tbody id="excelTableBody">
-              <!-- Dynamic Rows -->
-            </tbody>
-          </table>
-        </div>
-
-        <div style="margin-top: 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-          <button type="button" class="btn btn-secondary" onclick="addExcelRow()">➕ Add Row</button>
-          <div id="spreadsheetStatusBanner" class="status-banner pending" style="margin-top: 0; flex: 1;">
-            ⏳ Spreadsheet empty. Please add at least one equipment item.
-          </div>
-        </div>
-      </section>
-
-      <div style="padding: 24px 32px; display: flex; justify-content: space-between; align-items: center; background: var(--soft);">
-        <button type="button" class="btn btn-secondary" onclick="switchPage(1)">⬅ Back to Page 1</button>
-        <button type="button" class="btn btn-primary" onclick="validateAndReturnToPage1()">Save & Return to Page 1 for Sign-Off ➔</button>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- ACTION BUTTONS BAR -->
-  <div class="actions-bar">
-    <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset Form</button>
-    <button type="button" class="btn btn-success" id="submitCloudBtn" onclick="submitToCloud()" disabled>
-      ☁️ Submit to Google Sheet & Email
-    </button>
-    <button type="button" class="btn btn-primary" id="printBtn" onclick="printCertificate()" disabled>
-      🖨️ Print / Download PDF Report
-    </button>
-  </div>
-
-<script>
-  // HERMAN'S GOOGLE APPS SCRIPT WEB APP URL:
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz_T5zYd-VlfPMFGnF0Ndf_ucauNUelKsmQihWww1xPpBOT_e8wEIk7zZFlCumLlFkAJg/exec";
-
-  let isPage2Valid = false;
-
-  window.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('inspectionDate').valueAsDate = new Date();
-    loadNextSequence('H');
-    updateHeaderProvider();
+  <form id="jobCardForm" onsubmit="event.preventDefault();">
     
-    addExcelRow();
-    
-    initSignatures();
-    updateJobIdDisplay();
-    evaluateSpreadsheet();
-  });
+    <!-- Job Info -->
+    <fieldset>
+      <legend>Job Identification</legend>
+      <div class="form-row">
+        <div class="form-group" style="max-width: 120px;">
+          <label>Prefix</label>
+          <select id="jobPrefix" onchange="onPrefixChange()">
+            <option value="H">H (Herman)</option>
+            <option value="K">K (Kobus)</option>
+          </select>
+        </div>
+        <div class="form-group" style="max-width: 120px;">
+          <label>Job Sequence</label>
+          <input type="text" id="jobSeq" readonly style="background:#e9e9e9; font-weight:bold;" />
+        </div>
+        <div class="form-group">
+          <label>Company / Provider</label>
+          <input type="text" id="providerName" value="CJB Brace Consulting" oninput="updateHeaderProvider()" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Client Name</label>
+          <input type="text" id="clientName" placeholder="Client Name" required />
+        </div>
+        <div class="form-group">
+          <label>Site Location</label>
+          <input type="text" id="siteLocation" placeholder="Site Name / Location" required />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date of Service</label>
+          <input type="date" id="inspectionDate" required />
+        </div>
+        <div class="form-group">
+          <label>Lead Technician</label>
+          <select id="techName">
+            <option value="Herman">Herman</option>
+            <option value="Kobus">Kobus</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Client Email (for PDF Report)</label>
+          <input type="email" id="recipientEmail" placeholder="client@email.co.za" required />
+        </div>
+      </div>
+    </fieldset>
 
-  function switchPage(pageNum) {
-    document.getElementById('page1').classList.remove('active-page');
-    document.getElementById('page2').classList.remove('active-page');
-    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-
-    if (pageNum === 1) {
-      document.getElementById('page1').classList.add('active-page');
-      document.querySelectorAll('.nav-tab')[0].classList.add('active');
-    } else {
-      document.getElementById('page2').classList.add('active-page');
-      document.querySelectorAll('.nav-tab')[1].classList.add('active');
-    }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  function updateHeaderProvider() {
-    let name = document.getElementById('providerName').value.trim();
-    document.getElementById('headerProviderDisplay').innerText = name || 'Field Service';
-  }
-
-  function addExcelRow(data = {}) {
-    let tbody = document.getElementById('excelTableBody');
-    let rowCount = tbody.rows.length + 1;
-    let tr = document.createElement('tr');
-
-    tr.innerHTML = `
-      <td style="text-align: center; font-weight: 600; color: var(--muted);" class="row-num">${rowCount}</td>
-      <td>
-        <input type="text" class="eq-item" value="${data.item || ''}" placeholder="e.g. Chain Sling" oninput="evaluateSpreadsheet()">
-        <span class="print-val"></span>
-      </td>
-      <td>
-        <input type="text" class="eq-ser" value="${data.ser || ''}" placeholder="e.g. CS-9842" oninput="evaluateSpreadsheet()">
-        <span class="print-val"></span>
-      </td>
-      <td>
-        <input type="text" class="eq-lanyard" value="${data.lanyard || ''}" placeholder="e.g. Yes/No">
-        <span class="print-val"></span>
-      </td>
-      <td>
-        <input type="text" class="eq-make" value="${data.make || ''}" placeholder="e.g. Crosby">
-        <span class="print-val"></span>
-      </td>
-      <td>
-        <input type="text" class="eq-swl" value="${data.swl || ''}" placeholder="e.g. 2000kg">
-        <span class="print-val"></span>
-      </td>
-      <td>
-        <input type="text" class="eq-length" value="${data.length || ''}" placeholder="e.g. 3m">
-        <span class="print-val"></span>
-      </td>
-      <td>
-        <input type="text" class="eq-size" value="${data.size || ''}" placeholder="e.g. 10mm">
-        <span class="print-val"></span>
-      </td>
-      <td>
-        <input type="text" class="eq-legs" value="${data.legs || ''}" placeholder="e.g. 2">
-        <span class="print-val"></span>
-      </td>
-      <td style="text-align: center;"><button type="button" class="btn-row-del" onclick="deleteExcelRow(this)">X</button></td>
-    `;
-    tbody.appendChild(tr);
-    updateRowNumbers();
-    evaluateSpreadsheet();
-  }
-
-  function deleteExcelRow(btn) {
-    let tbody = document.getElementById('excelTableBody');
-    if (tbody.rows.length <= 1) {
-      alert("You must keep at least one row in the equipment spreadsheet.");
-      return;
-    }
-    btn.closest('tr').remove();
-    updateRowNumbers();
-    evaluateSpreadsheet();
-  }
-
-  function updateRowNumbers() {
-    let tbody = document.getElementById('excelTableBody');
-    Array.from(tbody.rows).forEach((row, index) => {
-      row.querySelector('.row-num').innerText = index + 1;
-    });
-  }
-
-  function evaluateSpreadsheet() {
-    let tbody = document.getElementById('excelTableBody');
-    let rows = tbody.rows;
-    let validCount = 0;
-
-    for (let i = 0; i < rows.length; i++) {
-      let itemVal = rows[i].querySelector('.eq-item').value.trim();
-      let serVal = rows[i].querySelector('.eq-ser').value.trim();
-      if (itemVal !== '' && serVal !== '') {
-        validCount++;
-      }
-    }
-
-    let banner = document.getElementById('spreadsheetStatusBanner');
-    if (validCount > 0) {
-      banner.className = "status-banner passed";
-      banner.innerHTML = `✔ Equipment spreadsheet verified (${validCount} valid item(s) listed).`;
-      isPage2Valid = true;
-    } else {
-      banner.className = "status-banner pending";
-      banner.innerHTML = `⏳ Spreadsheet incomplete. Please fill in at least Item and Ser No for one row.`;
-      isPage2Valid = false;
-    }
-  }
-
-  function validateAndReturnToPage1() {
-    evaluateSpreadsheet();
-    let certSection = document.getElementById('certSection');
-    let printBtn = document.getElementById('printBtn');
-    let submitCloudBtn = document.getElementById('submitCloudBtn');
-    let statusText = document.getElementById('displayStatusText');
-    let alertBox = document.getElementById('page1Alert');
-
-    if (isPage2Valid) {
-      certSection.className = "cert-unlocked";
-      printBtn.disabled = false;
-      submitCloudBtn.disabled = false;
-      statusText.innerText = "Status: Equipment Spreadsheet Verified ✔";
-      alertBox.style.display = "block";
-      switchPage(1);
-    } else {
-      alert("Please ensure at least one equipment row has both an Item description and a Serial Number filled in before proceeding to Page 1 sign-off.");
-    }
-  }
-
-  function syncFormValuesForPrint() {
-    const fields = [
-      'jobSeq', 'providerName', 'clientName', 'siteLocation', 
-      'inspectionDate', 'techName', 'recipientEmail', 'startTime', 'finishTime', 
-      'breakMins', 'travelTime', 'workCarriedOut'
-    ];
-
-    fields.forEach(id => {
-      const input = document.getElementById(id);
-      const printSpan = document.getElementById('p_' + id);
-      if (input && printSpan) {
-        printSpan.innerText = input.value.trim() || '-';
-      }
-    });
-
-    let tbody = document.getElementById('excelTableBody');
-    Array.from(tbody.rows).forEach(row => {
-      let inputs = row.querySelectorAll('input');
-      inputs.forEach(inp => {
-        let span = inp.nextElementSibling;
-        if (span && span.classList.contains('print-val')) {
-          span.innerText = inp.value.trim() || '-';
-        }
-      });
-    });
-  }
-
-  function submitToCloud() {
-    let prefix = document.getElementById('jobPrefix').value;
-    let seq = document.getElementById('jobSeq').value.trim();
-
-    let equipmentRows = [];
-    let tbody = document.getElementById('excelTableBody');
-    Array.from(tbody.rows).forEach(row => {
-      equipmentRows.push({
-        item: row.querySelector('.eq-item').value,
-        ser: row.querySelector('.eq-ser').value,
-        lanyard: row.querySelector('.eq-lanyard').value,
-        make: row.querySelector('.eq-make').value,
-        swl: row.querySelector('.eq-swl').value,
-        length: row.querySelector('.eq-length').value,
-        size: row.querySelector('.eq-size').value,
-        legs: row.querySelector('.eq-legs').value
-      });
-    });
-
-    let payload = {
-      jobId: prefix + seq,
-      provider: document.getElementById('providerName').value,
-      client: document.getElementById('clientName').value,
-      site: document.getElementById('siteLocation').value,
-      date: document.getElementById('inspectionDate').value,
-      tech: document.getElementById('techName').value,
-      recipientEmail: document.getElementById('recipientEmail').value,
-      startTime: document.getElementById('startTime').value,
-      finishTime: document.getElementById('finishTime').value,
-      breakMins: document.getElementById('breakMins').value,
-      travelTime: document.getElementById('travelTime').value,
-      workCarriedOut: document.getElementById('workCarriedOut').value,
-      equipmentRows: equipmentRows
-    };
-
-    let btn = document.getElementById('submitCloudBtn');
-    btn.disabled = true;
-    btn.innerText = "⏳ Saving to Google Cloud...";
-
-    fetch(SCRIPT_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    }).then(() => {
-      alert("✔ Successfully saved to Google Sheet & PDF Email sent!");
-      btn.disabled = false;
-      btn.innerText = "☁️ Submit to Google Sheet & Email";
-      
-      let num = parseInt(seq, 10);
-      if (!isNaN(num)) {
-        let currentStored = parseInt(localStorage.getItem(getStorageKey(prefix)) || '0', 10);
-        if (num > currentStored) {
-          localStorage.setItem(getStorageKey(prefix), num);
-        }
-      }
-    }).catch(err => {
-      alert("❌ Error saving to cloud: " + err);
-      btn.disabled = false;
-      btn.innerText = "☁️ Submit to Google Sheet & Email";
-    });
-  }
-
-  function getStorageKey(prefix) {
-    return 'machine_job_seq_' + prefix;
-  }
-
-  function loadNextSequence(prefix) {
-    let lastSeq = localStorage.getItem(getStorageKey(prefix));
-    let nextNum = 1;
-    if (lastSeq) {
-      nextNum = parseInt(lastSeq, 10) + 1;
-    }
-    document.getElementById('jobSeq').value = String(nextNum).padStart(2, '0');
-  }
-
-  function onPrefixChange() {
-    let prefix = document.getElementById('jobPrefix').value;
-    loadNextSequence(prefix);
-    
-    if (prefix === 'H') {
-      document.getElementById('techName').value = 'Herman';
-    } else if (prefix === 'K') {
-      document.getElementById('techName').value = 'Kobus';
-    }
-
-    updateJobIdDisplay();
-  }
-
-  function updateJobIdDisplay() {
-    let prefix = document.getElementById('jobPrefix').value;
-    let seq = document.getElementById('jobSeq').value.trim() || '01';
-    let fullId = prefix + seq;
-    document.getElementById('displayJobId').innerText = fullId;
-  }
-
-  function initSignatures() {
-    setupCanvas('techSigCanvas');
-    setupCanvas('clientSigCanvas');
-  }
-
-  function setupCanvas(canvasId) {
-    const canvas = document.getElementById(canvasId);
-    const ctx = canvas.getContext('2d');
-    let drawing = false;
-
-    function resize() {
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width;
-      canvas.height = rect.height;
-    }
-    window.addEventListener('resize', resize);
-    resize();
-
-    function getPos(e) {
-      const rect = canvas.getBoundingClientRect();
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      return {
-        x: clientX - rect.left,
-        y: clientY - rect.top
-      };
-    }
-
-    function startDraw(e) {
-      drawing = true;
-      ctx.beginPath();
-      const pos = getPos(e);
-      ctx.moveTo(pos.x, pos.y);
-      e.preventDefault();
-    }
-
-    function draw(e) {
-      if (!drawing) return;
-      const pos = getPos(e);
-      ctx.lineTo(pos.x, pos.y);
-      ctx.strokeStyle = '#17173a';
-      ctx.lineWidth = 2;
-      ctx.lineCap = 'round';
-      ctx.stroke();
-      e.preventDefault();
-    }
-
-    function stopDrop() {
-      drawing = false;
-    }
-
-    canvas.addEventListener('mousedown', startDraw);
-    canvas.addEventListener('mousemove', draw);
-    window.addEventListener('mouseup', stopDrop);
-
-    canvas.addEventListener('touchstart', startDraw, { passive: false });
-    canvas.addEventListener('touchmove', draw, { passive: false });
-    canvas.addEventListener('touchend', stopDrop);
-  }
-
-  function clearCanvas(canvasId) {
-    const canvas = document.getElementById(canvasId);
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }
-
-  function printCertificate() {
-    syncFormValuesForPrint();
-    window.print();
-  }
-
-  function resetForm() {
-    if (confirm("Are you sure you want to reset this form?")) {
-      location.reload();
-    }
-  }
-</script>
-
-</body>
-</html>
+    <!-- Timesheet & Work Carried Out -->
+    <fieldset>
+      <legend>Timesheet & Scope of Work</legend>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Start Time</label>
+          <input type="time" id="startTime" value="07:00" />
+        </div>
+        <div class="form-group">
+          <label>Finish Time</label>
+          <input type="time" id="finishTime" value="16:00" />
+        </div>
+        <div class="form-group">
+          <label>Break (Mins)</label>
+          <input type="number" id="breakMins" value="30" />
+        </div>
+        <div class="form-group">
+          <label>Travel Time</label

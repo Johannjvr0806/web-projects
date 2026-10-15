@@ -61,7 +61,9 @@
     <div class="reader-header" id="reader-topbar">
       <button class="control-btn" onclick="toggleToc()">☰ Contents</button>
       <button class="control-btn" onclick="toggleBookmarkDrawer()">🔖 Bookmarks</button>
-      <button class="control-btn" onclick="addBookmark()">➕ Add Bookmark</button>
+      <button class="control-btn" onclick="addBookmark()">➕ Bookmark</button>
+      <button class="control-btn" onclick="addHighlight()" style="background: #f59e0b; color: white;">✨ Highlight</button>
+      <button class="control-btn" onclick="toggleHighlightDrawer()" style="background: #8b5cf6; color: white;">💡 Highlights</button>
       <div class="reader-clock" id="live-clock">00:00</div>
       <div class="font-controls">
         <button class="control-btn" onclick="changeFontSize(-2)">A-</button>
@@ -111,6 +113,15 @@
         <button class="control-btn" onclick="toggleBookmarkDrawer()">✕</button>
       </div>
       <ul id="bookmark-list"></ul>
+    </div>
+
+    <!-- Highlights Drawer -->
+    <div id="highlight-drawer" class="toc-drawer">
+      <div class="toc-header">
+        <h3>Saved Highlights</h3>
+        <button class="control-btn" onclick="toggleHighlightDrawer()">✕</button>
+      </div>
+      <ul id="highlight-list"></ul>
     </div>
 
   </div>

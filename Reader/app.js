@@ -10,6 +10,7 @@ let activeFilter = 'all';
 let controlsVisible = true;
 let ttsUtterance = null;
 let isTTSPlaying = false;
+let currentSelectedCfiRange = null;
 
 // LocalForage Setup
 localforage.config({ name: 'ReaderApp', storeName: 'library' });
@@ -157,7 +158,8 @@ async function processAndAddBook(file) {
     cfi: null,
     status: 'unread',
     category: null,
-    bookmarks: []
+    bookmarks: [],
+    highlights: []
   };
 
   books.push(newBook);
@@ -278,6 +280,10 @@ function setupRenditionEvents() {
     }
   });
 
+  currentRendition.on("selected", (cfiRange) => {
+    currentSelectedCfiRange = cfiRange;
+  });
+
   currentEpub.ready.then(() => {
     return currentEpub.locations.generate(1000);
   }).then(() => {
@@ -312,6 +318,7 @@ function toggleControls() {
   if (bottombar) bottombar.classList.toggle('hidden', !controlsVisible);
 }
 
+// Smart Bookmarks & Highlights
 async function addBookmark() {
   if (!currentRendition || !currentBookId) return;
   const book = books.find(b => b.id === currentBookId);
@@ -332,12 +339,43 @@ async function addBookmark() {
   renderBookmarks();
 }
 
+async function addHighlight() {
+  if (!currentRendition || !currentBookId) return;
+  const book = books.find(b => b.id === currentBookId);
+  if (!book) return;
+
+  if (!currentSelectedCfiRange) {
+    return alert("Please select/highlight text in the book first, then click ✨ Highlight!");
+  }
+
+  const text = currentRendition.getRange(currentSelectedCfiRange).toString().trim();
+  if (!text) return alert("Selected text is empty.");
+
+  if (!book.highlights) book.highlights = [];
+  book.highlights.push({ cfiRange: currentSelectedCfiRange, text: text });
+
+  await saveBooksMeta();
+  alert("Highlight saved successfully!");
+  currentSelectedCfiRange = null;
+  renderHighlights();
+}
+
 function toggleBookmarkDrawer() {
   const drawer = document.getElementById('bookmark-drawer');
   document.getElementById('toc-drawer').classList.remove('open');
+  document.getElementById('highlight-drawer').classList.remove('open');
   document.getElementById('reading-log-modal').classList.remove('open');
   drawer.classList.toggle('open');
   if (drawer.classList.contains('open')) renderBookmarks();
+}
+
+function toggleHighlightDrawer() {
+  const drawer = document.getElementById('highlight-drawer');
+  document.getElementById('toc-drawer').classList.remove('open');
+  document.getElementById('bookmark-drawer').classList.remove('open');
+  document.getElementById('reading-log-modal').classList.remove('open');
+  drawer.classList.toggle('open');
+  if (drawer.classList.contains('open')) renderHighlights();
 }
 
 function renderBookmarks() {
@@ -361,6 +399,27 @@ function renderBookmarks() {
   });
 }
 
+function renderHighlights() {
+  const list = document.getElementById('highlight-list');
+  list.innerHTML = '';
+  const book = books.find(b => b.id === currentBookId);
+
+  if (!book || !book.highlights || book.highlights.length === 0) {
+    list.innerHTML = '<li style="padding:10px; opacity:0.6;">No highlights saved yet. Select text and click Highlight!</li>';
+    return;
+  }
+
+  book.highlights.forEach((hl, index) => {
+    const li = document.createElement('li');
+    li.className = 'highlight-item';
+    li.innerHTML = `
+      <span onclick="jumpToCfi('${hl.cfiRange}')" style="cursor:pointer; flex: 1; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">"${hl.text}"</span>
+      <button class="highlight-del" onclick="deleteHighlight(${index})" style="margin-left: 8px;">✕</button>
+    `;
+    list.appendChild(li);
+  });
+}
+
 async function deleteBookmark(index) {
   const book = books.find(b => b.id === currentBookId);
   if (book && book.bookmarks) {
@@ -370,10 +429,20 @@ async function deleteBookmark(index) {
   }
 }
 
+async function deleteHighlight(index) {
+  const book = books.find(b => b.id === currentBookId);
+  if (book && book.highlights) {
+    book.highlights.splice(index, 1);
+    await saveBooksMeta();
+    renderHighlights();
+  }
+}
+
 function jumpToCfi(cfi) {
   if (currentRendition) {
     currentRendition.display(cfi);
     document.getElementById('bookmark-drawer').classList.remove('open');
+    document.getElementById('highlight-drawer').classList.remove('open');
   }
 }
 
@@ -420,6 +489,7 @@ function applyThemeToRendition() {
 
 function toggleToc() {
   document.getElementById('bookmark-drawer').classList.remove('open');
+  document.getElementById('highlight-drawer').classList.remove('open');
   document.getElementById('reading-log-modal').classList.remove('open');
   document.getElementById('toc-drawer').classList.toggle('open');
 }
@@ -460,11 +530,12 @@ function toggleTTS() {
   }
 }
 
-// --- Fully Working Reading Log & Bulk Import Logic ---
+// --- Reading Log & Bulk Import Logic ---
 function toggleReadingLogModal() {
   const modal = document.getElementById('reading-log-modal');
   document.getElementById('toc-drawer').classList.remove('open');
   document.getElementById('bookmark-drawer').classList.remove('open');
+  document.getElementById('highlight-drawer').classList.remove('open');
   modal.classList.toggle('open');
   if (modal.classList.contains('open')) {
     renderReadingLog();

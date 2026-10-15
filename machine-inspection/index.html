@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Field Service Job Card & Inspection Report</title>
+  <title>Machine & Equipment Inspection Timesheet System</title>
   <style>
     :root {
       --primary: #000099;
@@ -37,7 +37,7 @@
       margin-bottom: 20px;
       text-align: center;
     }
-    header h1 { margin: 0; font-size: 20px; text-transform: uppercase; }
+    header h1 { margin: 0; font-size: 22px; text-transform: uppercase; }
     header p { margin: 5px 0 0 0; font-size: 12px; color: #c9caf0; }
     
     fieldset {
@@ -50,6 +50,7 @@
       font-weight: bold;
       color: var(--primary);
       padding: 0 5px;
+      font-size: 13px;
     }
     .form-row {
       display: flex;
@@ -64,9 +65,10 @@
       flex-direction: column;
     }
     label {
-      font-size: 12px;
+      font-size: 11px;
       font-weight: bold;
       margin-bottom: 3px;
+      color: #333;
     }
     input, select, textarea {
       padding: 8px;
@@ -74,12 +76,24 @@
       border-radius: 4px;
       font-size: 13px;
     }
-    textarea { resize: vertical; height: 70px; }
+    textarea { resize: vertical; height: 60px; }
     
-    /* Page Navigation */
-    .page-section { display: none; }
-    .page-section.active { display: block; }
-    
+    .status-banner {
+      background: #e8f8f0;
+      border: 1px solid #27ae60;
+      color: #1e8449;
+      padding: 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-bottom: 15px;
+    }
+    .status-banner.locked {
+      background: #fdf2e9;
+      border: 1px solid #e67e22;
+      color: #d35400;
+    }
+
     /* Table styling */
     .table-container {
       overflow-x: auto;
@@ -97,6 +111,7 @@
     }
     th {
       background-color: var(--primary-light);
+      color: var(--primary);
     }
     input.table-input {
       width: 100%;
@@ -123,7 +138,7 @@
       border-radius: 4px;
       background: #fff;
       width: 100%;
-      height: 120px;
+      height: 110px;
       touch-action: none;
     }
     
@@ -142,8 +157,7 @@
     .btn-danger:hover { background: #901a1a; }
     
     .actions {
-      display: flex;
-      justify-content: space-between;
+      text-align: center;
       margin-top: 20px;
     }
   </style>
@@ -153,141 +167,136 @@
 <div class="container">
   <header>
     <h1 id="headerProviderDisplay">CJB Brace Consulting</h1>
-    <p>Field Service Job Card & Inspection Report</p>
+    <p>Inspection Report & Job Card Timesheet</p>
   </header>
 
   <form id="jobCardForm" onsubmit="event.preventDefault();">
     
-    <!-- ================= PAGE 1: Job Info & Timesheet ================= -->
-    <div id="page1" class="page-section active">
-      <fieldset>
-        <legend>Job Identification (Page 1 of 2)</legend>
-        <div class="form-row">
-          <div class="form-group" style="max-width: 120px;">
-            <label>Prefix</label>
-            <select id="jobPrefix" onchange="onPrefixChange()">
-              <option value="H">H (Herman)</option>
-              <option value="K">K (Kobus)</option>
-            </select>
-          </div>
-          <div class="form-group" style="max-width: 120px;">
-            <label>Job Sequence</label>
-            <input type="text" id="jobSeq" readonly style="background:#e9e9e9; font-weight:bold;" />
-          </div>
-          <div class="form-group">
-            <label>Company / Provider</label>
-            <input type="text" id="providerName" value="CJB Brace Consulting" oninput="updateHeaderProvider()" />
-          </div>
+    <!-- PAGE 1: Job Info & Timesheet -->
+    <fieldset>
+      <legend>PAGE 1 — JOB CARD & TIMESHEET DETAILS</legend>
+      <div class="form-row">
+        <div class="form-group" style="max-width: 140px;">
+          <label>Technician / Prefix *</label>
+          <select id="jobPrefix" onchange="onPrefixChange()">
+            <option value="H">H (Herman)</option>
+            <option value="K">K (Kobus)</option>
+          </select>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Client Name</label>
-            <input type="text" id="clientName" placeholder="Client Name" required />
-          </div>
-          <div class="form-group">
-            <label>Site Location</label>
-            <input type="text" id="siteLocation" placeholder="Site Name / Location" required />
-          </div>
+        <div class="form-group" style="max-width: 120px;">
+          <label>Job Reference</label>
+          <input type="text" id="jobSeq" readonly style="background:#e9e9e9; font-weight:bold; text-align:center;" />
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Date of Service</label>
-            <input type="date" id="inspectionDate" required />
-          </div>
-          <div class="form-group">
-            <label>Lead Technician</label>
-            <select id="techName">
-              <option value="Herman">Herman</option>
-              <option value="Kobus">Kobus</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Client Email (for PDF Report)</label>
-            <input type="email" id="recipientEmail" placeholder="client@email.co.za" required />
-          </div>
+        <div class="form-group">
+          <label>Inspection Company / Provider *</label>
+          <input type="text" id="providerName" value="CJB Brace Consulting" oninput="updateHeaderProvider()" required />
         </div>
-      </fieldset>
-
-      <fieldset>
-        <legend>Timesheet & Scope of Work</legend>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Start Time</label>
-            <input type="time" id="startTime" value="07:00" />
-          </div>
-          <div class="form-group">
-            <label>Finish Time</label>
-            <input type="time" id="finishTime" value="16:00" />
-          </div>
-          <div class="form-group">
-            <label>Break (Mins)</label>
-            <input type="number" id="breakMins" value="30" />
-          </div>
-          <div class="form-group">
-            <label>Travel Time</label>
-            <input type="text" id="travelTime" value="1h 00m" />
-          </div>
-        </div>
-        <div class="form-group" style="margin-top: 10px;">
-          <label>Work Carried Out / Observations</label>
-          <textarea id="workCarriedOut" placeholder="Describe work performed..."></textarea>
-        </div>
-      </fieldset>
-
-      <div class="actions" style="justify-content: flex-end;">
-        <button type="button" class="btn" onclick="goToPage(2)">Next: Equipment & Signatures ➡️</button>
       </div>
-    </div>
-
-    <!-- ================= PAGE 2: Equipment Spreadsheet & Signatures ================= -->
-    <div id="page2" class="page-section">
-      <fieldset>
-        <legend>Equipment & Tackle Spreadsheet (Page 2 of 2)</legend>
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th style="width:30px;">#</th>
-                <th>Description</th>
-                <th>Ser No</th>
-                <th>Lanyard</th>
-                <th>Make</th>
-                <th>SWL / KG</th>
-                <th>Length</th>
-                <th>Size</th>
-                <th>Legs</th>
-                <th style="width:40px;">Action</th>
-              </tr>
-            </thead>
-            <tbody id="excelTableBody">
-              <!-- Dynamic Rows added here -->
-            </tbody>
-          </table>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Client Name *</label>
+          <input type="text" id="clientName" placeholder="Client Name" required />
         </div>
-        <button type="button" class="btn" style="margin-top: 10px;" onclick="addExcelRow()">+ Add Equipment Item</button>
-      </fieldset>
-
-      <fieldset id="sigFieldset">
-        <legend>Authorisation & Signatures</legend>
-        <p id="sigWarning" style="color: #b52323; font-size: 12px; font-weight: bold; display: none;">⚠️ Please add at least one equipment item and fill out Page 1 before signing.</p>
-        <div class="sig-container" id="sigContainerBox">
-          <div class="sig-box">
-            <label>Technician Signature</label>
-            <canvas id="techSigCanvas"></canvas>
-            <button type="button" class="btn btn-danger" style="padding:4px 8px; font-size:10px; margin-top:5px;" onclick="clearCanvas('techSigCanvas')">Clear</button>
-          </div>
-          <div class="sig-box">
-            <label>Client Representative Signature</label>
-            <canvas id="clientSigCanvas"></canvas>
-            <button type="button" class="btn btn-danger" style="padding:4px 8px; font-size:10px; margin-top:5px;" onclick="clearCanvas('clientSigCanvas')">Clear</button>
-          </div>
+        <div class="form-group">
+          <label>Site Location *</label>
+          <input type="text" id="siteLocation" placeholder="Site Name / Location" required />
         </div>
-      </fieldset>
-
-      <div class="actions">
-        <button type="button" class="btn" onclick="goToPage(1)">⬅️ Back to Page 1</button>
-        <button type="button" class="btn" id="submitCloudBtn" onclick="submitToCloud()" style="font-size: 16px; padding: 12px 25px;">☁️ Submit to Google Sheet & Email</button>
       </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date of Service *</label>
+          <input type="date" id="inspectionDate" required />
+        </div>
+        <div class="form-group">
+          <label>Lead Technician *</label>
+          <select id="techName">
+            <option value="Herman">Herman</option>
+            <option value="Kobus">Kobus</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Client Email (for PDF Report) *</label>
+          <input type="email" id="recipientEmail" placeholder="client@email.co.za" required />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Start Time</label>
+          <input type="time" id="startTime" value="07:00" />
+        </div>
+        <div class="form-group">
+          <label>Finish Time</label>
+          <input type="time" id="finishTime" value="16:00" />
+        </div>
+        <div class="form-group">
+          <label>Break (Mins)</label>
+          <input type="number" id="breakMins" value="30" />
+        </div>
+        <div class="form-group">
+          <label>Travelling Time</label>
+          <input type="text" id="travelTime" value="1h 00m" />
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- WORK CARRIED OUT -->
+    <fieldset>
+      <legend>WORK CARRIED OUT</legend>
+      <textarea id="workCarriedOut" placeholder="Describe work performed..."></textarea>
+    </fieldset>
+
+    <!-- PAGE 2: EQUIPMENT & TACKLE SPREADSHEET -->
+    <fieldset>
+      <legend>PAGE 2 — EQUIPMENT & TACKLE SPREADSHEET</legend>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:30px;">#</th>
+              <th>Description</th>
+              <th>Ser No</th>
+              <th>Lanyard</th>
+              <th>Make</th>
+              <th>SWL / KG</th>
+              <th>Length</th>
+              <th>Size</th>
+              <th>Legs</th>
+              <th style="width:40px;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="excelTableBody">
+            <!-- Dynamic rows -->
+          </tbody>
+        </table>
+      </div>
+      <button type="button" class="btn" style="margin-top: 10px;" onclick="addExcelRow()">+ Add Equipment Item</button>
+    </fieldset>
+
+    <!-- SIGN-OFF: CLIENT APPROVAL & SIGNATURES -->
+    <fieldset>
+      <legend>SIGN-OFF — CLIENT APPROVAL & SIGNATURES</legend>
+      
+      <div id="statusBanner" class="status-banner locked">
+        🔒 Equipment Spreadsheet Verification Pending: Please add at least one item with a description and serial number to unlock sign-off.
+      </div>
+
+      <div class="sig-container">
+        <div class="sig-box">
+          <label>Completed By (Technician Signature) *</label>
+          <canvas id="techSigCanvas"></canvas>
+          <button type="button" class="btn btn-danger" style="padding:4px 8px; font-size:10px; margin-top:5px;" onclick="clearCanvas('techSigCanvas')">Clear</button>
+        </div>
+        <div class="sig-box">
+          <label>Client Representative Approval *</label>
+          <canvas id="clientSigCanvas"></canvas>
+          <button type="button" class="btn btn-danger" style="padding:4px 8px; font-size:10px; margin-top:5px;" onclick="clearCanvas('clientSigCanvas')">Clear</button>
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- SUBMIT -->
+    <div class="actions">
+      <button type="button" class="btn" id="submitCloudBtn" onclick="submitToCloud()" style="font-size: 16px; padding: 12px 25px;">☁️ Submit to Google Sheet & Email PDF Report</button>
     </div>
 
   </form>
@@ -309,6 +318,7 @@
     addExcelRow();
     setupCanvas('techSigCanvas');
     setupCanvas('clientSigCanvas');
+    evaluateSpreadsheet();
   });
 
   function updateHeaderProvider() {
@@ -329,7 +339,8 @@
         nextNum = parsed + 1;
       }
     }
-    document.getElementById('jobSeq').value = String(nextNum).padStart(2, '0');
+    document.getElementById('jobSeq.value') = String(nextNum).padStart(2, '0');
+    document.getElementById('jobSeq').value = prefix + String(nextNum).padStart(2, '0');
   }
 
   function onPrefixChange() {
@@ -340,41 +351,14 @@
     if (prefix === 'K') techSelect.value = 'Kobus';
   }
 
-  function goToPage(pageNo) {
-    if (pageNo === 2) {
-      // Validate Page 1 required fields
-      let client = document.getElementById('clientName').value.trim();
-      let site = document.getElementById('siteLocation').value.trim();
-      let email = document.getElementById('recipientEmail').value.trim();
-      if (!client || !site || !email) {
-        alert("❌ Please fill in Client Name, Site Location, and Client Email on Page 1 before proceeding.");
-        return;
-      }
-    }
-
-    document.getElementById('page1').classList.remove('active');
-    document.getElementById('page2').classList.remove('active');
-    document.getElementById('page ' + pageNo).classList.add('active'); // Wait, fixed string:
-    document.getElementById('page' + pageNo).classList.add('active');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-
-    // Resize canvases correctly when page 2 becomes visible
-    if (pageNo === 2) {
-      setTimeout(() => {
-        resizeCanvas('techSigCanvas');
-        resizeCanvas('clientSigCanvas');
-      }, 50);
-    }
-  }
-
   function addExcelRow() {
     let tbody = document.getElementById('excelTableBody');
     let rowCount = tbody.rows.length + 1;
     let row = tbody.insertRow();
     row.innerHTML = `
       <td style="text-align:center;">${rowCount}</td>
-      <td><input type="text" class="table-input eq-item" placeholder="Item" /></td>
-      <td><input type="text" class="table-input eq-ser" placeholder="S/N" /></td>
+      <td><input type="text" class="table-input eq-item" placeholder="Item" oninput="evaluateSpreadsheet()" /></td>
+      <td><input type="text" class="table-input eq-ser" placeholder="S/N" oninput="evaluateSpreadsheet()" /></td>
       <td><input type="text" class="table-input eq-lanyard" placeholder="Lanyard" /></td>
       <td><input type="text" class="table-input eq-make" placeholder="Make" /></td>
       <td><input type="text" class="table-input eq-swl" placeholder="SWL" /></td>
@@ -383,12 +367,14 @@
       <td><input type="text" class="table-input eq-legs" placeholder="Legs" /></td>
       <td style="text-align:center;"><button type="button" class="btn btn-danger" style="padding:2px 5px; font-size:10px;" onclick="deleteRow(this)">X</button></td>
     `;
+    evaluateSpreadsheet();
   }
 
   function deleteRow(btn) {
     let row = btn.parentNode.parentNode;
     row.parentNode.removeChild(row);
     reindexTable();
+    evaluateSpreadsheet();
   }
 
   function reindexTable() {
@@ -398,12 +384,38 @@
     }
   }
 
+  function evaluateSpreadsheet() {
+    let tbody = document.getElementById('excelTableBody');
+    let banner = document.getElementById('statusBanner');
+    let hasValidItem = false;
+    
+    Array.from(tbody.rows).forEach(row => {
+      let itemVal = row.querySelector('.eq-item').value.trim();
+      if (itemVal !== '') {
+        hasValidItem = true;
+      }
+    });
+
+    if (hasValidItem) {
+      banner.className = "status-banner";
+      banner.innerHTML = "✔ Equipment Spreadsheet Verified: All items listed successfully. Sign-off unlocked.";
+    } else {
+      banner.className = "status-banner locked";
+      banner.innerHTML = "🔒 Equipment Spreadsheet Verification Pending: Please add at least one item description to unlock sign-off.";
+    }
+  }
+
   // Signature handling
   let signatures = {};
   function setupCanvas(canvasId) {
     let canvas = document.getElementById(canvasId);
     let ctx = canvas.getContext('2d');
     let drawing = false;
+
+    setTimeout(() => {
+      canvas.width = canvas.offsetWidth || 300;
+      canvas.height = canvas.offsetHeight || 110;
+    }, 100);
 
     function getPos(e) {
       let rect = canvas.getBoundingClientRect();
@@ -426,14 +438,6 @@
     signatures[canvasId] = { canvas, ctx };
   }
 
-  function resizeCanvas(canvasId) {
-    let sig = signatures[canvasId];
-    if (sig) {
-      sig.canvas.width = sig.canvas.offsetWidth || 300;
-      sig.canvas.height = sig.canvas.offsetHeight || 120;
-    }
-  }
-
   function clearCanvas(canvasId) {
     let sig = signatures[canvasId];
     if (sig) {
@@ -442,14 +446,23 @@
   }
 
   function submitToCloud() {
+    let client = document.getElementById('clientName').value.trim();
+    let site = document.getElementById('siteLocation').value.trim();
+    let email = document.getElementById('recipientEmail').value.trim();
+    
+    if (!client || !site || !email) {
+      alert("❌ Please fill in Client Name, Site Location, and Client Email on Page 1 before submitting.");
+      return;
+    }
+
     let tbody = document.getElementById('excelTableBody');
     if (tbody.rows.length === 0) {
-      alert("❌ You must add at least one equipment item on Page 2 before submitting.");
+      alert("❌ You must add at least one equipment item in the spreadsheet.");
       return;
     }
 
     let prefix = document.getElementById('jobPrefix').value;
-    let seq = document.getElementById('jobSeq').value.trim();
+    let seq = document.getElementById('jobSeq').value.replace(prefix, '').trim();
 
     let equipmentRows = [];
     Array.from(tbody.rows).forEach(row => {
@@ -469,13 +482,13 @@
     let clientSigData = document.getElementById('clientSigCanvas').toDataURL();
 
     let payload = {
-      jobId: prefix + seq,
+      jobId: document.getElementById('jobSeq').value,
       provider: document.getElementById('providerName').value,
-      client: document.getElementById('clientName').value,
-      site: document.getElementById('siteLocation').value,
+      client: client,
+      site: site,
       date: document.getElementById('inspectionDate').value,
       tech: document.getElementById('techName').value,
-      recipientEmail: document.getElementById('recipientEmail').value,
+      recipientEmail: email,
       startTime: document.getElementById('startTime').value,
       finishTime: document.getElementById('finishTime').value,
       breakMins: document.getElementById('breakMins').value,
@@ -488,7 +501,7 @@
 
     let btn = document.getElementById('submitCloudBtn');
     btn.disabled = true;
-    btn.innerText = "⏳ Saving to Google Cloud & Sending PDF...";
+    btn.innerText = "⏳ Saving to Google Sheet & Sending PDF Email...";
 
     fetch(SCRIPT_URL, {
       method: "POST",
@@ -498,7 +511,7 @@
     }).then(() => {
       alert("✔ Successfully saved to Google Sheet & PDF Email sent!");
       btn.disabled = false;
-      btn.innerText = "☁️ Submit to Google Sheet & Email";
+      btn.innerText = "☁️ Submit to Google Sheet & Email PDF Report";
       
       let num = parseInt(seq, 10);
       if (!isNaN(num)) {
@@ -510,7 +523,7 @@
     }).catch(err => {
       alert("❌ Error saving to cloud: " + err);
       btn.disabled = false;
-      btn.innerText = "☁️ Submit to Google Sheet & Email";
+      btn.innerText = "☁️ Submit to Google Sheet & Email PDF Report";
     });
   }
 </script>

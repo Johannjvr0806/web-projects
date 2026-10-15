@@ -465,7 +465,7 @@ function toggleTTS() {
   }
 }
 
-/// --- Bulletproof Synchronous Reading Log Logic ---
+// --- Upgraded Reading Log Logic with Grouping & Bulk Import ---
 function toggleReadingLogModal() {
   const modal = document.getElementById('reading-log-modal');
   document.getElementById('toc-drawer').classList.remove('open');
@@ -474,6 +474,60 @@ function toggleReadingLogModal() {
   if (modal.classList.contains('open')) {
     renderReadingLog();
   }
+}
+
+function toggleImportBox() {
+  const box = document.getElementById('bulk-import-container');
+  if (box) {
+    box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  }
+}
+
+function processBulkImport() {
+  const textarea = document.getElementById('bulk-import-text');
+  const rawText = textarea.value.trim();
+  if (!rawText) return alert("Please paste your book list first.");
+
+  let readingList = [];
+  try {
+    const saved = localStorage.getItem('general_reading_list_safe');
+    if (saved) readingList = JSON.parse(saved);
+  } catch (e) {
+    readingList = [];
+  }
+
+  // Parse line by line (Supports formats like: "1. Love redesigned - Lauren Asher" or "Love redesigned - Lauren Asher")
+  const lines = rawText.split('\n');
+  let addedCount = 0;
+
+  lines.forEach(line => {
+    let cleanLine = line.trim();
+    if (!cleanLine) return;
+
+    // Remove leading numbers like "1.", "32." if present
+    cleanLine = cleanLine.replace(/^\d+[\.\)]\s*/, '');
+
+    // Split by hyphen, dash, or " by "
+    let parts = cleanLine.split(/\s*[-–—]\s*|\s+by\s+/i);
+    if (parts.length >= 2) {
+      const title = parts[0].trim();
+      const author = parts[1].trim();
+      if (title) {
+        readingList.push({ title, author: author || 'Unknown' });
+        addedCount++;
+      }
+    } else if (cleanLine) {
+      // Fallback if no author is separated
+      readingList.push({ title: cleanLine, author: 'Unknown' });
+      addedCount++;
+    }
+  });
+
+  localStorage.setItem('general_reading_list_safe', JSON.stringify(readingList));
+  textarea.value = '';
+  toggleImportBox();
+  renderReadingLog();
+  alert(`Successfully imported ${addedCount} books!`);
 }
 
 function addSafeBook() {
@@ -490,9 +544,7 @@ function addSafeBook() {
   let readingList = [];
   try {
     const saved = localStorage.getItem('general_reading_list_safe');
-    if (saved) {
-      readingList = JSON.parse(saved);
-    }
+    if (saved) readingList = JSON.parse(saved);
   } catch (e) {
     readingList = [];
   }
@@ -512,38 +564,85 @@ function renderReadingLog() {
   let readingList = [];
   try {
     const saved = localStorage.getItem('general_reading_list_safe');
-    if (saved) {
-      readingList = JSON.parse(saved);
-    }
+    if (saved) readingList = JSON.parse(saved);
   } catch (e) {
     readingList = [];
   }
 
-  listContainer.innerHTML = '';
   totalCount.textContent = readingList.length;
+  listContainer.innerHTML = '';
 
   if (readingList.length === 0) {
-    listContainer.innerHTML = '<li style="opacity: 0.6; justify-content: center;">No books logged yet. Add your first one above!</li>';
+    listContainer.innerHTML = '<li style="opacity: 0.6; justify-content: center; padding: 20px;">No books logged yet. Add your first one above!</li>';
     return;
   }
 
-  readingList.forEach((book, index) => {
-    const li = document.createElement('li');
-    li.innerHTML = `
-      <span><strong>${book.title}</strong> by ${book.author}</span>
-      <button class="safe-delete-btn" onclick="removeSafeBook(${index})">✕</button>
-    `;
-    listContainer.appendChild(li);
-  });
+  // Check if view mode selector exists, create it if not
+  let viewModeSelect = document.getElementById('log-view-mode');
+  if (!viewModeSelect) {
+    const headerDiv = document.querySelector('#reading-log-modal .toc-header');
+    if (headerDiv) {
+      const controlsDiv = document.createElement('div');
+      controlsDiv.style.padding = '8px 12px';
+      controlsDiv.style.borderBottom = '1px solid rgba(128,128,128,0.2)';
+      controlsDiv.innerHTML = `
+        <select id="log-view-mode" onchange="renderReadingLog()" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid rgba(128,128,128,0.3); background: inherit; color: inherit; font-size: 13px;">
+          <option value="list">📄 List View (Numbered)</option>
+          <option value="author">👤 Group by Author</option>
+        </select>
+      `;
+      headerDiv.after(controlsDiv);
+      viewModeSelect = document.getElementById('log-view-mode');
+    }
+  }
+
+  const mode = viewModeSelect ? viewModeSelect.value : 'list';
+
+  if (mode === 'author') {
+    const grouped = {};
+    readingList.forEach((book, index) => {
+      const auth = book.author || 'Unknown';
+      if (!grouped[auth]) grouped[auth] = [];
+      grouped[auth].push({ ...book, originalIndex: index });
+    });
+
+    Object.keys(grouped).sort().forEach(author => {
+      const authorHeader = document.createElement('div');
+      authorHeader.style.padding = '10px 4px 4px 4px';
+      authorHeader.style.fontWeight = 'bold';
+      authorHeader.style.fontSize = '14px';
+      authorHeader.style.color = '#3b82f6';
+      authorHeader.textContent = author;
+      listContainer.appendChild(authorHeader);
+
+      grouped[author].forEach(book => {
+        const li = document.createElement('li');
+        li.style.marginLeft = '10px';
+        li.innerHTML = `
+          <span>• ${book.title}</span>
+          <button class="safe-delete-btn" onclick="removeSafeBook(${book.originalIndex})">✕</button>
+        `;
+        listContainer.appendChild(li);
+      });
+    });
+
+  } else {
+    readingList.forEach((book, index) => {
+      const li = document.createElement('li');
+      li.innerHTML = `
+        <span><strong>${index + 1}.</strong> ${book.title} - <em>${book.author}</em></span>
+        <button class="safe-delete-btn" onclick="removeSafeBook(${index})">✕</button>
+      `;
+      listContainer.appendChild(li);
+    });
+  }
 }
 
 function removeSafeBook(index) {
   let readingList = [];
   try {
     const saved = localStorage.getItem('general_reading_list_safe');
-    if (saved) {
-      readingList = JSON.parse(saved);
-    }
+    if (saved) readingList = JSON.parse(saved);
   } catch (e) {
     readingList = [];
   }

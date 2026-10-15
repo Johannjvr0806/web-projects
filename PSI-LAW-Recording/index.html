@@ -3,7 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PSI Law - Dictation & Audio Manager</title>
+    <meta name="theme-color" content="#0d131d">
+    <meta name="description" content="PSI Law Recordings - Legal Dictation & Audio Manager for Payne & Steynberg Incorporated">
+    <title>PSI Law Recordings</title>
+    
+    <!-- Dynamic Web App Manifest for PWA Support -->
+    <script>
+        // Using the primary visual element 'PSI' for the install icon
+        const manifest = {
+            "name": "PSI Law Recordings",
+            "short_name": "PSI Law",
+            "start_url": "./",
+            "display": "standalone",
+            "background_color": "#0d131d",
+            "theme_color": "#c59b27",
+            "icons": [
+                {
+                    "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230d131d'/><text y='65' x='15' font-size='50' font-weight='bold' fill='%23c59b27'>PSI</text></svg>",
+                    "sizes": "192x192 512x512",
+                    "type": "image/svg+xml",
+                    "purpose": "any maskable"
+                }
+            ]
+        };
+        const stringManifest = JSON.stringify(manifest);
+        const blob = new Blob([stringManifest], {type: 'application/json'});
+        const manifestURL = URL.createObjectURL(blob);
+        const link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = manifestURL;
+        document.head.appendChild(link);
+    </script>
+
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -39,7 +70,7 @@
             overflow: hidden;
         }
 
-        /* --- HEADER --- */
+        /* --- HEADER (Updated with logo and specific text) --- */
         header {
             background-color: var(--bg-secondary);
             border-bottom: 2px solid var(--accent-gold);
@@ -56,16 +87,11 @@
             gap: 16px;
         }
 
-        .brand-logo-badge {
-            background: linear-gradient(135deg, var(--accent-gold-dark), var(--accent-gold));
-            color: #0d131d;
-            font-weight: 900;
-            font-size: 20px;
-            padding: 8px 14px;
-            border-radius: 6px;
-            letter-spacing: 2px;
-            border: 1px solid var(--accent-gold-light);
-            box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+        /* Styling for the new logo image */
+        .app-logo-image {
+            height: 50px; /* Reduced slightly to fit header nicely */
+            width: auto;
+            display: block;
         }
 
         .brand-title {
@@ -74,16 +100,16 @@
         }
 
         .brand-title h1 {
-            font-size: 18px;
+            font-size: 22px; /* Emphasized as application name */
             font-weight: 700;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
             color: var(--text-main);
         }
 
         .brand-title span {
             font-size: 11px;
             color: var(--accent-gold);
-            letter-spacing: 2.5px;
+            letter-spacing: 1.5px;
             text-transform: uppercase;
         }
 
@@ -91,6 +117,25 @@
             display: flex;
             align-items: center;
             gap: 12px;
+        }
+
+        .install-pwa-btn {
+            background-color: var(--accent-gold);
+            color: #0d131d;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            display: none; /* Shown via JS */
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+
+        .install-pwa-btn:hover {
+            background-color: var(--accent-gold-light);
         }
 
         /* --- LAYOUT --- */
@@ -587,13 +632,17 @@
     <!-- APP HEADER -->
     <header>
         <div class="brand-container">
-            <div class="brand-logo-badge">PSI</div>
+            <!-- logo file referenced from image_0.png in prompt context -->
+            <img src="https://raw.githubusercontent.com/the-m-w/canvas-assets/refs/heads/main/assets/image_0_processed.png" alt="PSI Payne & Steynberg Incorporated Logo" class="app-logo-image">
             <div class="brand-title">
-                <h1>PAYNE &bull; STEYNBERG INCORPORATED</h1>
+                <h1>PSI Law Recordings</h1>
                 <span>Legal Dictation & Audio Manager</span>
             </div>
         </div>
         <div class="header-actions">
+            <button id="installAppBtn" class="install-pwa-btn">
+                <i data-lucide="download" size="16"></i> Install App
+            </button>
             <span style="font-size: 12px; color: var(--text-muted);"><i data-lucide="shield-check" style="vertical-align: middle; width: 14px;"></i> Secure Local Storage</span>
         </div>
     </header>
@@ -750,13 +799,13 @@
             renderFileList();
             lucide.createIcons();
             setupEventListeners();
+            registerServiceWorker();
         }
 
         // --- DATA PERSISTENCE ---
         async function loadFolders() {
             const storedFolders = await getAllFromStore('folders');
             if (storedFolders.length > 0) {
-                // Merge custom subfolders from DB
                 storedFolders.forEach(sf => {
                     const parent = folders.find(f => f.id === sf.parentId);
                     if (parent && !parent.subfolders.some(existing => existing.id === sf.id)) {
@@ -869,7 +918,6 @@
             const emptyState = document.getElementById('emptyState');
             const currentFolderTitle = document.getElementById('currentFolderName');
             
-            // Get Current Folder Object
             let currentFolder = folders.find(f => f.id === currentFolderId);
             if (!currentFolder) {
                 for (let f of folders) {
@@ -892,7 +940,6 @@
 
             emptyState.style.display = 'none';
 
-            // All possible destination options for move dropdown
             const options = [];
             folders.forEach(f => {
                 options.push({ id: f.id, name: f.name });
@@ -1107,9 +1154,38 @@
             lucide.createIcons();
         }
 
+        // --- PWA INSTALLATION PROMPT HANDLER ---
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const installBtn = document.getElementById('installAppBtn');
+            installBtn.style.display = 'inline-flex';
+
+            installBtn.addEventListener('click', () => {
+                installBtn.style.display = 'none';
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    deferredPrompt = null;
+                });
+            });
+        });
+
+        function registerServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                const swCode = `
+                    self.addEventListener('install', e => e.waitUntil(self.skipWaiting()));
+                    self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+                    self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => caches.match(e.request))));
+                `;
+                const blob = new Blob([swCode], {type: 'text/javascript'});
+                const swURL = URL.createObjectURL(blob);
+                navigator.serviceWorker.register(swURL).catch(() => {});
+            }
+        }
+
         // --- EVENT LISTENERS ---
         function setupEventListeners() {
-            // Drag and drop
             const dropZone = document.getElementById('dropZone');
             const fileInput = document.getElementById('fileInput');
 
@@ -1131,7 +1207,6 @@
                 }
             });
 
-            // Audio Player Controls
             playPauseBtn.addEventListener('click', () => {
                 if (!playingFileId) return;
                 if (audioEngine.paused) {
@@ -1174,12 +1249,10 @@
                 updatePlayBtnIcon(false);
             });
 
-            // Modal Controls
             document.getElementById('cancelModalBtn').addEventListener('click', closeSubfolderModal);
             document.getElementById('saveSubfolderBtn').addEventListener('click', createSubfolder);
         }
 
-        // --- UTILITY FUNCTIONS ---
         function formatBytes(bytes, decimals = 1) {
             if (bytes === 0) return '0 Bytes';
             const k = 1024;
@@ -1201,7 +1274,6 @@
             );
         }
 
-        // Launch App
         window.addEventListener('DOMContentLoaded', initApp);
     </script>
 </body>

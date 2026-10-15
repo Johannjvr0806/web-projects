@@ -484,19 +484,23 @@ async function addSafeBook() {
 
   if (!title) return alert("Please enter a book title.");
 
-  let readingList = JSON.parse(await localforage.getItem('general_reading_list_safe')) || [];
+  let readingList = await localforage.getItem('general_reading_list_safe');
+  if (!readingList) readingList = [];
+
   readingList.push({ title, author: author || 'Unknown' });
   await localforage.setItem('general_reading_list_safe', readingList);
 
   titleInput.value = '';
   authorInput.value = '';
-  renderReadingLog();
+  await renderReadingLog();
 }
 
 async function renderReadingLog() {
   const listContainer = document.getElementById('safe-reading-list');
   const totalCount = document.getElementById('safe-total-count');
-  let readingList = JSON.parse(await localforage.getItem('general_reading_list_safe')) || [];
+  
+  let readingList = await localforage.getItem('general_reading_list_safe');
+  if (!readingList) readingList = [];
 
   listContainer.innerHTML = '';
   totalCount.textContent = readingList.length;
@@ -517,8 +521,10 @@ async function renderReadingLog() {
 }
 
 async function removeSafeBook(index) {
-  let readingList = JSON.parse(await localforage.getItem('general_reading_list_safe')) || [];
+  let readingList = await localforage.getItem('general_reading_list_safe');
+  if (!readingList) readingList = [];
+
   readingList.splice(index, 1);
   await localforage.setItem('general_reading_list_safe', readingList);
-  renderReadingLog();
+  await renderReadingLog();
 }

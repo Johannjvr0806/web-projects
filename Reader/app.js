@@ -339,20 +339,45 @@ async function addBookmark() {
   renderBookmarks();
 }
 
-async function addHighlight() {
+async function addHighlightFromSelection() {
   if (!currentRendition || !currentBookId) return;
   const book = books.find(b => b.id === currentBookId);
   if (!book) return;
 
-  if (!currentSelectedCfiRange) {
-    return alert("Please select/highlight text in the book first, then click ✨ Highlight!");
+  let text = "";
+  let cfiRange = currentSelectedCfiRange;
+
+  if (cfiRange) {
+    try {
+      text = currentRendition.getRange(cfiRange).toString().trim();
+    } catch (e) { text = ""; }
   }
 
-  const text = currentRendition.getRange(currentSelectedCfiRange).toString().trim();
-  if (!text) return alert("Selected text is empty.");
+  if (!text) {
+    const iframe = document.querySelector('#viewer iframe');
+    if (iframe && iframe.contentWindow) {
+      const selectedStr = iframe.contentWindow.getSelection().toString().trim();
+      if (selectedStr) {
+        text = selectedStr;
+        try {
+          const sel = iframe.contentWindow.getSelection();
+          if (sel.rangeCount > 0) {
+            cfiRange = currentRendition.getRange(sel.getRangeAt(0));
+          }
+        } catch (err) { console.log(err); }
+      }
+    }
+  }
+
+  if (!text) {
+    return alert("Please select some text in the book first, then click ✨ Save Highlight!");
+  }
 
   if (!book.highlights) book.highlights = [];
-  book.highlights.push({ cfiRange: currentSelectedCfiRange, text: text });
+  book.highlights.push({ 
+    cfiRange: cfiRange || currentRendition.location.start.cfi, 
+    text: text 
+  });
 
   await saveBooksMeta();
   alert("Highlight saved successfully!");
@@ -405,7 +430,7 @@ function renderHighlights() {
   const book = books.find(b => b.id === currentBookId);
 
   if (!book || !book.highlights || book.highlights.length === 0) {
-    list.innerHTML = '<li style="padding:10px; opacity:0.6;">No highlights saved yet. Select text and click Highlight!</li>';
+    list.innerHTML = '<li style="padding:10px; opacity:0.6;">No highlights saved yet. Select text and click Save Highlight!</li>';
     return;
   }
 

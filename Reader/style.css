@@ -9,7 +9,7 @@ body.theme-purple { background-color: #241633 !important; color: #f3e8ff !import
 body.theme-navy { background-color: #121c2e; color: #e0e6ed; }
 body.theme-dark { background-color: #1e1e1e; color: #e0e0e0; }
 
-/* Header & Navigation (Locked to prevent flashing/wrapping) */
+/* Header & Navigation */
 header#app-header, .reader-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: #fff; border-bottom: 1px solid #e5e7eb; height: 60px; color: inherit; flex-wrap: nowrap; overflow: hidden; }
 .nav-tabs { display: flex; gap: 8px; flex-shrink: 0; }
 .tab-btn, .action-btn, .control-btn { padding: 8px 12px; border: none; border-radius: 6px; background: rgba(128, 128, 128, 0.15); color: inherit; font-size: 13px; cursor: pointer; font-weight: 500; white-space: nowrap; flex-shrink: 0; }
@@ -55,7 +55,7 @@ header#app-header, .reader-header { display: flex; justify-content: space-betwee
   height: 100%; 
   z-index: 20; 
   background: transparent; 
-  pointer-events: none; /* Crucial: lets text selection pass through to the reader iframe */
+  cursor: pointer;
 }
 
 /* Reader Header & Footer with Auto-Hide Transition */
@@ -65,7 +65,6 @@ header#app-header, .reader-header { display: flex; justify-content: space-betwee
 .reader-header.hidden { transform: translateY(-100%); opacity: 0; pointer-events: none; }
 .reader-footer.hidden { transform: translateY(100%); opacity: 0; pointer-events: none; }
 
-.reader-clock { font-size: 13px; font-weight: 600; opacity: 0.85; padding: 0 8px; white-space: nowrap; flex-shrink: 0; }
 .font-controls { display: flex; gap: 4px; flex-shrink: 0; }
 .theme-picker { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
 .theme-dot { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; }
@@ -80,7 +79,7 @@ header#app-header, .reader-header { display: flex; justify-content: space-betwee
 .progress-track { width: 100%; height: 4px; background: rgba(128,128,128,0.2); border-radius: 2px; overflow: hidden; }
 #progress-bar { width: 0%; height: 100%; background: #4f46e5; transition: width 0.2s; }
 
-/* Drawers (TOC, Bookmarks, Highlights, Reading Log) */
+/* Drawers */
 .toc-drawer { position: fixed; top: 0; left: -320px; width: 320px; height: 100%; background: inherit; box-shadow: 2px 0 10px rgba(0,0,0,0.3); transition: left 0.3s ease; z-index: 100; display: flex; flex-direction: column; }
 .toc-drawer.open { left: 0; }
 .toc-header { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid rgba(128,128,128,0.2); }

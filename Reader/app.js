@@ -465,7 +465,7 @@ function toggleTTS() {
   }
 }
 
-// --- Integrated Reading Log Logic ---
+/// --- Bulletproof Synchronous Reading Log Logic ---
 function toggleReadingLogModal() {
   const modal = document.getElementById('reading-log-modal');
   document.getElementById('toc-drawer').classList.remove('open');
@@ -476,31 +476,48 @@ function toggleReadingLogModal() {
   }
 }
 
-async function addSafeBook() {
+function addSafeBook() {
   const titleInput = document.getElementById('safe-book-title');
   const authorInput = document.getElementById('safe-book-author');
-  const title = titleInput.value.trim();
-  const author = authorInput.value.trim();
+  const title = titleInput.value ? titleInput.value.trim() : '';
+  const author = authorInput.value ? authorInput.value.trim() : '';
 
-  if (!title) return alert("Please enter a book title.");
+  if (!title) {
+    alert("Please enter a book title.");
+    return;
+  }
 
-  let readingList = await localforage.getItem('general_reading_list_safe');
-  if (!readingList) readingList = [];
+  let readingList = [];
+  try {
+    const saved = localStorage.getItem('general_reading_list_safe');
+    if (saved) {
+      readingList = JSON.parse(saved);
+    }
+  } catch (e) {
+    readingList = [];
+  }
 
-  readingList.push({ title, author: author || 'Unknown' });
-  await localforage.setItem('general_reading_list_safe', readingList);
+  readingList.push({ title: title, author: author || 'Unknown' });
+  localStorage.setItem('general_reading_list_safe', JSON.stringify(readingList));
 
   titleInput.value = '';
   authorInput.value = '';
-  await renderReadingLog();
+  renderReadingLog();
 }
 
-async function renderReadingLog() {
+function renderReadingLog() {
   const listContainer = document.getElementById('safe-reading-list');
   const totalCount = document.getElementById('safe-total-count');
   
-  let readingList = await localforage.getItem('general_reading_list_safe');
-  if (!readingList) readingList = [];
+  let readingList = [];
+  try {
+    const saved = localStorage.getItem('general_reading_list_safe');
+    if (saved) {
+      readingList = JSON.parse(saved);
+    }
+  } catch (e) {
+    readingList = [];
+  }
 
   listContainer.innerHTML = '';
   totalCount.textContent = readingList.length;
@@ -520,11 +537,18 @@ async function renderReadingLog() {
   });
 }
 
-async function removeSafeBook(index) {
-  let readingList = await localforage.getItem('general_reading_list_safe');
-  if (!readingList) readingList = [];
+function removeSafeBook(index) {
+  let readingList = [];
+  try {
+    const saved = localStorage.getItem('general_reading_list_safe');
+    if (saved) {
+      readingList = JSON.parse(saved);
+    }
+  } catch (e) {
+    readingList = [];
+  }
 
   readingList.splice(index, 1);
-  await localforage.setItem('general_reading_list_safe', readingList);
-  await renderReadingLog();
+  localStorage.setItem('general_reading_list_safe', JSON.stringify(readingList));
+  renderReadingLog();
 }

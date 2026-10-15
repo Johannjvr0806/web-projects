@@ -74,11 +74,13 @@
       <div id="tap-shield" onclick="handleScreenTap(event)"></div>
     </div>
 
-    <!-- Reader Bottom Control Bar -->
+   <!-- Reader Bottom Control Bar -->
     <div class="reader-footer" id="reader-bottombar">
       <button class="control-btn" onclick="prevPage()">◀ Prev</button>
-      <button class="control-btn" onclick="addHighlightFromSelection()" style="background: #f59e0b; color: white;">✨ Save Highlight</button>
-      <button class="control-btn" onclick="toggleHighlightDrawer()" style="background: #8b5cf6; color: white;">💡 Highlights</button>
+      <div style="display: flex; gap: 4px;">
+        <button class="control-btn" onclick="addHighlightFromSelection()" style="background: #f59e0b; color: white;" title="Save Highlight">✨ Highlight</button>
+        <button class="control-btn" onclick="toggleHighlightDrawer()" style="background: #8b5cf6; color: white;" title="View Highlights">💡 List</button>
+      </div>
       <button id="tts-btn" class="control-btn" onclick="toggleTTS()">🔊 Listen</button>
       <div class="progress-info">
         <span id="page-info">Loading...</span>

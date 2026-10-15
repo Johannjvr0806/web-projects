@@ -58,12 +58,12 @@ header#app-header, .reader-header { display: flex; justify-content: space-betwee
   cursor: pointer;
 }
 
-/* Reader Header & Footer with Auto-Hide Transition */
-.reader-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: inherit; border-bottom: 1px solid rgba(128,128,128,0.2); z-index: 10; height: 60px; flex-wrap: nowrap; transform: translateY(0); opacity: 1; transition: transform 0.3s ease, opacity 0.3s ease; }
-.reader-footer { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: inherit; border-top: 1px solid rgba(128,128,128,0.2); z-index: 10; height: 60px; flex-wrap: nowrap; transform: translateY(0); opacity: 1; transition: transform 0.3s ease, opacity 0.3s ease; }
+/* Reader Header & Footer with Clean Hide/Show Transition */
+.reader-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: inherit; border-bottom: 1px solid rgba(128,128,128,0.2); z-index: 10; height: 60px; flex-wrap: nowrap; transform: translateY(0); opacity: 1; visibility: visible; transition: transform 0.3s ease, opacity 0.3s ease, visibility 0.3s ease; }
+.reader-footer { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: inherit; border-top: 1px solid rgba(128,128,128,0.2); z-index: 10; height: 60px; flex-wrap: nowrap; transform: translateY(0); opacity: 1; visibility: visible; transition: transform 0.3s ease, opacity 0.3s ease, visibility 0.3s ease; }
 
-.reader-header.hidden { transform: translateY(-100%); opacity: 0; pointer-events: none; }
-.reader-footer.hidden { transform: translateY(100%); opacity: 0; pointer-events: none; }
+.reader-header.hidden { transform: translateY(-100%); opacity: 0; visibility: hidden; pointer-events: none; }
+.reader-footer.hidden { transform: translateY(100%); opacity: 0; visibility: hidden; pointer-events: none; }
 
 .font-controls { display: flex; gap: 4px; flex-shrink: 0; }
 .theme-picker { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }

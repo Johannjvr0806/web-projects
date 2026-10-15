@@ -76,6 +76,10 @@
     }
     textarea { resize: vertical; height: 70px; }
     
+    /* Page Navigation */
+    .page-section { display: none; }
+    .page-section.active { display: block; }
+    
     /* Table styling */
     .table-container {
       overflow-x: auto;
@@ -138,7 +142,8 @@
     .btn-danger:hover { background: #901a1a; }
     
     .actions {
-      text-align: center;
+      display: flex;
+      justify-content: space-between;
       margin-top: 20px;
     }
   </style>
@@ -153,129 +158,136 @@
 
   <form id="jobCardForm" onsubmit="event.preventDefault();">
     
-    <!-- Job Info -->
-    <fieldset>
-      <legend>Job Identification</legend>
-      <div class="form-row">
-        <div class="form-group" style="max-width: 120px;">
-          <label>Prefix</label>
-          <select id="jobPrefix" onchange="onPrefixChange()">
-            <option value="H">H (Herman)</option>
-            <option value="K">K (Kobus)</option>
-          </select>
+    <!-- ================= PAGE 1: Job Info & Timesheet ================= -->
+    <div id="page1" class="page-section active">
+      <fieldset>
+        <legend>Job Identification (Page 1 of 2)</legend>
+        <div class="form-row">
+          <div class="form-group" style="max-width: 120px;">
+            <label>Prefix</label>
+            <select id="jobPrefix" onchange="onPrefixChange()">
+              <option value="H">H (Herman)</option>
+              <option value="K">K (Kobus)</option>
+            </select>
+          </div>
+          <div class="form-group" style="max-width: 120px;">
+            <label>Job Sequence</label>
+            <input type="text" id="jobSeq" readonly style="background:#e9e9e9; font-weight:bold;" />
+          </div>
+          <div class="form-group">
+            <label>Company / Provider</label>
+            <input type="text" id="providerName" value="CJB Brace Consulting" oninput="updateHeaderProvider()" />
+          </div>
         </div>
-        <div class="form-group" style="max-width: 120px;">
-          <label>Job Sequence</label>
-          <input type="text" id="jobSeq" readonly style="background:#e9e9e9; font-weight:bold;" />
+        <div class="form-row">
+          <div class="form-group">
+            <label>Client Name</label>
+            <input type="text" id="clientName" placeholder="Client Name" required />
+          </div>
+          <div class="form-group">
+            <label>Site Location</label>
+            <input type="text" id="siteLocation" placeholder="Site Name / Location" required />
+          </div>
         </div>
-        <div class="form-group">
-          <label>Company / Provider</label>
-          <input type="text" id="providerName" value="CJB Brace Consulting" oninput="updateHeaderProvider()" />
+        <div class="form-row">
+          <div class="form-group">
+            <label>Date of Service</label>
+            <input type="date" id="inspectionDate" required />
+          </div>
+          <div class="form-group">
+            <label>Lead Technician</label>
+            <select id="techName">
+              <option value="Herman">Herman</option>
+              <option value="Kobus">Kobus</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Client Email (for PDF Report)</label>
+            <input type="email" id="recipientEmail" placeholder="client@email.co.za" required />
+          </div>
         </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Client Name</label>
-          <input type="text" id="clientName" placeholder="Client Name" required />
-        </div>
-        <div class="form-group">
-          <label>Site Location</label>
-          <input type="text" id="siteLocation" placeholder="Site Name / Location" required />
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Date of Service</label>
-          <input type="date" id="inspectionDate" required />
-        </div>
-        <div class="form-group">
-          <label>Lead Technician</label>
-          <select id="techName">
-            <option value="Herman">Herman</option>
-            <option value="Kobus">Kobus</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Client Email (for PDF Report)</label>
-          <input type="email" id="recipientEmail" placeholder="client@email.co.za" required />
-        </div>
-      </div>
-    </fieldset>
+      </fieldset>
 
-    <!-- Timesheet & Work Carried Out -->
-    <fieldset>
-      <legend>Timesheet & Scope of Work</legend>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Start Time</label>
-          <input type="time" id="startTime" value="07:00" />
+      <fieldset>
+        <legend>Timesheet & Scope of Work</legend>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Start Time</label>
+            <input type="time" id="startTime" value="07:00" />
+          </div>
+          <div class="form-group">
+            <label>Finish Time</label>
+            <input type="time" id="finishTime" value="16:00" />
+          </div>
+          <div class="form-group">
+            <label>Break (Mins)</label>
+            <input type="number" id="breakMins" value="30" />
+          </div>
+          <div class="form-group">
+            <label>Travel Time</label>
+            <input type="text" id="travelTime" value="1h 00m" />
+          </div>
         </div>
-        <div class="form-group">
-          <label>Finish Time</label>
-          <input type="time" id="finishTime" value="16:00" />
+        <div class="form-group" style="margin-top: 10px;">
+          <label>Work Carried Out / Observations</label>
+          <textarea id="workCarriedOut" placeholder="Describe work performed..."></textarea>
         </div>
-        <div class="form-group">
-          <label>Break (Mins)</label>
-          <input type="number" id="breakMins" value="30" />
-        </div>
-        <div class="form-group">
-          <label>Travel Time</label>
-          <input type="text" id="travelTime" value="1h 00m" />
-        </div>
-      </div>
-      <div class="form-group" style="margin-top: 10px;">
-        <label>Work Carried Out / Observations</label>
-        <textarea id="workCarriedOut" placeholder="Describe work performed..."></textarea>
-      </div>
-    </fieldset>
+      </fieldset>
 
-    <!-- Equipment & Tackle Spreadsheet Table -->
-    <fieldset>
-      <legend>Equipment & Tackle Spreadsheet</legend>
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th style="width:30px;">#</th>
-              <th>Description</th>
-              <th>Ser No</th>
-              <th>Lanyard</th>
-              <th>Make</th>
-              <th>SWL / KG</th>
-              <th>Length</th>
-              <th>Size</th>
-              <th>Legs</th>
-              <th style="width:40px;">Action</th>
-            </tr>
-          </thead>
-          <tbody id="excelTableBody">
-            <!-- Dynamic Rows added here -->
-          </tbody>
-        </table>
+      <div class="actions" style="justify-content: flex-end;">
+        <button type="button" class="btn" onclick="goToPage(2)">Next: Equipment & Signatures ➡️</button>
       </div>
-      <button type="button" class="btn" style="margin-top: 10px;" onclick="addExcelRow()">+ Add Equipment Item</button>
-    </fieldset>
+    </div>
 
-    <!-- Signatures -->
-    <fieldset>
-      <legend>Authorisation & Signatures</legend>
-      <div class="sig-container">
-        <div class="sig-box">
-          <label>Technician Signature</label>
-          <canvas id="techSigCanvas"></canvas>
-          <button type="button" class="btn btn-danger" style="padding:4px 8px; font-size:10px; margin-top:5px;" onclick="clearCanvas('techSigCanvas')">Clear</button>
+    <!-- ================= PAGE 2: Equipment Spreadsheet & Signatures ================= -->
+    <div id="page2" class="page-section">
+      <fieldset>
+        <legend>Equipment & Tackle Spreadsheet (Page 2 of 2)</legend>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:30px;">#</th>
+                <th>Description</th>
+                <th>Ser No</th>
+                <th>Lanyard</th>
+                <th>Make</th>
+                <th>SWL / KG</th>
+                <th>Length</th>
+                <th>Size</th>
+                <th>Legs</th>
+                <th style="width:40px;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="excelTableBody">
+              <!-- Dynamic Rows added here -->
+            </tbody>
+          </table>
         </div>
-        <div class="sig-box">
-          <label>Client Representative Signature</label>
-          <canvas id="clientSigCanvas"></canvas>
-          <button type="button" class="btn btn-danger" style="padding:4px 8px; font-size:10px; margin-top:5px;" onclick="clearCanvas('clientSigCanvas')">Clear</button>
+        <button type="button" class="btn" style="margin-top: 10px;" onclick="addExcelRow()">+ Add Equipment Item</button>
+      </fieldset>
+
+      <fieldset id="sigFieldset">
+        <legend>Authorisation & Signatures</legend>
+        <p id="sigWarning" style="color: #b52323; font-size: 12px; font-weight: bold; display: none;">⚠️ Please add at least one equipment item and fill out Page 1 before signing.</p>
+        <div class="sig-container" id="sigContainerBox">
+          <div class="sig-box">
+            <label>Technician Signature</label>
+            <canvas id="techSigCanvas"></canvas>
+            <button type="button" class="btn btn-danger" style="padding:4px 8px; font-size:10px; margin-top:5px;" onclick="clearCanvas('techSigCanvas')">Clear</button>
+          </div>
+          <div class="sig-box">
+            <label>Client Representative Signature</label>
+            <canvas id="clientSigCanvas"></canvas>
+            <button type="button" class="btn btn-danger" style="padding:4px 8px; font-size:10px; margin-top:5px;" onclick="clearCanvas('clientSigCanvas')">Clear</button>
+          </div>
         </div>
+      </fieldset>
+
+      <div class="actions">
+        <button type="button" class="btn" onclick="goToPage(1)">⬅️ Back to Page 1</button>
+        <button type="button" class="btn" id="submitCloudBtn" onclick="submitToCloud()" style="font-size: 16px; padding: 12px 25px;">☁️ Submit to Google Sheet & Email</button>
       </div>
-    </fieldset>
-
-    <!-- Submit Action -->
-    <div class="actions">
-      <button type="button" class="btn" id="submitCloudBtn" onclick="submitToCloud()" style="font-size: 16px; padding: 12px 25px;">☁️ Submit to Google Sheet & Email</button>
     </div>
 
   </form>
@@ -328,6 +340,33 @@
     if (prefix === 'K') techSelect.value = 'Kobus';
   }
 
+  function goToPage(pageNo) {
+    if (pageNo === 2) {
+      // Validate Page 1 required fields
+      let client = document.getElementById('clientName').value.trim();
+      let site = document.getElementById('siteLocation').value.trim();
+      let email = document.getElementById('recipientEmail').value.trim();
+      if (!client || !site || !email) {
+        alert("❌ Please fill in Client Name, Site Location, and Client Email on Page 1 before proceeding.");
+        return;
+      }
+    }
+
+    document.getElementById('page1').classList.remove('active');
+    document.getElementById('page2').classList.remove('active');
+    document.getElementById('page ' + pageNo).classList.add('active'); // Wait, fixed string:
+    document.getElementById('page' + pageNo).classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Resize canvases correctly when page 2 becomes visible
+    if (pageNo === 2) {
+      setTimeout(() => {
+        resizeCanvas('techSigCanvas');
+        resizeCanvas('clientSigCanvas');
+      }, 50);
+    }
+  }
+
   function addExcelRow() {
     let tbody = document.getElementById('excelTableBody');
     let rowCount = tbody.rows.length + 1;
@@ -366,12 +405,6 @@
     let ctx = canvas.getContext('2d');
     let drawing = false;
 
-    // Give layout time to initialize width/height
-    setTimeout(() => {
-      canvas.width = canvas.offsetWidth || 300;
-      canvas.height = canvas.offsetHeight || 120;
-    }, 100);
-
     function getPos(e) {
       let rect = canvas.getBoundingClientRect();
       let clientX = e.clientX || (e.touches && e.touches[0].clientX);
@@ -393,6 +426,14 @@
     signatures[canvasId] = { canvas, ctx };
   }
 
+  function resizeCanvas(canvasId) {
+    let sig = signatures[canvasId];
+    if (sig) {
+      sig.canvas.width = sig.canvas.offsetWidth || 300;
+      sig.canvas.height = sig.canvas.offsetHeight || 120;
+    }
+  }
+
   function clearCanvas(canvasId) {
     let sig = signatures[canvasId];
     if (sig) {
@@ -401,11 +442,16 @@
   }
 
   function submitToCloud() {
+    let tbody = document.getElementById('excelTableBody');
+    if (tbody.rows.length === 0) {
+      alert("❌ You must add at least one equipment item on Page 2 before submitting.");
+      return;
+    }
+
     let prefix = document.getElementById('jobPrefix').value;
     let seq = document.getElementById('jobSeq').value.trim();
 
     let equipmentRows = [];
-    let tbody = document.getElementById('excelTableBody');
     Array.from(tbody.rows).forEach(row => {
       equipmentRows.push({
         item: row.querySelector('.eq-item').value,

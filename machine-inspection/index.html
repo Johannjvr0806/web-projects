@@ -8,6 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&display=swap" rel="stylesheet">
+  <!-- SheetJS Library for Excel Export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     :root {
       --ink: #17173a;
@@ -501,8 +503,8 @@
           </div>
 
           <div class="legal-notice">
-            <strong>Compliance valid for 6 months (180 days) from date of issue[cite: 6].</strong><br>
-            INSPECTION / SERVICE CONDUCTED ACCORDING TO REQUIREMENTS OF THE OSH ACT 85 OF 1993[cite: 6].
+            <strong>Compliance valid for 6 months (180 days) from date of issue.</strong><br>
+            INSPECTION / SERVICE CONDUCTED ACCORDING TO REQUIREMENTS OF THE OSH ACT 85 OF 1993.
           </div>
         </section>
       </div>
@@ -562,6 +564,7 @@
   <!-- ACTION BUTTONS BAR -->
   <div class="actions-bar">
     <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset Form</button>
+    <button type="button" class="btn btn-secondary" id="exportExcelBtn">📥 Export to Excel</button>
     <button type="button" class="btn btn-success" id="submitCloudBtn" onclick="submitToCloud()" disabled>
       ☁️ Submit to Google Sheet & Email
     </button>
@@ -921,6 +924,79 @@
       location.reload();
     }
   }
+
+  // --- Excel Export Integration ---
+  function exportToExcel(data) {
+    var wb = XLSX.utils.book_new();
+
+    // Sheet 1: job details
+    var details = [
+      ["Job ID", data.jobId || ""],
+      ["Provider", data.provider || ""],
+      ["Client", data.client || ""],
+      ["Site location", data.site || ""],
+      ["Date", data.date || ""],
+      ["Lead technician", data.tech || ""],
+      ["Start time", data.startTime || ""],
+      ["Finish time", data.finishTime || ""],
+      ["Break (mins)", data.breakMins || ""],
+      ["Travel time", data.travelTime || ""],
+      ["Work carried out", data.workCarriedOut || ""]
+    ];
+    var ws1 = XLSX.utils.aoa_to_sheet(details);
+    ws1["!cols"] = [{ wch: 20 }, { wch: 60 }];
+    XLSX.utils.book_append_sheet(wb, ws1, "Job Details");
+
+    // Sheet 2: equipment and tackle
+    var rows = [["#", "Description", "Ser No", "Lanyard", "Make", "SWL / KG", "Length", "Size", "Legs"]];
+    (data.equipmentRows || []).forEach(function (r, i) {
+      rows.push([i + 1, r.item || "", r.ser || "", r.lanyard || "", r.make || "",
+                 r.swl || "", r.length || "", r.size || "", r.legs || ""]);
+    });
+    var ws2 = XLSX.utils.aoa_to_sheet(rows);
+    ws2["!cols"] = [{ wch: 5 }, { wch: 28 }, { wch: 16 }, { wch: 12 }, { wch: 16 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 8 }];
+    XLSX.utils.book_append_sheet(wb, ws2, "Equipment");
+
+    XLSX.writeFile(wb, "JobCard_" + (data.jobId || "export") + ".xlsx");
+  }
+
+  function collectCurrentFormData() {
+    var equipmentRows = [];
+    var tbody = document.getElementById('excelTableBody');
+    if (tbody) {
+      Array.from(tbody.rows).forEach(row => {
+        equipmentRows.push({
+          item: row.querySelector('.eq-item') ? row.querySelector('.eq-item').value : '',
+          ser: row.querySelector('.eq-ser') ? row.querySelector('.eq-ser').value : '',
+          lanyard: row.querySelector('.eq-lanyard') ? row.querySelector('.eq-lanyard').value : '',
+          make: row.querySelector('.eq-make') ? row.querySelector('.eq-make').value : '',
+          swl: row.querySelector('.eq-swl') ? row.querySelector('.eq-swl').value : '',
+          length: row.querySelector('.eq-length') ? row.querySelector('.eq-length').value : '',
+          size: row.querySelector('.eq-size') ? row.querySelector('.eq-size').value : '',
+          legs: row.querySelector('.eq-legs') ? row.querySelector('.eq-legs').value : ''
+        });
+      });
+    }
+
+    return {
+      jobId: document.getElementById('displayJobId') ? document.getElementById('displayJobId').innerText : 'H01',
+      provider: document.getElementById('providerName') ? document.getElementById('providerName').value : '',
+      client: document.getElementById('clientName') ? document.getElementById('clientName').value : '',
+      site: document.getElementById('siteLocation') ? document.getElementById('siteLocation').value : '',
+      date: document.getElementById('inspectionDate') ? document.getElementById('inspectionDate').value : '',
+      tech: document.getElementById('techName') ? document.getElementById('techName').value : '',
+      startTime: document.getElementById('startTime') ? document.getElementById('startTime').value : '',
+      finishTime: document.getElementById('finishTime') ? document.getElementById('finishTime').value : '',
+      breakMins: document.getElementById('breakMins') ? document.getElementById('breakMins').value : '',
+      travelTime: document.getElementById('travelTime') ? document.getElementById('travelTime').value : '',
+      workCarriedOut: document.getElementById('workCarriedOut') ? document.getElementById('workCarriedOut').value : '',
+      equipmentRows: equipmentRows
+    };
+  }
+
+  document.getElementById("exportExcelBtn").addEventListener("click", function () {
+    exportToExcel(collectCurrentFormData());
+  });
 </script>
 
 <!-- PWA Service Worker Registration -->

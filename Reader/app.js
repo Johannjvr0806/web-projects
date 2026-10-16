@@ -259,9 +259,9 @@ function applyThemeToRendition() {
   if (currentTheme === 'theme-navy') { bg = '#121c2e'; color = '#e0e6ed'; }
   if (currentTheme === 'theme-dark') { bg = '#1e1e1e'; color = '#e0e0e0'; }
 
-  // Ensures inner iframe perfectly matches background color instantly
+  // Ensures iframe background is transparent so the theme shows through
   currentRendition.themes.register("current", {
-    "body": { "background": bg + " !important", "color": color + " !important", "padding-top": "60px !important", "padding-bottom": "60px !important" },
+    "body": { "background": "transparent !important", "color": color + " !important", "padding-top": "60px !important", "padding-bottom": "60px !important" },
     "p": { "color": color + " !important" }
   });
   currentRendition.themes.select("current");
@@ -288,21 +288,50 @@ function setupRenditionEvents() {
     currentSelectedCfiRange = cfiRange;
   });
 
-  // Direct touch/click handling inside the book - Safely ignores clicks while selecting text!
-  currentRendition.on("click", (e) => {
-    const iframe = document.querySelector('#viewer iframe');
-    if (iframe && iframe.contentWindow.getSelection().toString().trim().length > 0) return;
+  // --- SMART TOUCH HANDLING: Separates Taps from Text Highlighting ---
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchStartTime = 0;
 
-    const width = window.innerWidth;
-    const x = e.clientX || (e.changedTouches ? e.changedTouches[0].clientX : width / 2);
+  currentRendition.on("touchstart", event => {
+    const touch = event.changedTouches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    touchStartTime = Date.now();
+  });
 
-    if (x < width * 0.25) {
+  currentRendition.on("touchend", event => {
+    const touch = event.changedTouches[0];
+    const touchEndX = touch.clientX;
+    const touchEndY = touch.clientY;
+    const timeElapsed = Date.now() - touchStartTime;
+
+    // If finger moved or was held down, let native text selection happen
+    if (Math.abs(touchEndX - touchStartX) > 10 || Math.abs(touchEndY - touchStartY) > 10 || timeElapsed > 300) {
+      return; 
+    }
+
+    // Otherwise, it's a quick tap! Turn page or toggle menu.
+    const width = currentRendition.manager.container.clientWidth || window.innerWidth;
+    if (touchEndX < width * 0.3) {
       currentRendition.prev();
-    } else if (x > width * 0.75) {
+    } else if (touchEndX > width * 0.7) {
       currentRendition.next();
     } else {
       toggleControls();
     }
+  });
+
+  // Fallback for mouse clicks on desktop
+  currentRendition.on("click", (e) => {
+    const iframe = document.querySelector('#viewer iframe');
+    if (iframe && iframe.contentWindow.getSelection().toString().trim().length > 0) return;
+    
+    const width = currentRendition.manager.container.clientWidth || window.innerWidth;
+    const x = e.clientX;
+    if (x < width * 0.3) currentRendition.prev();
+    else if (x > width * 0.7) currentRendition.next();
+    else toggleControls();
   });
 
   currentEpub.ready.then(() => {

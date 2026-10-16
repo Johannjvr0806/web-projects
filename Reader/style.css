@@ -10,8 +10,8 @@ body.theme-navy { background-color: #121c2e; color: #e0e6ed; }
 body.theme-dark { background-color: #1e1e1e; color: #e0e0e0; }
 
 /* Force viewer to inherit backgrounds immediately to prevent flashing */
-#viewer, .epub-viewer { background: inherit !important; }
-.epub-viewer iframe { background: inherit !important; color: inherit !important; }
+.viewer-wrapper, #viewer, .epub-viewer { background: inherit !important; }
+.epub-viewer iframe { background: transparent !important; border: none !important; color: inherit !important; }
 
 /* Top App Header with Slide-Away Hide */
 #app-header { display: flex; justify-content: space-between; align-items: center; padding: 0 16px; background: inherit; border-bottom: 1px solid rgba(128,128,128,0.2); height: 60px; color: inherit; flex-shrink: 0; transition: margin-top 0.3s ease; overflow: hidden; }
@@ -51,7 +51,7 @@ body.theme-dark { background-color: #1e1e1e; color: #e0e0e0; }
 .viewer-wrapper { flex: 1; width: 100%; height: 100%; position: relative; }
 .epub-viewer { width: 100%; height: 100%; }
 
-/* Overlay Reader Headers/Footers (Prevents ePub resizing jumps) */
+/* Overlay Reader Headers/Footers */
 .reader-header, .reader-footer { position: absolute; left: 0; width: 100%; z-index: 10; background: inherit; display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; transition: transform 0.3s ease, opacity 0.3s ease; }
 .reader-header { top: 0; height: 60px; border-bottom: 1px solid rgba(128,128,128,0.2); }
 .reader-footer { bottom: 0; height: 60px; border-top: 1px solid rgba(128,128,128,0.2); }
@@ -87,3 +87,8 @@ body.theme-purple #app-header, body.theme-purple .reader-header, body.theme-purp
 body.theme-navy #app-header, body.theme-navy .reader-header, body.theme-navy .reader-footer, body.theme-navy .toc-drawer { background-color: #0b1320 !important; color: #e0e6ed !important; border-color: #1e293b !important; }
 body.theme-dark #app-header, body.theme-dark .reader-header, body.theme-dark .reader-footer, body.theme-dark .toc-drawer { background-color: #121212 !important; color: #e0e0e0 !important; border-color: #2a2a2a !important; }
 body.theme-sepia #app-header, body.theme-sepia .reader-header, body.theme-sepia .reader-footer, body.theme-sepia .toc-drawer { background-color: #ece3cc !important; color: #433422 !important; border-color: #d4c5a9 !important; }
+
+/* Reading Log Styles */
+#reading-log-modal.open { right: 0 !important; left: auto !important; }
+#safe-reading-list li { padding: 8px 10px; font-size: 14px; border-bottom: 1px solid rgba(128, 128, 128, 0.15); display: flex; justify-content: space-between; align-items: center; }
+.safe-delete-btn { background: #ef4444; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 11px; cursor: pointer; }

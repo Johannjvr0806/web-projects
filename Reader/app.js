@@ -17,24 +17,12 @@ localforage.config({ name: 'ReaderApp', storeName: 'library' });
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
-  startClock();
   await loadSavedTheme();
   await loadCategories();
   await loadBooks();
   setupFileInput();
   renderCategoryTabs();
 });
-
-function startClock() {
-  const updateClock = () => {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const clockEl = document.getElementById('live-clock');
-    if (clockEl) clockEl.textContent = timeStr;
-  };
-  updateClock();
-  setInterval(updateClock, 1000);
-}
 
 // Persistent Theme System
 async function loadSavedTheme() {
@@ -263,6 +251,22 @@ async function openBook(id) {
   }
 }
 
+function applyThemeToRendition() {
+  if (!currentRendition) return;
+  let bg = '#fffaf0', color = '#1f2937';
+  if (currentTheme === 'theme-sepia') { bg = '#f7eedb'; color = '#433422'; }
+  if (currentTheme === 'theme-purple') { bg = '#241633'; color = '#f3e8ff'; }
+  if (currentTheme === 'theme-navy') { bg = '#121c2e'; color = '#e0e6ed'; }
+  if (currentTheme === 'theme-dark') { bg = '#1e1e1e'; color = '#e0e0e0'; }
+
+  // Ensures inner iframe perfectly matches background color instantly
+  currentRendition.themes.register("current", {
+    "body": { "background": bg + " !important", "color": color + " !important", "padding-top": "60px !important", "padding-bottom": "60px !important" },
+    "p": { "color": color + " !important" }
+  });
+  currentRendition.themes.select("current");
+}
+
 function setupRenditionEvents() {
   currentRendition.on("relocated", location => {
     const cfi = location.start.cfi;
@@ -284,6 +288,23 @@ function setupRenditionEvents() {
     currentSelectedCfiRange = cfiRange;
   });
 
+  // Direct touch/click handling inside the book - Safely ignores clicks while selecting text!
+  currentRendition.on("click", (e) => {
+    const iframe = document.querySelector('#viewer iframe');
+    if (iframe && iframe.contentWindow.getSelection().toString().trim().length > 0) return;
+
+    const width = window.innerWidth;
+    const x = e.clientX || (e.changedTouches ? e.changedTouches[0].clientX : width / 2);
+
+    if (x < width * 0.25) {
+      currentRendition.prev();
+    } else if (x > width * 0.75) {
+      currentRendition.next();
+    } else {
+      toggleControls();
+    }
+  });
+
   currentEpub.ready.then(() => {
     return currentEpub.locations.generate(1000);
   }).then(() => {
@@ -296,24 +317,13 @@ function setupRenditionEvents() {
   });
 }
 
-function handleScreenTap(e) {
-  const rect = e.currentTarget.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const width = rect.width;
-
-  if (x < width * 0.25) {
-    if (currentRendition) currentRendition.prev();
-  } else if (x > width * 0.75) {
-    if (currentRendition) currentRendition.next();
-  } else {
-    toggleControls();
-  }
-}
-
 function toggleControls() {
   controlsVisible = !controlsVisible;
+  const appHeader = document.getElementById('app-header');
   const topbar = document.getElementById('reader-topbar');
   const bottombar = document.getElementById('reader-bottombar');
+  
+  if (appHeader) appHeader.classList.toggle('hidden', !controlsVisible);
   if (topbar) topbar.classList.toggle('hidden', !controlsVisible);
   if (bottombar) bottombar.classList.toggle('hidden', !controlsVisible);
 }
@@ -370,7 +380,7 @@ async function addHighlightFromSelection() {
   }
 
   if (!text) {
-    return alert("Please select some text in the book first, then click ✨ Save Highlight!");
+    return alert("Please select some text in the book first, then click ✨ Highlight!");
   }
 
   if (!book.highlights) book.highlights = [];
@@ -477,6 +487,10 @@ function switchView(view) {
     document.getElementById('reader-view').style.display = 'none';
     document.getElementById('nav-shelf').classList.add('active');
     document.getElementById('nav-reader').classList.remove('active');
+    
+    // Ensure header is visible when going back to shelf
+    controlsVisible = true;
+    document.getElementById('app-header').classList.remove('hidden');
     renderBookshelf();
   } else {
     document.getElementById('shelf-view').style.display = 'none';
@@ -495,21 +509,6 @@ function changeFontSize(delta) {
   if (currentFontSize < 60) currentFontSize = 60;
   if (currentFontSize > 200) currentFontSize = 200;
   if (currentRendition) currentRendition.themes.fontSize(`${currentFontSize}%`);
-}
-
-function applyThemeToRendition() {
-  if (!currentRendition) return;
-  let bg = '#fffaf0', color = '#1f2937';
-  if (currentTheme === 'theme-sepia') { bg = '#f7eedb'; color = '#433422'; }
-  if (currentTheme === 'theme-purple') { bg = '#241633'; color = '#f3e8ff'; }
-  if (currentTheme === 'theme-navy') { bg = '#121c2e'; color = '#e0e6ed'; }
-  if (currentTheme === 'theme-dark') { bg = '#1e1e1e'; color = '#e0e0e0'; }
-
-  currentRendition.themes.register("current", {
-    "body": { "background": bg, "color": color, "padding": "10px !important" },
-    "p": { "color": color }
-  });
-  currentRendition.themes.select("current");
 }
 
 function toggleToc() {
@@ -562,16 +561,12 @@ function toggleReadingLogModal() {
   document.getElementById('bookmark-drawer').classList.remove('open');
   document.getElementById('highlight-drawer').classList.remove('open');
   modal.classList.toggle('open');
-  if (modal.classList.contains('open')) {
-    renderReadingLog();
-  }
+  if (modal.classList.contains('open')) renderReadingLog();
 }
 
 function toggleImportBox() {
   const box = document.getElementById('bulk-import-container');
-  if (box) {
-    box.style.display = box.style.display === 'none' ? 'block' : 'none';
-  }
+  if (box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
 }
 
 function processBulkImport() {
@@ -593,7 +588,6 @@ function processBulkImport() {
   lines.forEach(line => {
     let cleanLine = line.trim();
     if (!cleanLine) return;
-
     cleanLine = cleanLine.replace(/^\d+[\.\)]\s*/, '');
 
     let parts = cleanLine.split(/\s*[-–—]\s*|\s+by\s+/i);
@@ -623,10 +617,7 @@ function addSafeBook() {
   const title = titleInput.value ? titleInput.value.trim() : '';
   const author = authorInput.value ? authorInput.value.trim() : '';
 
-  if (!title) {
-    alert("Please enter a book title.");
-    return;
-  }
+  if (!title) return alert("Please enter a book title.");
 
   let readingList = [];
   try {

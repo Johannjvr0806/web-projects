@@ -52,11 +52,11 @@
   <!-- READER VIEW -->
   <div id="reader-view" class="view-container" style="display:none;">
     
-    <!-- Reader Top Bar (Now contains Highlights) -->
+    <!-- Reader Top Bar -->
     <div class="reader-header" id="reader-topbar">
       <button class="control-btn" onclick="toggleToc()">☰ TOC</button>
       
-      <!-- Highlight Buttons moved to TOP to prevent mobile popup blocking -->
+      <!-- Highlight Buttons -->
       <div style="display: flex; gap: 4px;">
         <button class="control-btn" onclick="addHighlightFromSelection()" style="background: #f59e0b; color: white;">✨ Highlight</button>
         <button class="control-btn" onclick="toggleHighlightDrawer()" style="background: #8b5cf6; color: white;">💡 List</button>
@@ -68,7 +68,7 @@
       </div>
     </div>
 
-    <!-- EPUB Viewer Area (No Tap Shield, direct touch enabled!) -->
+    <!-- EPUB Viewer Area -->
     <div class="viewer-wrapper">
       <div id="viewer" class="epub-viewer"></div>
     </div>

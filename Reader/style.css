@@ -9,13 +9,13 @@ body.theme-purple { background-color: #241633 !important; color: #f3e8ff !import
 body.theme-navy { background-color: #121c2e; color: #e0e6ed; }
 body.theme-dark { background-color: #1e1e1e; color: #e0e0e0; }
 
-/* Force viewer to inherit backgrounds immediately to prevent flashing */
+/* Force viewer to inherit backgrounds and make iframe transparent to fix flashing and themes */
 .viewer-wrapper, #viewer, .epub-viewer { background: inherit !important; }
 .epub-viewer iframe { background: transparent !important; border: none !important; color: inherit !important; }
 
 /* Top App Header with Slide-Away Hide */
 #app-header { display: flex; justify-content: space-between; align-items: center; padding: 0 16px; background: inherit; border-bottom: 1px solid rgba(128,128,128,0.2); height: 60px; color: inherit; flex-shrink: 0; transition: margin-top 0.3s ease; overflow: hidden; }
-#app-header.hidden { margin-top: -60px; } /* Slides the Bookshelf header cleanly off the top of the screen */
+#app-header.hidden { margin-top: -60px; }
 
 .nav-tabs { display: flex; gap: 8px; flex-shrink: 0; }
 .tab-btn, .action-btn, .control-btn { padding: 8px 12px; border: none; border-radius: 6px; background: rgba(128, 128, 128, 0.15); color: inherit; font-size: 13px; cursor: pointer; font-weight: 500; white-space: nowrap; flex-shrink: 0; }

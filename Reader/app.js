@@ -253,16 +253,24 @@ async function openBook(id) {
 
 function applyThemeToRendition() {
   if (!currentRendition) return;
-  let bg = '#fffaf0', color = '#1f2937';
-  if (currentTheme === 'theme-sepia') { bg = '#f7eedb'; color = '#433422'; }
-  if (currentTheme === 'theme-purple') { bg = '#241633'; color = '#f3e8ff'; }
-  if (currentTheme === 'theme-navy') { bg = '#121c2e'; color = '#e0e6ed'; }
-  if (currentTheme === 'theme-dark') { bg = '#1e1e1e'; color = '#e0e0e0'; }
+  let color = '#1f2937';
+  if (currentTheme === 'theme-sepia') { color = '#433422'; }
+  if (currentTheme === 'theme-purple') { color = '#f3e8ff'; }
+  if (currentTheme === 'theme-navy') { color = '#e0e6ed'; }
+  if (currentTheme === 'theme-dark') { color = '#e0e0e0'; }
 
-  // Ensures iframe background is transparent so the theme shows through
+  // Force ALL text tags to inherit our theme color, completely overriding publisher styles
   currentRendition.themes.register("current", {
     "body": { "background": "transparent !important", "color": color + " !important", "padding-top": "60px !important", "padding-bottom": "60px !important" },
-    "p": { "color": color + " !important" }
+    "*": { "color": color + " !important" },
+    "p": { "color": color + " !important" },
+    "span": { "color": color + " !important" },
+    "div": { "color": color + " !important" },
+    "h1": { "color": color + " !important" },
+    "h2": { "color": color + " !important" },
+    "h3": { "color": color + " !important" },
+    "li": { "color": color + " !important" },
+    "a": { "color": color + " !important" }
   });
   currentRendition.themes.select("current");
 }
@@ -288,49 +296,52 @@ function setupRenditionEvents() {
     currentSelectedCfiRange = cfiRange;
   });
 
-  // --- SMART TOUCH HANDLING: Separates Taps from Text Highlighting ---
   let touchStartX = 0;
   let touchStartY = 0;
   let touchStartTime = 0;
+  let lastTapTime = 0; // Tracks when a touch ends to prevent ghost clicks
 
   currentRendition.on("touchstart", event => {
-    const touch = event.changedTouches[0];
+    const touch = event.changedTouches[0] || event.touches[0];
     touchStartX = touch.clientX;
     touchStartY = touch.clientY;
     touchStartTime = Date.now();
   });
 
   currentRendition.on("touchend", event => {
-    const touch = event.changedTouches[0];
+    const touch = event.changedTouches[0] || event.touches[0];
     const touchEndX = touch.clientX;
     const touchEndY = touch.clientY;
     const timeElapsed = Date.now() - touchStartTime;
 
-    // If finger moved or was held down, let native text selection happen
-    if (Math.abs(touchEndX - touchStartX) > 10 || Math.abs(touchEndY - touchStartY) > 10 || timeElapsed > 300) {
+    // Forgiving threshold for tablet swipes/highlights
+    if (Math.abs(touchEndX - touchStartX) > 20 || Math.abs(touchEndY - touchStartY) > 20 || timeElapsed > 400) {
       return; 
     }
 
-    // Otherwise, it's a quick tap! Turn page or toggle menu.
+    lastTapTime = Date.now(); // Record that we successfully tapped
     const width = currentRendition.manager.container.clientWidth || window.innerWidth;
-    if (touchEndX < width * 0.3) {
+    
+    if (touchEndX < width * 0.25) {
       currentRendition.prev();
-    } else if (touchEndX > width * 0.7) {
+    } else if (touchEndX > width * 0.75) {
       currentRendition.next();
     } else {
       toggleControls();
     }
   });
 
-  // Fallback for mouse clicks on desktop
   currentRendition.on("click", (e) => {
+    // If a touch event just fired a moment ago, IGNORE this click entirely to fix the menu flashing
+    if (Date.now() - lastTapTime < 500) return;
+
     const iframe = document.querySelector('#viewer iframe');
     if (iframe && iframe.contentWindow.getSelection().toString().trim().length > 0) return;
     
     const width = currentRendition.manager.container.clientWidth || window.innerWidth;
     const x = e.clientX;
-    if (x < width * 0.3) currentRendition.prev();
-    else if (x > width * 0.7) currentRendition.next();
+    if (x < width * 0.25) currentRendition.prev();
+    else if (x > width * 0.75) currentRendition.next();
     else toggleControls();
   });
 
@@ -517,7 +528,6 @@ function switchView(view) {
     document.getElementById('nav-shelf').classList.add('active');
     document.getElementById('nav-reader').classList.remove('active');
     
-    // Ensure header is visible when going back to shelf
     controlsVisible = true;
     document.getElementById('app-header').classList.remove('hidden');
     renderBookshelf();

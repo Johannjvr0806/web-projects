@@ -17,6 +17,7 @@ localforage.config({ name: 'ReaderApp', storeName: 'library' });
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
+  history.replaceState({ view: 'shelf' }, '');
   await loadSavedTheme();
   await loadCategories();
   await loadBooks();
@@ -295,62 +296,35 @@ function setupRenditionEvents() {
     currentSelectedCfiRange = cfiRange;
   });
 
-  // NATIVE HOOK: Bypasses ePub.js proxy bugs entirely
+  // TAP ZONES: left 30% = previous page, right 30% = next page, middle = show/hide menus
   currentRendition.hooks.content.register((contents) => {
-    const el = contents.document.documentElement;
-    let startX = 0;
-    let startY = 0;
-    let startTime = 0;
-    let lastTapTime = 0;
+    const doc = contents.document;
+    const win = contents.window;
 
-    el.addEventListener('touchstart', e => {
-      startX = e.changedTouches[0].clientX;
-      startY = e.changedTouches[0].clientY;
-      startTime = Date.now();
-    });
+    // epub.js makes the iframe as wide as the WHOLE chapter (all pages side by side),
+    // so win.innerWidth / e.clientX are NOT relative to the visible screen.
+    // Convert the tap into a 0..1 position across the visible reader area instead.
+    function tapPosition(clientX) {
+      const frame = win.frameElement || document.querySelector('#viewer iframe');
+      const viewer = document.getElementById('viewer');
+      if (!frame || !viewer) return 0.5;
+      const viewerRect = viewer.getBoundingClientRect();
+      const frameRect = frame.getBoundingClientRect();
+      return (frameRect.left + clientX - viewerRect.left) / viewerRect.width;
+    }
 
-    el.addEventListener('touchend', e => {
-      const endX = e.changedTouches[0].clientX;
-      const endY = e.changedTouches[0].clientY;
-      const timeElapsed = Date.now() - startTime;
-
-      // Ignore text selection swipes
-      if (Math.abs(endX - startX) > 20 || Math.abs(endY - startY) > 20 || timeElapsed > 400) return;
-
-      // Anti-Double-Tap Shield
-      if (Date.now() - lastTapTime < 400) return;
-      lastTapTime = Date.now();
+    // One handler only (click fires once per tap, and not for swipes or long-press selection)
+    doc.addEventListener('click', (e) => {
+      // Let links inside the book work normally
+      if (e.target && e.target.closest && e.target.closest('a[href]')) return;
 
       // Ignore if text is currently highlighted
-      const sel = contents.window.getSelection();
+      const sel = win.getSelection();
       if (sel && sel.toString().trim().length > 0) return;
 
-      // Native, 100% accurate inner window measurement
-      const width = contents.window.innerWidth;
-      
-      if (endX < width * 0.3) {
-        currentRendition.prev();
-      } else if (endX > width * 0.7) {
-        currentRendition.next();
-      } else {
-        toggleControls();
-      }
-      
-      e.preventDefault();
-      e.stopPropagation();
-    });
-
-    // Fallback for Desktop Mouse
-    el.addEventListener('click', e => {
-      if (Date.now() - lastTapTime < 400) return;
-      lastTapTime = Date.now();
-      
-      const sel = contents.window.getSelection();
-      if (sel && sel.toString().trim().length > 0) return;
-
-      const width = contents.window.innerWidth;
-      if (e.clientX < width * 0.3) currentRendition.prev();
-      else if (e.clientX > width * 0.7) currentRendition.next();
+      const pos = tapPosition(e.clientX);
+      if (pos < 0.3) currentRendition.prev();
+      else if (pos > 0.7) currentRendition.next();
       else toggleControls();
     });
   });
@@ -531,24 +505,53 @@ function jumpToCfi(cfi) {
   }
 }
 
-function switchView(view) {
+function closeAllDrawers() {
+  document.querySelectorAll('.toc-drawer.open').forEach(d => d.classList.remove('open'));
+}
+
+function switchView(view, fromHistory = false) {
   if (view === 'shelf') {
     document.getElementById('shelf-view').style.display = 'flex';
     document.getElementById('reader-view').style.display = 'none';
     document.getElementById('nav-shelf').classList.add('active');
     document.getElementById('nav-reader').classList.remove('active');
-    
+
+    // Reset menus so they are visible again next time
     controlsVisible = true;
     document.getElementById('app-header').classList.remove('hidden');
+    document.getElementById('reader-topbar').classList.remove('hidden');
+    document.getElementById('reader-bottombar').classList.remove('hidden');
+    closeAllDrawers();
     renderBookshelf();
+
+    // If the user tapped the Bookshelf button, drop the extra history entry
+    if (!fromHistory && history.state && history.state.view === 'reader') history.back();
   } else {
     document.getElementById('shelf-view').style.display = 'none';
     document.getElementById('reader-view').style.display = 'flex';
     document.getElementById('nav-reader').style.display = 'inline-block';
     document.getElementById('nav-reader').classList.add('active');
     document.getElementById('nav-shelf').classList.remove('active');
+
+    // Give the phone's Back button/gesture something to go back to
+    if (!history.state || history.state.view !== 'reader') {
+      history.pushState({ view: 'reader' }, '');
+    }
   }
 }
+
+// Phone Back button / swipe-back: close a drawer first, then leave the book to the bookshelf
+window.addEventListener('popstate', () => {
+  const readerOpen = document.getElementById('reader-view').style.display !== 'none';
+  if (!readerOpen) return;
+
+  if (document.querySelector('.toc-drawer.open')) {
+    closeAllDrawers();
+    history.pushState({ view: 'reader' }, '');
+    return;
+  }
+  switchView('shelf', true);
+});
 
 function prevPage() { if (currentRendition) currentRendition.prev(); }
 function nextPage() { if (currentRendition) currentRendition.next(); }

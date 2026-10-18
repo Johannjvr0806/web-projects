@@ -14,7 +14,11 @@
       --accent: #38bdf8;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -28,7 +32,7 @@
       padding: 2rem 1rem;
     }
 
-    /* Login Screen */
+    /* Password Login Box */
     #login-box {
       background-color: var(--card-bg);
       border: 1px solid #334155;
@@ -39,8 +43,15 @@
       width: 100%;
     }
 
-    #login-box h2 { margin-bottom: 0.5rem; }
-    #login-box p { color: var(--text-sub); font-size: 0.9rem; margin-bottom: 1.5rem; }
+    #login-box h2 {
+      margin-bottom: 0.5rem;
+    }
+
+    #login-box p {
+      color: var(--text-sub);
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+    }
 
     #login-box input {
       width: 100%;
@@ -71,12 +82,27 @@
       display: none;
     }
 
-    /* Dashboard Content */
-    #dashboard { display: none; width: 100%; max-width: 900px; }
+    /* Main Dashboard */
+    #dashboard {
+      display: none;
+      width: 100%;
+      max-width: 900px;
+    }
 
-    header { text-align: center; margin-bottom: 2.5rem; }
-    header h1 { font-size: 2.2rem; margin-bottom: 0.5rem; }
-    header p { color: var(--text-sub); }
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    header h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    header p {
+      color: var(--text-sub);
+    }
 
     .grid {
       display: grid;
@@ -92,21 +118,34 @@
       padding: 1.25rem;
       text-decoration: none;
       color: var(--text-main);
-      transition: all 0.2s;
+      transition: all 0.2s ease-in-out;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
 
     .card:hover {
       background-color: var(--card-hover);
+      transform: translateY(-3px);
       border-color: var(--accent);
+      box-shadow: 0 10px 20px -10px rgba(56, 189, 248, 0.3);
     }
 
-    .card h2 { font-size: 1.15rem; color: var(--accent); margin-bottom: 0.4rem; }
-    .card p { font-size: 0.85rem; color: var(--text-sub); }
+    .card h2 {
+      font-size: 1.15rem;
+      color: var(--accent);
+      margin-bottom: 0.4rem;
+    }
+
+    .card p {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+    }
   </style>
 </head>
 <body>
 
-  <!-- PASSWORD GATE -->
+  <!-- LOGIN SCREEN -->
   <div id="login-box">
     <h2>Protected Access</h2>
     <p>Enter key to view projects</p>
@@ -115,7 +154,7 @@
     <p id="error-msg">Incorrect password</p>
   </div>
 
-  <!-- MAIN DASHBOARD -->
+  <!-- DASHBOARD GRID -->
   <div id="dashboard">
     <header>
       <h1>My Web Projects</h1>
@@ -127,31 +166,38 @@
         <h2>Reader App</h2>
         <p>Document & text reader utility</p>
       </a>
-      <a href="./Machine Inspection/" class="card">
+
+      <a href="./machine-inspection/" class="card">
         <h2>Machine Inspection</h2>
         <p>Inspection & audit checklist tool</p>
       </a>
-      <a href="./Store Audit/" class="card">
+
+      <a href="./store-audit-app/" class="card">
         <h2>Store Audit</h2>
         <p>Retail & inventory store checker</p>
       </a>
-      <a href="./Note Maker/" class="card">
+
+      <a href="./Note maker/" class="card">
         <h2>Note Maker</h2>
         <p>Quick note taking & storage</p>
       </a>
-      <a href="./PSI-LAW Recording/" class="card">
+
+      <a href="./PSI-LAW-Recording/" class="card">
         <h2>PSI-LAW Recording</h2>
         <p>Law & legal audio recording logger</p>
       </a>
-      <a href="./Inventory/" class="card">
+
+      <a href="./inventory/" class="card">
         <h2>Inventory</h2>
         <p>Stock & item tracking management</p>
       </a>
-      <a href="./Tasks/" class="card">
+
+      <a href="./tasks/" class="card">
         <h2>Tasks</h2>
         <p>To-do list & task planner</p>
       </a>
-      <a href="./Weather/" class="card">
+
+      <a href="./weather/" class="card">
         <h2>Weather</h2>
         <p>Live forecast & weather reports</p>
       </a>
@@ -159,8 +205,7 @@
   </div>
 
   <script>
-    // Set your secret password here:
-    const SECRET_KEY = "Nico!en30806"; 
+    const SECRET_KEY = "Nico!en30806";
 
     function checkPassword() {
       const input = document.getElementById("passInput").value;
@@ -172,7 +217,6 @@
       }
     }
 
-    // Allow Enter key
     document.getElementById("passInput").addEventListener("keypress", function(e) {
       if (e.key === "Enter") checkPassword();
     });

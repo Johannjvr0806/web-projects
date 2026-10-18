@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f4f6f3">
+    <meta name="description" content="Complete store audits, capture follow-up issues, and generate visit reports.">
+    <title>Store Audit</title>
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" href="./icon-192.png" type="image/png">
+    <link rel="apple-touch-icon" href="./icon-192.png">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+    <script src="app.js" defer></script>
+</head>
+<body>
+    <main class="app-shell">
+        <header class="topbar">
+            <a class="brand" href="#" aria-label="Store Audit home">
+                <span class="brand-mark" aria-hidden="true">S</span>
+                <span>Fieldnote <span class="brand-divider">/</span> Store Audit</span>
+            </a>
+            <div class="topbar-actions">
+                <button class="install-button" id="install-app" type="button">Install app</button>
+                <span class="topbar-label">AUDIT WORKSPACE</span>
+            </div>
+        </header>
+        <p class="install-status" id="install-status" aria-live="polite" role="status"></p>
+
+        <section class="page-heading" aria-labelledby="page-title">
+            <p class="eyebrow">STORE OPERATIONS</p>
+            <h1 id="page-title">Store audit</h1>
+            <p class="page-description">A clear record of store standards, follow-up actions and visit notes.</p>
+        </section>
+
+        <section class="audit-details card" aria-labelledby="details-title">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">AUDIT DETAILS</p>
+                    <h2 id="details-title">Your visit</h2>
+                </div>
+                <span class="date-chip" id="audit-date"></span>
+            </div>
+            <label class="field-label" for="store-name">Store name</label>
+            <input class="text-input" id="store-name" name="store-name" type="text" placeholder="Enter store name" autocomplete="organization" required>
+        </section>
+
+        <section class="checklist-section card" aria-labelledby="checklist-title">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">STORE STANDARDS</p>
+                    <h2 id="checklist-title">Checklist</h2>
+                </div>
+                <span class="progress-pill" id="checklist-progress" aria-live="polite">0 / 8 complete</span>
+            </div>
+            <div class="checklist" role="group" aria-label="Store audit checklist">
+                <label class="checklist-item">
+                    <input type="checkbox" name="audit-check" value="Store Numbers (Manager alignment check)">
+                    <span class="checkmark" aria-hidden="true"></span>
+                    <span class="checklist-copy"><strong>Store Numbers (Manager alignment check)</strong></span>
+                    <span class="item-status"></span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" name="audit-check" value="New Trade Update executed">
+                    <span class="checkmark" aria-hidden="true"></span>
+                    <span class="checklist-copy"><strong>New Trade Update executed</strong></span>
+                    <span class="item-status"></span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" name="audit-check" value="Floor Layout (Fully merchandised &amp; full)">
+                    <span class="checkmark" aria-hidden="true"></span>
+                    <span class="checklist-copy"><strong>Floor Layout (Fully merchandised &amp; full)</strong></span>
+                    <span class="item-status"></span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" name="audit-check" value="Flat Pack Tables (Standards check)">
+                    <span class="checkmark" aria-hidden="true"></span>
+                    <span class="checklist-copy"><strong>Flat Pack Tables (Standards check)</strong></span>
+                    <span class="item-status"></span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" name="audit-check" value="Hanger Disciplines (Sizing clips &amp; sorting)">
+                    <span class="checkmark" aria-hidden="true"></span>
+                    <span class="checklist-copy"><strong>Hanger Disciplines (Sizing clips &amp; sorting)</strong></span>
+                    <span class="item-status"></span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" name="audit-check" value="Signage Compliance (Matches product/promo)">
+                    <span class="checkmark" aria-hidden="true"></span>
+                    <span class="checklist-copy"><strong>Signage Compliance (Matches product/promo)</strong></span>
+                    <span class="item-status"></span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" name="audit-check" value="Stockroom &amp; Lay-Bye Management">
+                    <span class="checkmark" aria-hidden="true"></span>
+                    <span class="checklist-copy"><strong>Stockroom &amp; Lay-Bye Management</strong></span>
+                    <span class="item-status"></span>
+                </label>
+                <label class="checklist-item">
+                    <input type="checkbox" name="audit-check" value="Manager's Office Files updated">
+                    <span class="checkmark" aria-hidden="true"></span>
+                    <span class="checklist-copy"><strong>Manager's Office Files updated</strong></span>
+                    <span class="item-status"></span>
+                </label>
+            </div>
+        </section>
+
+        <section class="issues-section card" aria-labelledby="issues-title">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">FOLLOW-UP</p>
+                    <h2 id="issues-title">Issues &amp; notes</h2>
+                </div>
+                <span class="issue-count" id="issue-count">0 ISSUES</span>
+            </div>
+            <p class="section-description">Capture anything that needs attention. Add a photo, a short note, or both.</p>
+
+            <form id="issue-form">
+                <label class="field-label" for="issue-comment">Comment <span class="optional-label">OPTIONAL</span></label>
+                <textarea class="text-input comment-input" id="issue-comment" name="comment" rows="3" placeholder="What needs follow-up?"></textarea>
+
+                <label class="field-label upload-label" for="issue-image">Photo <span class="optional-label">OPTIONAL</span></label>
+                <div class="upload-control">
+                    <input id="issue-image" name="image" type="file" accept="image/*">
+                    <span class="upload-icon" aria-hidden="true">+</span>
+                    <span class="upload-copy"><strong>Choose a photo</strong><small id="file-name">JPG, PNG or other image</small></span>
+                </div>
+                <div id="issue-error" class="form-message error-message" role="alert" hidden></div>
+                <button class="button button-secondary add-issue-button" type="submit">
+                    <span aria-hidden="true">+</span> Add issue
+                </button>
+            </form>
+
+            <div class="issue-list" id="issue-list" aria-live="polite" aria-label="Added issues">
+                <div class="empty-state" id="empty-state">
+                    <span class="empty-icon" aria-hidden="true">✓</span>
+                    <p><strong>Nothing flagged yet</strong><br>Issues you add will appear here.</p>
+                </div>
+            </div>
+        </section>
+
+        <footer class="report-footer">
+            <div class="footer-note">
+                <span class="save-indicator" aria-hidden="true"></span>
+                <span>Ready to review</span>
+            </div>
+            <button class="button button-primary" id="generate-report" type="button">
+                Generate report <span aria-hidden="true">↗</span>
+            </button>
+            <p class="report-message" id="report-message" aria-live="polite" role="status"></p>
+        </footer>
+    </main>
+</body>
+</html>

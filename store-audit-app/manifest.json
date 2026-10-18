@@ -1,0 +1,25 @@
+{
+  "id": "./index.html",
+  "name": "Fieldnote Store Audit",
+  "short_name": "Store Audit",
+  "description": "Complete store audits, capture follow-up issues, and generate visit reports.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f6f3",
+  "theme_color": "#286344",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

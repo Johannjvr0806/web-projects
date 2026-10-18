@@ -299,54 +299,62 @@ function setupRenditionEvents() {
   let touchStartX = 0;
   let touchStartY = 0;
   let touchStartTime = 0;
-  let isSelecting = false;
-  let lastTurnTime = 0; // <-- The new anti-double-tap shield timer
 
-  // Track touches only to figure out if the user is dragging to highlight text
+  // Touch Handling: Direct page turning on touchend
   currentRendition.on("touchstart", event => {
-    const touch = event.changedTouches[0] || event.touches[0];
+    const touch = event.changedTouches ? event.changedTouches[0] : event.touches[0];
     touchStartX = touch.clientX;
     touchStartY = touch.clientY;
     touchStartTime = Date.now();
-    isSelecting = false;
   });
 
   currentRendition.on("touchend", event => {
-    const touch = event.changedTouches[0] || event.touches[0];
+    const touch = event.changedTouches ? event.changedTouches[0] : event.touches[0];
     const timeElapsed = Date.now() - touchStartTime;
-    
-    // If finger moves more than 20px or holds for 400ms, mark it as a text selection
-    if (Math.abs(touch.clientX - touchStartX) > 20 || Math.abs(touch.clientY - touchStartY) > 20 || timeElapsed > 400) {
-      isSelecting = true;
+    const deltaX = Math.abs(touch.clientX - touchStartX);
+    const deltaY = Math.abs(touch.clientY - touchStartY);
+
+    // If finger moved or held down, assume text highlighting or swipe
+    if (deltaX > 25 || deltaY > 25 || timeElapsed > 400) {
+      return;
+    }
+
+    // Stop browser from firing a follow-up click event
+    if (event.cancelable) event.preventDefault();
+    if (event.stopPropagation) event.stopPropagation();
+
+    const iframe = document.querySelector('#viewer iframe');
+    if (iframe && iframe.contentWindow && iframe.contentWindow.getSelection().toString().trim().length > 0) {
+      return;
+    }
+
+    const width = currentRendition.manager.container.clientWidth;
+    const x = touch.clientX;
+
+    if (x < width * 0.35) {
+      currentRendition.prev();
+    } else if (x > width * 0.65) {
+      currentRendition.next();
+    } else {
+      toggleControls();
     }
   });
 
-  // Use the native click event for 100% reliable page turning
+  // Desktop Mouse Fallback Only
   currentRendition.on("click", (e) => {
-    // Abort if the touch tracker saw a swipe/highlight
-    if (isSelecting) return; 
-
-    // Anti-Double-Tap Shield: Ignore any extra clicks that happen within 400ms
-    if (Date.now() - lastTurnTime < 400) return; 
-
-    // Abort if native text is currently selected
+    // If text is selected, let native highlight menu work
     const iframe = document.querySelector('#viewer iframe');
-    if (iframe && iframe.contentWindow.getSelection().toString().trim().length > 0) return;
-    
-    // Use the physical container width, ignoring mobile window scaling bugs
+    if (iframe && iframe.contentWindow && iframe.contentWindow.getSelection().toString().trim().length > 0) return;
+
     const width = currentRendition.manager.container.clientWidth;
     const x = e.clientX;
-    
-    // WIDER tap zones: Left 35% goes back, Right 35% goes forward
+
     if (x < width * 0.35) {
       currentRendition.prev();
-      lastTurnTime = Date.now(); // Activate shield!
     } else if (x > width * 0.65) {
       currentRendition.next();
-      lastTurnTime = Date.now(); // Activate shield!
     } else {
       toggleControls();
-      lastTurnTime = Date.now(); // Activate shield!
     }
   });
 

@@ -328,12 +328,14 @@ function setupRenditionEvents() {
       return;
     }
 
-    const width = currentRendition.manager.container.clientWidth;
+    // FIX: Safely grab the full width of the screen (fixes the "always goes forward" bug)
+    const width = window.innerWidth;
     const x = touch.clientX;
 
-    if (x < width * 0.35) {
+    // FIX: 25% Left, 50% Middle (for menu), 25% Right
+    if (x < width * 0.25) {
       currentRendition.prev();
-    } else if (x > width * 0.65) {
+    } else if (x > width * 0.75) {
       currentRendition.next();
     } else {
       toggleControls();
@@ -342,16 +344,16 @@ function setupRenditionEvents() {
 
   // Desktop Mouse Fallback Only
   currentRendition.on("click", (e) => {
-    // If text is selected, let native highlight menu work
     const iframe = document.querySelector('#viewer iframe');
     if (iframe && iframe.contentWindow && iframe.contentWindow.getSelection().toString().trim().length > 0) return;
 
-    const width = currentRendition.manager.container.clientWidth;
+    const width = window.innerWidth;
     const x = e.clientX;
 
-    if (x < width * 0.35) {
+    // Matches the touch zones above
+    if (x < width * 0.25) {
       currentRendition.prev();
-    } else if (x > width * 0.65) {
+    } else if (x > width * 0.75) {
       currentRendition.next();
     } else {
       toggleControls();

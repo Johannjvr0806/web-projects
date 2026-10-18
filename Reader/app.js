@@ -354,7 +354,7 @@ function setupRenditionEvents() {
       if (e.__handled) return;
       e.__handled = true;
       const now = Date.now();
-      if (now - lastTapAction < 350) return;
+      if (now - lastTapAction < 600) return;
       // Let links inside the book work normally
       if (e.target && e.target.closest && e.target.closest('a[href]')) return;
 
@@ -609,11 +609,13 @@ let pageTurning = false;
 async function turnPage(dir) {
   if (!currentRendition || pageTurning) return;
   pageTurning = true;
-  const wait = new Promise(res => setTimeout(res, 1000));
   try {
-    await Promise.race([dir > 0 ? currentRendition.next() : currentRendition.prev(), wait]);
-  } catch (err) { console.log(err); }
-  setTimeout(() => { pageTurning = false; }, 150);
+    await (dir > 0 ? currentRendition.next() : currentRendition.prev());
+  } catch (err) {
+    console.log(err);
+  } finally {
+    setTimeout(() => { pageTurning = false; }, 150);
+  }
 }
 
 function prevPage() { turnPage(-1); }

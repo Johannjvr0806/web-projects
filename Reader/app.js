@@ -300,6 +300,7 @@ function setupRenditionEvents() {
   let touchStartY = 0;
   let touchStartTime = 0;
   let isSelecting = false;
+  let lastTurnTime = 0; // <-- The new anti-double-tap shield timer
 
   // Track touches only to figure out if the user is dragging to highlight text
   currentRendition.on("touchstart", event => {
@@ -325,6 +326,9 @@ function setupRenditionEvents() {
     // Abort if the touch tracker saw a swipe/highlight
     if (isSelecting) return; 
 
+    // Anti-Double-Tap Shield: Ignore any extra clicks that happen within 400ms
+    if (Date.now() - lastTurnTime < 400) return; 
+
     // Abort if native text is currently selected
     const iframe = document.querySelector('#viewer iframe');
     if (iframe && iframe.contentWindow.getSelection().toString().trim().length > 0) return;
@@ -336,10 +340,13 @@ function setupRenditionEvents() {
     // WIDER tap zones: Left 35% goes back, Right 35% goes forward
     if (x < width * 0.35) {
       currentRendition.prev();
+      lastTurnTime = Date.now(); // Activate shield!
     } else if (x > width * 0.65) {
       currentRendition.next();
+      lastTurnTime = Date.now(); // Activate shield!
     } else {
       toggleControls();
+      lastTurnTime = Date.now(); // Activate shield!
     }
   });
 

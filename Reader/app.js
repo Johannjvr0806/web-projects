@@ -259,7 +259,6 @@ function applyThemeToRendition() {
   if (currentTheme === 'theme-navy') { color = '#e0e6ed'; }
   if (currentTheme === 'theme-dark') { color = '#e0e0e0'; }
 
-  // Force ALL text tags to inherit our theme color, completely overriding publisher styles
   currentRendition.themes.register("current", {
     "body": { "background": "transparent !important", "color": color + " !important", "padding-top": "60px !important", "padding-bottom": "60px !important" },
     "*": { "color": color + " !important" },
@@ -296,68 +295,64 @@ function setupRenditionEvents() {
     currentSelectedCfiRange = cfiRange;
   });
 
-  let touchStartX = 0;
-  let touchStartY = 0;
-  let touchStartTime = 0;
+  // NATIVE HOOK: Bypasses ePub.js proxy bugs entirely
+  currentRendition.hooks.content.register((contents) => {
+    const el = contents.document.documentElement;
+    let startX = 0;
+    let startY = 0;
+    let startTime = 0;
+    let lastTapTime = 0;
 
-  // Touch Handling: Direct page turning on touchend
-  currentRendition.on("touchstart", event => {
-    const touch = event.changedTouches ? event.changedTouches[0] : event.touches[0];
-    touchStartX = touch.clientX;
-    touchStartY = touch.clientY;
-    touchStartTime = Date.now();
-  });
+    el.addEventListener('touchstart', e => {
+      startX = e.changedTouches[0].clientX;
+      startY = e.changedTouches[0].clientY;
+      startTime = Date.now();
+    });
 
-  currentRendition.on("touchend", event => {
-    const touch = event.changedTouches ? event.changedTouches[0] : event.touches[0];
-    const timeElapsed = Date.now() - touchStartTime;
-    const deltaX = Math.abs(touch.clientX - touchStartX);
-    const deltaY = Math.abs(touch.clientY - touchStartY);
+    el.addEventListener('touchend', e => {
+      const endX = e.changedTouches[0].clientX;
+      const endY = e.changedTouches[0].clientY;
+      const timeElapsed = Date.now() - startTime;
 
-    // If finger moved or held down, assume text highlighting or swipe
-    if (deltaX > 25 || deltaY > 25 || timeElapsed > 400) {
-      return;
-    }
+      // Ignore text selection swipes
+      if (Math.abs(endX - startX) > 20 || Math.abs(endY - startY) > 20 || timeElapsed > 400) return;
 
-    // Stop browser from firing a follow-up click event
-    if (event.cancelable) event.preventDefault();
-    if (event.stopPropagation) event.stopPropagation();
+      // Anti-Double-Tap Shield
+      if (Date.now() - lastTapTime < 400) return;
+      lastTapTime = Date.now();
 
-    const iframe = document.querySelector('#viewer iframe');
-    if (iframe && iframe.contentWindow && iframe.contentWindow.getSelection().toString().trim().length > 0) {
-      return;
-    }
+      // Ignore if text is currently highlighted
+      const sel = contents.window.getSelection();
+      if (sel && sel.toString().trim().length > 0) return;
 
-    // FIX: Safely grab the full width of the screen (fixes the "always goes forward" bug)
-    const width = window.innerWidth;
-    const x = touch.clientX;
+      // Native, 100% accurate inner window measurement
+      const width = contents.window.innerWidth;
+      
+      if (endX < width * 0.3) {
+        currentRendition.prev();
+      } else if (endX > width * 0.7) {
+        currentRendition.next();
+      } else {
+        toggleControls();
+      }
+      
+      e.preventDefault();
+      e.stopPropagation();
+    });
 
-    // FIX: 25% Left, 50% Middle (for menu), 25% Right
-    if (x < width * 0.25) {
-      currentRendition.prev();
-    } else if (x > width * 0.75) {
-      currentRendition.next();
-    } else {
-      toggleControls();
-    }
-  });
+    // Fallback for Desktop Mouse
+    el.addEventListener('click', e => {
+      if (Date.now() - lastTapTime < 400) return;
+      lastTapTime = Date.now();
+      
+      const sel = contents.window.getSelection();
+      if (sel && sel.toString().trim().length > 0) return;
 
-  // Desktop Mouse Fallback Only
-  currentRendition.on("click", (e) => {
-    const iframe = document.querySelector('#viewer iframe');
-    if (iframe && iframe.contentWindow && iframe.contentWindow.getSelection().toString().trim().length > 0) return;
-
-    const width = window.innerWidth;
-    const x = e.clientX;
-
-    // Matches the touch zones above
-    if (x < width * 0.25) {
-      currentRendition.prev();
-    } else if (x > width * 0.75) {
-      currentRendition.next();
-    } else {
-      toggleControls();
-    }
+      const width = contents.window.innerWidth;
+      if (e.clientX < width * 0.3) currentRendition.prev();
+      else if (e.clientX > width * 0.7) currentRendition.next();
+      else toggleControls();
+    });
   });
 
   currentEpub.ready.then(() => {

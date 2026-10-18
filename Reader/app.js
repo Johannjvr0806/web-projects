@@ -299,50 +299,48 @@ function setupRenditionEvents() {
   let touchStartX = 0;
   let touchStartY = 0;
   let touchStartTime = 0;
-  let lastTapTime = 0; // Tracks when a touch ends to prevent ghost clicks
+  let isSelecting = false;
 
+  // Track touches only to figure out if the user is dragging to highlight text
   currentRendition.on("touchstart", event => {
     const touch = event.changedTouches[0] || event.touches[0];
     touchStartX = touch.clientX;
     touchStartY = touch.clientY;
     touchStartTime = Date.now();
+    isSelecting = false;
   });
 
   currentRendition.on("touchend", event => {
     const touch = event.changedTouches[0] || event.touches[0];
-    const touchEndX = touch.clientX;
-    const touchEndY = touch.clientY;
     const timeElapsed = Date.now() - touchStartTime;
-
-    // Forgiving threshold for tablet swipes/highlights
-    if (Math.abs(touchEndX - touchStartX) > 20 || Math.abs(touchEndY - touchStartY) > 20 || timeElapsed > 400) {
-      return; 
-    }
-
-    lastTapTime = Date.now(); // Record that we successfully tapped
-    const width = currentRendition.manager.container.clientWidth || window.innerWidth;
     
-    if (touchEndX < width * 0.25) {
+    // If finger moves more than 20px or holds for 400ms, mark it as a text selection
+    if (Math.abs(touch.clientX - touchStartX) > 20 || Math.abs(touch.clientY - touchStartY) > 20 || timeElapsed > 400) {
+      isSelecting = true;
+    }
+  });
+
+  // Use the native click event for 100% reliable page turning
+  currentRendition.on("click", (e) => {
+    // Abort if the touch tracker saw a swipe/highlight
+    if (isSelecting) return; 
+
+    // Abort if native text is currently selected
+    const iframe = document.querySelector('#viewer iframe');
+    if (iframe && iframe.contentWindow.getSelection().toString().trim().length > 0) return;
+    
+    // Use the physical container width, ignoring mobile window scaling bugs
+    const width = currentRendition.manager.container.clientWidth;
+    const x = e.clientX;
+    
+    // WIDER tap zones: Left 35% goes back, Right 35% goes forward
+    if (x < width * 0.35) {
       currentRendition.prev();
-    } else if (touchEndX > width * 0.75) {
+    } else if (x > width * 0.65) {
       currentRendition.next();
     } else {
       toggleControls();
     }
-  });
-
-  currentRendition.on("click", (e) => {
-    // If a touch event just fired a moment ago, IGNORE this click entirely to fix the menu flashing
-    if (Date.now() - lastTapTime < 500) return;
-
-    const iframe = document.querySelector('#viewer iframe');
-    if (iframe && iframe.contentWindow.getSelection().toString().trim().length > 0) return;
-    
-    const width = currentRendition.manager.container.clientWidth || window.innerWidth;
-    const x = e.clientX;
-    if (x < width * 0.25) currentRendition.prev();
-    else if (x > width * 0.75) currentRendition.next();
-    else toggleControls();
   });
 
   currentEpub.ready.then(() => {

@@ -473,6 +473,11 @@
 
     <!-- ================= JAVASCRIPT LOGIC ================= -->
     <script>
+        // SUPABASE CONFIGURATION (UPDATE THESE WITH YOUR PROJECT CREDENTIALS)
+        let SUPABASE_URL = 'https://tlhpshvfljpzrgbhirof.supabase.co';
+        let SUPABASE_ANON_KEY = 'sb_publishable_crnli0CDasfoMEDhSXi13Q_rRuQhGmd';
+        let supabaseClient = null;
+
         // Application State
         let state = {
             company: {

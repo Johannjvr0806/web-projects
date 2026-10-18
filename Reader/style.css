@@ -1,16 +1,18 @@
 /* Reset & Base Styles */
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-body, html { width: 100%; height: 100%; overflow: hidden; display: flex; flex-direction: column; background: inherit !important; }
+* { -webkit-tap-highlight-color: transparent; }
+body, html { width: 100%; height: 100%; overflow: hidden; display: flex; flex-direction: column; }
+body { background: var(--bg); color: var(--fg); }
 
 /* Themes */
-body.theme-light { background-color: #fffaf0; color: #1f2937; }
-body.theme-sepia { background-color: #f7eedb; color: #433422; }
-body.theme-purple { background-color: #241633 !important; color: #f3e8ff !important; }
-body.theme-navy { background-color: #121c2e; color: #e0e6ed; }
-body.theme-dark { background-color: #1e1e1e; color: #e0e0e0; }
+body.theme-light  { --bg: #fffaf0; --bar: #f1e9d6; --fg: #1f2937; --line: #ddd2b8; }
+body.theme-sepia  { --bg: #f7eedb; --bar: #ece3cc; --fg: #433422; --line: #d4c5a9; }
+body.theme-purple { --bg: #241633; --bar: #1a0f26; --fg: #f3e8ff; --line: #3b2352; }
+body.theme-navy   { --bg: #121c2e; --bar: #0b1320; --fg: #e0e6ed; --line: #1e293b; }
+body.theme-dark   { --bg: #1e1e1e; --bar: #121212; --fg: #e0e0e0; --line: #2a2a2a; }
 
 /* Force viewer to inherit backgrounds and make iframe transparent to fix flashing and themes */
-.viewer-wrapper, #viewer, .epub-viewer { background: inherit !important; }
+.viewer-wrapper, #viewer, .epub-viewer { background: transparent; }
 .epub-viewer iframe { background: transparent !important; border: none !important; color: inherit !important; }
 
 /* Top App Header with Slide-Away Hide */
@@ -83,10 +85,14 @@ body.theme-dark { background-color: #1e1e1e; color: #e0e0e0; }
 .bookmark-del, .highlight-del { background: #ef4444; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 11px; cursor: pointer; }
 
 /* Theme-specific overrides */
-body.theme-purple #app-header, body.theme-purple .reader-header, body.theme-purple .reader-footer, body.theme-purple .toc-drawer { background-color: #1a0f26 !important; color: #f3e8ff !important; border-color: #3b2352 !important; }
-body.theme-navy #app-header, body.theme-navy .reader-header, body.theme-navy .reader-footer, body.theme-navy .toc-drawer { background-color: #0b1320 !important; color: #e0e6ed !important; border-color: #1e293b !important; }
-body.theme-dark #app-header, body.theme-dark .reader-header, body.theme-dark .reader-footer, body.theme-dark .toc-drawer { background-color: #121212 !important; color: #e0e0e0 !important; border-color: #2a2a2a !important; }
-body.theme-sepia #app-header, body.theme-sepia .reader-header, body.theme-sepia .reader-footer, body.theme-sepia .toc-drawer { background-color: #ece3cc !important; color: #433422 !important; border-color: #d4c5a9 !important; }
+#app-header, body .reader-header, body .reader-footer, body .toc-drawer { background: var(--bar); color: var(--fg); border-color: var(--line); }
+
+/* Reading mode: menus float OVER the page so the page never resizes or jumps */
+body.reading #app-header { position: fixed; top: 0; left: 0; right: 0; z-index: 30; margin-top: 0; transition: transform 0.3s ease; }
+body.reading #app-header.hidden { transform: translateY(-100%); margin-top: 0; }
+body.reading #reader-view { position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; }
+body.reading .reader-header { top: 60px; z-index: 20; }
+body.reading .reader-header.hidden { transform: translateY(-200%); }
 
 /* Reading Log Styles */
 #reading-log-modal.open { right: 0 !important; left: auto !important; }

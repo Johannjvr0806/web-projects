@@ -12,6 +12,21 @@ let ttsUtterance = null;
 let isTTSPlaying = false;
 let currentSelectedCfiRange = null;
 
+const THEME_TEXT = {
+  'theme-light': '#1f2937',
+  'theme-sepia': '#433422',
+  'theme-purple': '#f3e8ff',
+  'theme-navy': '#e0e6ed',
+  'theme-dark': '#e0e0e0'
+};
+
+function applyBodyTheme(cls) {
+  if (!THEME_TEXT[cls]) cls = 'theme-purple';
+  Object.keys(THEME_TEXT).forEach(t => document.body.classList.remove(t));
+  document.body.classList.add(cls);
+  return cls;
+}
+
 // LocalForage Setup
 localforage.config({ name: 'ReaderApp', storeName: 'library' });
 
@@ -29,17 +44,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function loadSavedTheme() {
   const saved = await localforage.getItem('user_theme');
   if (saved) {
-    currentTheme = saved;
-    document.body.className = saved;
+    currentTheme = applyBodyTheme(saved);
   } else {
-    document.body.className = 'theme-purple';
+    applyBodyTheme('theme-purple');
   }
 }
 
 async function setTheme(themeClass) {
-  document.body.className = themeClass;
-  currentTheme = themeClass;
-  await localforage.setItem('user_theme', themeClass);
+  currentTheme = applyBodyTheme(themeClass);
+  await localforage.setItem('user_theme', currentTheme);
   applyThemeToRendition();
 }
 
@@ -103,6 +116,15 @@ async function loadBooks() {
 async function saveBooksMeta() {
   await localforage.setItem('books_meta', books);
 }
+
+// Saving the whole library on every page turn is slow, so wait until you stop turning pages
+let saveTimer = null;
+function saveBooksMetaSoon() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveBooksMeta, 1500);
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveBooksMeta(); });
+window.addEventListener('pagehide', saveBooksMeta);
 
 function setupFileInput() {
   const input = document.getElementById('epub-input');
@@ -214,6 +236,7 @@ async function deleteBook(id, e) {
   if (confirm("Delete this book from your library?")) {
     books = books.filter(b => b.id !== id);
     await localforage.removeItem(id);
+    await localforage.removeItem('loc_' + id);
     await saveBooksMeta();
     renderBookshelf();
   }
@@ -239,12 +262,15 @@ async function openBook(id) {
     spread: "none"
   });
 
+  // Register tap zones + theme BEFORE the first page is shown,
+  // otherwise the first page has no tap handling until you press Next
+  setupRenditionEvents();
+
   const targetCfi = bookData.cfi || undefined;
   await currentRendition.display(targetCfi);
 
-  applyThemeToRendition();
-  setupRenditionEvents();
   loadToc();
+  setControls(false); // start reading with the menus hidden
 
   if (bookData.status === 'unread') {
     bookData.status = 'reading';
@@ -252,27 +278,29 @@ async function openBook(id) {
   }
 }
 
+function themeCss() {
+  const c = THEME_TEXT[currentTheme] || THEME_TEXT['theme-purple'];
+  return `
+    html, body { background: transparent !important; }
+    body { color: ${c} !important; padding-top: 24px !important; padding-bottom: 24px !important; }
+    * { color: ${c} !important; -webkit-tap-highlight-color: transparent !important; outline: none !important; }
+  `;
+}
+
+function styleContents(contents) {
+  const doc = contents.document;
+  let el = doc.getElementById('reader-theme-style');
+  if (!el) {
+    el = doc.createElement('style');
+    el.id = 'reader-theme-style';
+    doc.head.appendChild(el);
+  }
+  el.textContent = themeCss();
+}
+
 function applyThemeToRendition() {
   if (!currentRendition) return;
-  let color = '#1f2937';
-  if (currentTheme === 'theme-sepia') { color = '#433422'; }
-  if (currentTheme === 'theme-purple') { color = '#f3e8ff'; }
-  if (currentTheme === 'theme-navy') { color = '#e0e6ed'; }
-  if (currentTheme === 'theme-dark') { color = '#e0e0e0'; }
-
-  currentRendition.themes.register("current", {
-    "body": { "background": "transparent !important", "color": color + " !important", "padding-top": "60px !important", "padding-bottom": "60px !important" },
-    "*": { "color": color + " !important" },
-    "p": { "color": color + " !important" },
-    "span": { "color": color + " !important" },
-    "div": { "color": color + " !important" },
-    "h1": { "color": color + " !important" },
-    "h2": { "color": color + " !important" },
-    "h3": { "color": color + " !important" },
-    "li": { "color": color + " !important" },
-    "a": { "color": color + " !important" }
-  });
-  currentRendition.themes.select("current");
+  currentRendition.getContents().forEach(styleContents);
 }
 
 function setupRenditionEvents() {
@@ -288,7 +316,7 @@ function setupRenditionEvents() {
         document.getElementById('page-info').textContent = `${book.progress}% completed`;
         if (book.progress >= 98) book.status = 'finished';
       }
-      saveBooksMeta();
+      saveBooksMetaSoon();
     }
   });
 
@@ -300,6 +328,7 @@ function setupRenditionEvents() {
   currentRendition.hooks.content.register((contents) => {
     const doc = contents.document;
     const win = contents.window;
+    styleContents(contents);
 
     // epub.js makes the iframe as wide as the WHOLE chapter (all pages side by side),
     // so win.innerWidth / e.clientX are NOT relative to the visible screen.
@@ -329,10 +358,19 @@ function setupRenditionEvents() {
     });
   });
 
-  currentEpub.ready.then(() => {
-    return currentEpub.locations.generate(1000);
+  const epubForLocations = currentEpub;
+  const locKey = 'loc_' + currentBookId;
+  currentEpub.ready.then(async () => {
+    const cached = await localforage.getItem(locKey);
+    if (cached) {
+      epubForLocations.locations.load(cached);
+    } else {
+      await epubForLocations.locations.generate(1000);
+      await localforage.setItem(locKey, epubForLocations.locations.save());
+    }
   }).then(() => {
-    if (currentRendition.location) {
+    if (epubForLocations !== currentEpub) return;
+    if (currentRendition && currentRendition.location && currentEpub.locations.length()) {
       const cfi = currentRendition.location.start.cfi;
       const progress = currentEpub.locations.percentageFromCfi(cfi);
       document.getElementById('progress-bar').style.width = `${Math.round(progress * 100)}%`;
@@ -341,15 +379,16 @@ function setupRenditionEvents() {
   });
 }
 
+function setControls(visible) {
+  controlsVisible = visible;
+  ['app-header', 'reader-topbar', 'reader-bottombar'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('hidden', !visible);
+  });
+}
+
 function toggleControls() {
-  controlsVisible = !controlsVisible;
-  const appHeader = document.getElementById('app-header');
-  const topbar = document.getElementById('reader-topbar');
-  const bottombar = document.getElementById('reader-bottombar');
-  
-  if (appHeader) appHeader.classList.toggle('hidden', !controlsVisible);
-  if (topbar) topbar.classList.toggle('hidden', !controlsVisible);
-  if (bottombar) bottombar.classList.toggle('hidden', !controlsVisible);
+  setControls(!controlsVisible);
 }
 
 // Smart Bookmarks & Highlights
@@ -516,12 +555,10 @@ function switchView(view, fromHistory = false) {
     document.getElementById('nav-shelf').classList.add('active');
     document.getElementById('nav-reader').classList.remove('active');
 
-    // Reset menus so they are visible again next time
-    controlsVisible = true;
-    document.getElementById('app-header').classList.remove('hidden');
-    document.getElementById('reader-topbar').classList.remove('hidden');
-    document.getElementById('reader-bottombar').classList.remove('hidden');
+    document.body.classList.remove('reading');
+    setControls(true);
     closeAllDrawers();
+    saveBooksMeta();
     renderBookshelf();
 
     // If the user tapped the Bookshelf button, drop the extra history entry
@@ -532,6 +569,7 @@ function switchView(view, fromHistory = false) {
     document.getElementById('nav-reader').style.display = 'inline-block';
     document.getElementById('nav-reader').classList.add('active');
     document.getElementById('nav-shelf').classList.remove('active');
+    document.body.classList.add('reading');
 
     // Give the phone's Back button/gesture something to go back to
     if (!history.state || history.state.view !== 'reader') {

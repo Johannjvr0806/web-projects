@@ -1,29 +1,157 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Projects</title>
-    <style>
-        body { font-family: system-ui, -apple-system, sans-serif; background: #0d1117; color: #c9d1d9; padding: 2rem; max-width: 600px; margin: 0 auto; }
-        h1 { color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 0.5rem; }
-        ul { list-style: none; padding: 0; }
-        li { margin: 12px 0; }
-        a { color: #58a6ff; text-decoration: none; font-size: 1.1rem; font-weight: 500; }
-        a:hover { text-decoration: underline; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Web Projects Hub</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --card-hover: #334155;
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+      --accent: #38bdf8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    header h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 0.5rem;
+    }
+
+    header p {
+      color: var(--text-sub);
+      font-size: 1rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1.25rem;
+      width: 100%;
+      max-width: 900px;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 1.25rem;
+      text-decoration: none;
+      color: var(--text-main);
+      transition: all 0.2s ease-in-out;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .card:hover {
+      background-color: var(--card-hover);
+      transform: translateY(-3px);
+      border-color: var(--accent);
+      box-shadow: 0 10px 20px -10px rgba(56, 189, 248, 0.3);
+    }
+
+    .card h2 {
+      font-size: 1.15rem;
+      margin-bottom: 0.4rem;
+      color: var(--accent);
+    }
+
+    .card p {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+    }
+
+    .card .arrow {
+      margin-top: 1rem;
+      font-size: 0.8rem;
+      font-weight: bold;
+      color: var(--accent);
+      text-align: right;
+    }
+  </style>
 </head>
 <body>
+
+  <header>
     <h1>My Web Projects</h1>
-    <ul>
-        <li><a href="./Reader/">Reader App</a></li>
-        <li><a href="./machine-inspection/">Machine Inspection</a></li>
-        <li><a href="./store-audit-app/">Store Audit</a></li>
-        <li><a href="./Note maker/">Note Maker</a></li>
-        <li><a href="./PSI-LAW-Recording/">PSI-LAW Recording</a></li>
-        <li><a href="./inventory/">Inventory</a></li>
-        <li><a href="./tasks/">Tasks</a></li>
-        <li><a href="./weather/">Weather</a></li>
-    </ul>
+    <p>Select an application to open</p>
+  </header>
+
+  <main class="grid">
+    <a href="./Reader/" class="card">
+      <h2>Reader App</h2>
+      <p>Document & text reader utility</p>
+      <span class="arrow">Launch →</span>
+    </a>
+
+    <a href="./Machine Inspection/" class="card">
+      <h2>Machine Inspection</h2>
+      <p>Inspection & audit checklist tool</p>
+      <span class="arrow">Launch →</span>
+    </a>
+
+    <a href="./Store Audit/" class="card">
+      <h2>Store Audit</h2>
+      <p>Retail & inventory store checker</p>
+      <span class="arrow">Launch →</span>
+    </a>
+
+    <a href="./Note Maker/" class="card">
+      <h2>Note Maker</h2>
+      <p>Quick note taking & storage</p>
+      <span class="arrow">Launch →</span>
+    </a>
+
+    <a href="./PSI-LAW Recording/" class="card">
+      <h2>PSI-LAW Recording</h2>
+      <p>Law & legal audio recording logger</p>
+      <span class="arrow">Launch →</span>
+    </a>
+
+    <a href="./Inventory/" class="card">
+      <h2>Inventory</h2>
+      <p>Stock & item tracking management</p>
+      <span class="arrow">Launch →</span>
+    </a>
+
+    <a href="./Tasks/" class="card">
+      <h2>Tasks</h2>
+      <p>To-do list & task planner</p>
+      <span class="arrow">Launch →</span>
+    </a>
+
+    <a href="./Weather/" class="card">
+      <h2>Weather</h2>
+      <p>Live forecast & weather reports</p>
+      <span class="arrow">Launch →</span>
+    </a>
+  </main>
+
 </body>
 </html>

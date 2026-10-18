@@ -250,6 +250,11 @@ async function openBook(id) {
   const bookData = books.find(b => b.id === id);
   if (!bookData) return;
 
+  clearTimeout(fontTimer);
+  fontTimer = null;
+  fontAnchorCfi = null;
+  fontResizeInProgress = false;
+
   const arrayBuffer = await localforage.getItem(id);
   if (!arrayBuffer) return alert("Error loading book data.");
 
@@ -353,6 +358,7 @@ function setupRenditionEvents() {
       // Same event reaching two listeners, or a double event: act only once
       if (e.__handled) return;
       e.__handled = true;
+      if (fontResizeInProgress) return;
       const now = Date.now();
       if (now - lastTapAction < 600) return;
       // Let links inside the book work normally
@@ -623,20 +629,36 @@ function nextPage() { turnPage(1); }
 
 let fontTimer = null;
 let fontAnchorCfi = null;
+let fontResizeInProgress = false;
 
 function changeFontSize(delta) {
   currentFontSize = Math.min(200, Math.max(60, currentFontSize + delta));
   localforage.setItem('user_font_size', currentFontSize);
   if (!currentRendition) return;
 
-  if (!fontTimer && currentRendition.location) fontAnchorCfi = currentRendition.location.start.cfi;
+  if (!fontResizeInProgress && currentRendition.location) {
+    fontAnchorCfi = currentRendition.location.start.cfi;
+  }
+  fontResizeInProgress = true;
   currentRendition.themes.fontSize(`${currentFontSize}%`);
 
-  // After the size settles, jump back to the same spot so pages line up again
   clearTimeout(fontTimer);
   fontTimer = setTimeout(() => {
     fontTimer = null;
-    if (fontAnchorCfi) currentRendition.display(fontAnchorCfi);
+    const rendition = currentRendition;
+    const anchor = fontAnchorCfi;
+    fontAnchorCfi = null;
+
+    if (!rendition || !anchor) {
+      fontResizeInProgress = false;
+      return;
+    }
+
+    Promise.resolve(rendition.display(anchor))
+      .catch(err => console.error('Unable to restore reading position after font resize:', err))
+      .finally(() => {
+        if (rendition === currentRendition) fontResizeInProgress = false;
+      });
   }, 300);
 }
 

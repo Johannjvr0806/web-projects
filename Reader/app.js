@@ -48,6 +48,8 @@ async function loadSavedTheme() {
   } else {
     applyBodyTheme('theme-purple');
   }
+  const savedFont = await localforage.getItem('user_font_size');
+  if (savedFont) currentFontSize = savedFont;
 }
 
 async function setTheme(themeClass) {
@@ -265,6 +267,7 @@ async function openBook(id) {
   // Register tap zones + theme BEFORE the first page is shown,
   // otherwise the first page has no tap handling until you press Next
   setupRenditionEvents();
+  currentRendition.themes.fontSize(`${currentFontSize}%`);
 
   const targetCfi = bookData.cfi || undefined;
   await currentRendition.display(targetCfi);
@@ -342,8 +345,16 @@ function setupRenditionEvents() {
       return (frameRect.left + clientX - viewerRect.left) / viewerRect.width;
     }
 
-    // One handler only (click fires once per tap, and not for swipes or long-press selection)
+    // Never attach twice to the same page
+    if (doc.__tapBound) return;
+    doc.__tapBound = true;
+
     doc.addEventListener('click', (e) => {
+      // Same event reaching two listeners, or a double event: act only once
+      if (e.__handled) return;
+      e.__handled = true;
+      const now = Date.now();
+      if (now - lastTapAction < 350) return;
       // Let links inside the book work normally
       if (e.target && e.target.closest && e.target.closest('a[href]')) return;
 
@@ -351,9 +362,10 @@ function setupRenditionEvents() {
       const sel = win.getSelection();
       if (sel && sel.toString().trim().length > 0) return;
 
+      lastTapAction = now;
       const pos = tapPosition(e.clientX);
-      if (pos < 0.3) currentRendition.prev();
-      else if (pos > 0.7) currentRendition.next();
+      if (pos < 0.3) turnPage(-1);
+      else if (pos > 0.7) turnPage(1);
       else toggleControls();
     });
   });
@@ -591,14 +603,39 @@ window.addEventListener('popstate', () => {
   switchView('shelf', true);
 });
 
-function prevPage() { if (currentRendition) currentRendition.prev(); }
-function nextPage() { if (currentRendition) currentRendition.next(); }
+let lastTapAction = 0;
+let pageTurning = false;
+
+async function turnPage(dir) {
+  if (!currentRendition || pageTurning) return;
+  pageTurning = true;
+  const wait = new Promise(res => setTimeout(res, 1000));
+  try {
+    await Promise.race([dir > 0 ? currentRendition.next() : currentRendition.prev(), wait]);
+  } catch (err) { console.log(err); }
+  setTimeout(() => { pageTurning = false; }, 150);
+}
+
+function prevPage() { turnPage(-1); }
+function nextPage() { turnPage(1); }
+
+let fontTimer = null;
+let fontAnchorCfi = null;
 
 function changeFontSize(delta) {
-  currentFontSize += delta;
-  if (currentFontSize < 60) currentFontSize = 60;
-  if (currentFontSize > 200) currentFontSize = 200;
-  if (currentRendition) currentRendition.themes.fontSize(`${currentFontSize}%`);
+  currentFontSize = Math.min(200, Math.max(60, currentFontSize + delta));
+  localforage.setItem('user_font_size', currentFontSize);
+  if (!currentRendition) return;
+
+  if (!fontTimer && currentRendition.location) fontAnchorCfi = currentRendition.location.start.cfi;
+  currentRendition.themes.fontSize(`${currentFontSize}%`);
+
+  // After the size settles, jump back to the same spot so pages line up again
+  clearTimeout(fontTimer);
+  fontTimer = setTimeout(() => {
+    fontTimer = null;
+    if (fontAnchorCfi) currentRendition.display(fontAnchorCfi);
+  }, 300);
 }
 
 function toggleToc() {

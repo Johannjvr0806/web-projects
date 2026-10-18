@@ -6,6 +6,8 @@
     <title>FieldFlow - Contractor Job Card & Cash Flow Portal</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JavaScript client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- FontAwesome for professional icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts Inter -->
@@ -476,7 +478,9 @@
         // SUPABASE CONFIGURATION (UPDATE THESE WITH YOUR PROJECT CREDENTIALS)
         let SUPABASE_URL = 'https://tlhpshvfljpzrgbhirof.supabase.co';
         let SUPABASE_ANON_KEY = 'sb_publishable_crnli0CDasfoMEDhSXi13Q_rRuQhGmd';
-        let supabaseClient = null;
+        let supabaseClient = window.supabase
+            ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+            : null;
 
         // Application State
         let state = {
@@ -707,11 +711,17 @@
         }
 
         // --- FORM SUBMISSION ---
-        function handleFormSubmit(e) {
+        async function handleFormSubmit(e) {
             e.preventDefault();
 
             if (!hasSigned) {
                 alert("Please obtain the client's signature before completing the job card.");
+                return;
+            }
+
+            if (!supabaseClient) {
+                console.error("Supabase client is unavailable. Check that the Supabase JavaScript library loaded.");
+                alert("Unable to connect to Supabase. Check your internet connection and try again.");
                 return;
             }
 
@@ -756,6 +766,35 @@
                 signature: canvas.toDataURL(),
                 photos: [...state.currentPhotos]
             };
+
+            const jobData = {
+                job_number: newJob.jobNumber,
+                client_info: newJob.client,
+                job_title: newJob.jobTitle,
+                work_notes: newJob.workNotes,
+                line_items: newJob.items,
+                total: newJob.total,
+                status: newJob.status
+            };
+
+            const submitButton = document.querySelector('#jobCardForm button[type="submit"]');
+            submitButton.disabled = true;
+            submitButton.classList.add('opacity-60', 'cursor-not-allowed');
+
+            try {
+                const { error } = await supabaseClient
+                    .from('job_cards')
+                    .insert([jobData]);
+
+                if (error) throw error;
+            } catch (error) {
+                console.error('Supabase Error:', error);
+                alert(`Could not save the job card to Supabase: ${error.message || 'Unknown error'}`);
+                return;
+            } finally {
+                submitButton.disabled = false;
+                submitButton.classList.remove('opacity-60', 'cursor-not-allowed');
+            }
 
             state.jobCards.unshift(newJob);
             saveStateToStorage();

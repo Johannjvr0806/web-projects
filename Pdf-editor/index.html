@@ -124,6 +124,8 @@ main{flex:1;display:flex;min-height:0;position:relative}
 .split-results{display:grid;gap:8px;max-height:220px;overflow:auto;margin-top:12px}
 .split-file{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;border:1px solid var(--line);border-radius:8px}
 .split-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#installStatus{margin:0;padding:0 12px 8px;color:var(--muted);font-size:12px;line-height:1.45}
+#installStatus:empty{display:none}
 @media (max-width:620px){.action-label{display:none}}
 
 /* right panel */
@@ -184,7 +186,8 @@ main{flex:1;display:flex;min-height:0;position:relative}
   .docname{flex:1 1 auto;width:auto}
   .btn.primary{padding:8px 10px}
   .btn.action{padding:6px 8px}
-  #bInstall .action-label,#bUnlock .action-label{display:none}
+  #bInstall .action-label{display:inline}
+  #bUnlock .action-label{display:none}
 }
 @media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important}}
 </style>
@@ -212,6 +215,7 @@ main{flex:1;display:flex;min-height:0;position:relative}
   <button class="btn action" id="bUnlock" title="Create an unlocked copy" aria-label="Create an unlocked copy" hidden></button>
   <button class="btn primary" id="bSave" title="Save PDF (Ctrl+S)"><span id="saveIc"></span><span class="bsave-label">Save PDF</span></button>
 </header>
+<p id="installStatus" role="status" aria-live="polite"></p>
 
 <div class="rail" id="rail" role="toolbar" aria-label="Editing tools">
   <div id="tools" style="display:flex;gap:2px;flex:none"></div>
@@ -1369,7 +1373,7 @@ $('#tools').append(...TOOLS.map(([t, label, key]) => h('button', {class:'tool', 
 $('#saveIc').outerHTML = ic('save');
 $('#bSign').innerHTML = ic('sign') + '<span class="action-label">Sign</span>';
 $('#bUnlock').innerHTML = ic('unlock') + '<span class="action-label">Unlock PDF</span>';
-$('#bInstall').innerHTML = ic('blank') + '<span class="action-label">Install</span>';
+$('#bInstall').innerHTML = ic('blank') + '<span class="action-label">Install app</span>';
 function toggleSide(force) { const sd = $('#side'); const show = force ?? sd.hidden; sd.hidden = !show; if (show && innerWidth <= 820) $('#panel').hidden = true; }
 $('#bSide').addEventListener('click', () => toggleSide());
 $('#bPanel').addEventListener('click', () => { const pn = $('#panel'); if (pn.hidden) openPanel(); else pn.hidden = true; });
@@ -1381,24 +1385,38 @@ $('#bSign').addEventListener('click', () => pickTool('sign'));
 $('#bUnlock').addEventListener('click', unlockFlow);
 let installPrompt = null;
 const installedMode = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-if (installedMode()) $('#bInstall').hidden = true;
-window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; $('#bInstall').hidden = false; });
-window.addEventListener('appinstalled', () => { installPrompt = null; $('#bInstall').hidden = true; toast('Folio is installed on this device.'); });
+const installStatus = $('#installStatus');
+if (installedMode()) { $('#bInstall').hidden = true; installStatus.textContent = 'Folio is installed on this device.'; }
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; installStatus.textContent = 'Install Folio on this device for quick access.'; });
+window.addEventListener('appinstalled', () => { installPrompt = null; $('#bInstall').hidden = true; installStatus.textContent = 'Folio is installed on this device.'; });
 $('#bInstall').addEventListener('click', async () => {
   if (installPrompt) {
     const prompt = installPrompt; installPrompt = null;
-    await prompt.prompt();
-    const choice = await prompt.userChoice;
-    if (choice.outcome === 'accepted') $('#bInstall').hidden = true;
+    try {
+      await prompt.prompt();
+      const choice = await prompt.userChoice;
+      installStatus.textContent = choice.outcome === 'accepted'
+        ? 'Folio is being installed.'
+        : 'Installation was cancelled. You can install it later from your browser menu.';
+    } catch (e) {
+      console.error('Couldn’t start Folio installation.', e);
+      installStatus.textContent = 'Could not start installation. Try the install option in your browser menu.';
+    }
     return;
   }
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
-  if (ios) toast('In Safari, tap Share, then choose Add to Home Screen.', 6000);
-  else if (location.protocol !== 'https:' && location.hostname !== 'localhost') toast('Install Folio from its HTTPS website, then choose Install app in your browser menu.', 6500);
-  else toast('Choose Install app or Add to Home screen from your browser menu.', 6000);
+  const samsung = /samsungbrowser/i.test(navigator.userAgent);
+  if (installedMode()) installStatus.textContent = 'Folio is already installed on this device.';
+  else if (ios) installStatus.textContent = 'In Safari, tap Share, then choose Add to Home Screen.';
+  else if (samsung) installStatus.textContent = 'In Samsung Internet, open Menu, then choose Add page to → Home screen.';
+  else if (location.protocol !== 'https:' && location.hostname !== 'localhost') installStatus.textContent = 'Install Folio from its HTTPS website, then choose Install app in your browser menu.';
+  else installStatus.textContent = 'Choose Install app or Add to Home screen from your browser menu.';
 });
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-  navigator.serviceWorker.register('./sw.js').catch(e => console.error('Couldn’t register the offline app shell.', e));
+  navigator.serviceWorker.register('./sw.js').catch(e => {
+    console.error('Couldn’t register the offline app shell.', e);
+    installStatus.textContent = 'Offline support could not be enabled. Install may still be available from your browser menu.';
+  });
 }
 if ('launchQueue' in window && window.launchQueue && typeof window.launchQueue.setConsumer === 'function') {
   window.launchQueue.setConsumer(async params => {

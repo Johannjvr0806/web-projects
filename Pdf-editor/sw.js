@@ -1,7 +1,7 @@
 'use strict';
 
-const CACHE = 'folio-pdf-shell-v2';
-const SHELL = ['./', './index.html', './manifest.json', './icon.svg'];
+const CACHE = 'folio-pdf-shell-v3';
+const SHELL = ['./', './index.html', './manifest.json', './icon.svg', './icon-192.png', './icon-512.png'];
 const SHARE_DB = 'folio-pdf-shares';
 const SHARE_STORE = 'pending';
 

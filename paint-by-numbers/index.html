@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f6f2e9">
+  <title>Little Colors | Web Projects</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f6f2e9;
+      --card: #fffdf8;
+      --ink: #24352e;
+      --muted: #748078;
+      --line: #e7e1d5;
+      --green: #377b59;
+      --green-soft: #e3f0e5;
+      --shadow: 0 16px 44px rgba(48, 61, 48, .09);
+      font-family: ui-rounded, "Avenir Next", Avenir, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      margin: 0;
+      padding: max(18px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse at 50% 0, rgba(255,255,255,.92), transparent 50%),
+        var(--paper);
+    }
+
+    button, select { font: inherit; }
+    button { color: inherit; }
+
+    .app { width: min(100%, 900px); margin: 0 auto; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .back {
+      color: var(--muted);
+      font-size: 14px;
+      text-decoration: none;
+    }
+
+    .back:hover { color: var(--green); }
+
+    .brand {
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .intro { margin-bottom: 20px; }
+
+    .eyebrow {
+      margin: 0 0 7px;
+      color: var(--green);
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(32px, 7vw, 46px);
+      letter-spacing: -.055em;
+      line-height: 1.05;
+    }
+
+    .intro p:last-child {
+      max-width: 570px;
+      margin: 9px 0 0;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 250px;
+      align-items: start;
+      gap: 18px;
+    }
+
+    .card {
+      border: 1px solid rgba(220, 214, 201, .8);
+      border-radius: 20px;
+      background: rgba(255, 253, 248, .92);
+      box-shadow: var(--shadow);
+    }
+
+    .picture-card { padding: clamp(12px, 3vw, 22px); }
+
+    .picture-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 0 14px;
+    }
+
+    .picture-heading h2 {
+      overflow: hidden;
+      margin: 0;
+      font-size: 17px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    select {
+      max-width: 54%;
+      min-height: 40px;
+      padding: 0 32px 0 11px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--card);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .art {
+      display: grid;
+      grid-template-columns: repeat(16, minmax(0, 1fr));
+      gap: 2px;
+      width: 100%;
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 8px;
+      border: 1px solid #e8e5db;
+      border-radius: 15px;
+      background: #f0eee7;
+      touch-action: manipulation;
+      user-select: none;
+    }
+
+    .cell {
+      display: grid;
+      aspect-ratio: 1;
+      min-width: 0;
+      place-items: center;
+      padding: 0;
+      border: 1px solid rgba(45, 59, 49, .08);
+      border-radius: 3px;
+      background: #fffdf8;
+      color: #59645d;
+      font-size: clamp(8px, 2.4vw, 13px);
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .cell:disabled { border-color: transparent; cursor: default; }
+    .cell:not(:disabled):hover { outline: 2px solid rgba(55, 123, 89, .38); outline-offset: -2px; }
+    .cell.wrong { animation: nudge .18s ease-in-out 2; }
+
+    @keyframes nudge {
+      50% { transform: scale(.83); }
+    }
+
+    .art-tools {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 13px;
+    }
+
+    .progress-copy { color: var(--muted); font-size: 13px; font-weight: 700; }
+
+    .progress {
+      overflow: hidden;
+      height: 7px;
+      margin-top: 7px;
+      border-radius: 99px;
+      background: #e9e7dd;
+    }
+
+    .progress > span {
+      display: block;
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #6bb987, #3c8760);
+      transition: width .2s ease;
+    }
+
+    .button {
+      min-height: 40px;
+      padding: 0 13px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--card);
+      font-size: 13px;
+      font-weight: 750;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .button:hover:not(:disabled) { background: #f2f5ee; }
+    .button:disabled { opacity: .46; cursor: default; }
+    .button:focus-visible, .cell:focus-visible, select:focus-visible, .back:focus-visible {
+      outline: 3px solid #68a980;
+      outline-offset: 2px;
+    }
+
+    .palette-card { padding: 17px; }
+    .palette-card h2 { margin: 0; font-size: 18px; letter-spacing: -.03em; }
+    .palette-hint { margin: 6px 0 14px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+    .palette {
+      display: grid;
+      gap: 7px;
+    }
+
+    .color-choice {
+      display: grid;
+      grid-template-columns: 31px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 9px;
+      min-height: 47px;
+      padding: 6px 9px;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      background: #f7f5ef;
+      text-align: left;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .color-choice[aria-pressed="true"] {
+      border-color: #9dc9a7;
+      background: var(--green-soft);
+      box-shadow: 0 0 0 2px rgba(55, 123, 89, .08);
+    }
+
+    .color-choice:disabled { opacity: .48; cursor: default; }
+
+    .swatch {
+      width: 29px;
+      height: 29px;
+      border: 2px solid rgba(36, 53, 46, .09);
+      border-radius: 9px;
+      background: var(--swatch);
+    }
+
+    .color-name { overflow: hidden; font-size: 12px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+    .color-number { color: var(--muted); font-size: 11px; font-weight: 850; }
+
+    .message {
+      min-height: 21px;
+      margin: 12px 0 0;
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+
+    .finish {
+      margin: 14px 0 0;
+      padding: 12px;
+      border-radius: 12px;
+      background: #e9f4e9;
+      color: #285d3e;
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+    .finish[hidden] { display: none; }
+
+    @media (max-width: 700px) {
+      .layout { grid-template-columns: minmax(0, 1fr); }
+      .palette-card { padding: 15px; }
+      .palette { grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); }
+      .palette-hint { margin-bottom: 11px; }
+    }
+
+    @media (max-width: 420px) {
+      .art { gap: 1px; padding: 5px; }
+      .cell { border-radius: 2px; font-size: 8px; }
+      .color-choice { grid-template-columns: 27px minmax(0, 1fr) auto; gap: 7px; padding: 5px 7px; }
+      .swatch { width: 26px; height: 26px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="topbar">
+      <a class="back" href="../">← All projects</a>
+      <span class="brand">A little creative break</span>
+    </div>
+
+    <header class="intro">
+      <p class="eyebrow">Color at your own pace</p>
+      <h1>Little Colors</h1>
+      <p>Pick a number, choose its color, and watch a tiny picture come to life. No timer, no pressure—just a few peaceful minutes.</p>
+    </header>
+
+    <div class="layout">
+      <section class="card picture-card" aria-labelledby="pictureTitle">
+        <div class="picture-heading">
+          <h2 id="pictureTitle">Cozy cottage</h2>
+          <select id="pictureSelect" aria-label="Choose a picture">
+            <option value="cottage">Cozy cottage</option>
+            <option value="rocket">Little rocket</option>
+            <option value="garden">Sunny garden</option>
+          </select>
+        </div>
+        <div class="art" id="art" role="grid" aria-label="Numbered picture"></div>
+        <div class="art-tools">
+          <div style="flex:1;min-width:0">
+            <div class="progress-copy" id="progressCopy">0 of 0 tiles painted</div>
+            <div class="progress" role="progressbar" aria-label="Picture progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress"><span id="progressBar"></span></div>
+          </div>
+          <button class="button" id="undoButton" type="button" disabled>Undo</button>
+        </div>
+        <p class="finish" id="finish" role="status" hidden>Beautifully done! Choose another picture and keep creating.</p>
+      </section>
+
+      <aside class="card palette-card" aria-labelledby="paletteTitle">
+        <h2 id="paletteTitle">Your palette</h2>
+        <p class="palette-hint">Choose a color, then tap matching numbers in the picture. You can also tap a numbered tile to select its color.</p>
+        <div class="palette" id="palette" role="group" aria-label="Colors"></div>
+        <p class="message" id="message" aria-live="polite">Choose a color to begin.</p>
+        <button class="button" id="resetButton" type="button">Start this picture over</button>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const SIZE = 16;
+      const COLORS = [
+        {name:'Sky blue', value:'#d5e8f4'},
+        {name:'Deep green', value:'#315d4a'},
+        {name:'Coral', value:'#e77b67'},
+        {name:'Sunshine', value:'#f3c85b'},
+        {name:'Cream', value:'#fff0c9'},
+        {name:'Leaf green', value:'#78a96b'},
+        {name:'Warm brown', value:'#9a6447'},
+        {name:'Lagoon', value:'#66afbd'}
+      ];
+      const DESIGNS = {
+        cottage: {
+          title:'Cozy cottage',
+          make() {
+            const cells = Array.from({length:SIZE}, () => Array(SIZE).fill(1));
+            const set = (x, y, color) => { if (x >= 0 && x < SIZE && y >= 0 && y < SIZE) cells[y][x] = color; };
+            const rect = (x1, y1, x2, y2, color) => { for (let y=y1; y<=y2; y++) for (let x=x1; x<=x2; x++) set(x,y,color); };
+            rect(0,14,15,15,6);
+            for (let y=1; y<=4; y++) for (let x=1; x<=4; x++) if ((x-2.5)**2+(y-2.5)**2<=3.3) set(x,y,4);
+            [[8,3],[9,3],[10,3],[7,4],[8,4],[9,4],[10,4],[11,4]].forEach(([x,y])=>set(x,y,5));
+            for (let y=5; y<=8; y++) {
+              const half = y-5;
+              for (let x=8-half; x<=8+half; x++) set(x,y,(x===8-half||x===8+half)?2:3);
+            }
+            rect(5,8,11,14,4);
+            rect(5,8,11,8,2); rect(5,9,5,14,2); rect(11,9,11,14,2);
+            rect(6,10,7,11,2); rect(7,10,7,11,8);
+            rect(9,10,10,11,2); rect(10,10,10,11,8);
+            rect(8,12,9,14,7); set(8,12,2); set(9,12,2); set(8,14,2); set(9,14,2);
+            rect(13,11,13,14,7);
+            [[13,7],[12,8],[13,8],[14,8],[11,9],[12,9],[13,9],[14,9],[15,9],[12,10],[13,10],[14,10],[13,11]].forEach(([x,y])=>set(x,y,6));
+            [[2,13,3],[4,14,4],[10,14,3],[15,13,4]].forEach(([x,y,c])=>set(x,y,c));
+            return cells;
+          }
+        },
+        rocket: {
+          title:'Little rocket',
+          make() {
+            const cells = Array.from({length:SIZE}, () => Array(SIZE).fill(1));
+            const set = (x,y,c) => { if(x>=0&&x<SIZE&&y>=0&&y<SIZE) cells[y][x]=c; };
+            [[2,2],[5,4],[12,2],[14,6],[3,9],[12,11],[5,13],[10,3]].forEach(([x,y])=>set(x,y,4));
+            for(let y=4;y<=10;y++){
+              const half = y<7 ? y-3 : y<9 ? 3 : y===9 ? 2 : 1;
+              for(let x=8-half;x<=8+half;x++) set(x,y,(x===8-half||x===8+half||y===10)?2:5);
+            }
+            set(8,4,2); set(8,5,3); set(7,7,2); set(8,7,8); set(9,7,2);
+            set(7,9,3); set(9,9,3);
+            [[7,11],[8,11],[9,11]].forEach(([x,y])=>set(x,y,3));
+            [[6,10],[10,10]].forEach(([x,y])=>set(x,y,2));
+            [[6,11],[10,11]].forEach(([x,y])=>set(x,y,7));
+            [[7,12],[9,12]].forEach(([x,y])=>set(x,y,4));
+            [[8,12],[8,13]].forEach(([x,y])=>set(x,y,3));
+            [[7,13],[8,14],[9,13]].forEach(([x,y])=>set(x,y,4));
+            return cells;
+          }
+        },
+        garden: {
+          title:'Sunny garden',
+          make() {
+            const cells = Array.from({length:SIZE}, () => Array(SIZE).fill(1));
+            const set = (x,y,c) => { if(x>=0&&x<SIZE&&y>=0&&y<SIZE) cells[y][x]=c; };
+            for(let y=1;y<=4;y++) for(let x=11;x<=14;x++) if((x-12.5)**2+(y-2.5)**2<=3.3) set(x,y,4);
+            for(let y=12;y<SIZE;y++) for(let x=0;x<SIZE;x++) set(x,y,6);
+            for(let y=6;y<=12;y++) set(7,y,2);
+            for(let y=7;y<=11;y++) { set(6,y,6); set(8,y,6); }
+            [[7,3],[6,4],[7,4],[8,4],[5,5],[6,5],[7,5],[8,5],[9,5],[6,6],[7,6],[8,6]].forEach(([x,y])=>set(x,y,3));
+            set(7,5,4);
+            [[3,8],[11,9],[4,12],[11,12]].forEach(([x,y])=>set(x,y,7));
+            [[3,7],[2,8],[3,8],[4,8],[3,9],[11,8],[10,9],[11,9],[12,9],[11,10],[4,11],[3,12],[4,12],[5,12],[11,11],[10,12],[11,12],[12,12]].forEach(([x,y])=>set(x,y,3));
+            [[3,8],[11,9],[4,12],[11,12]].forEach(([x,y])=>set(x,y,4));
+            return cells;
+          }
+        }
+      };
+
+      const art = document.querySelector('#art');
+      const palette = document.querySelector('#palette');
+      const select = document.querySelector('#pictureSelect');
+      const message = document.querySelector('#message');
+      const progressCopy = document.querySelector('#progressCopy');
+      const progress = document.querySelector('#progress');
+      const progressBar = document.querySelector('#progressBar');
+      const undoButton = document.querySelector('#undoButton');
+      const resetButton = document.querySelector('#resetButton');
+      const finish = document.querySelector('#finish');
+      const pictureTitle = document.querySelector('#pictureTitle');
+      let cells = [], buttons = [], painted = new Set(), history = [], selectedColor = null, designKey = 'cottage';
+      let colorCounts = new Map(), progressTotal = 0;
+
+      function savedKey() { return `little-colors:${designKey}`; }
+
+      function restorePainted() {
+        try {
+          const value = JSON.parse(localStorage.getItem(savedKey()) || '[]');
+          return new Set(Array.isArray(value) ? value.filter(i => Number.isInteger(i) && i >= 0 && i < SIZE * SIZE) : []);
+        } catch (error) {
+          console.warn('Could not restore saved picture progress.', error);
+          return new Set();
+        }
+      }
+
+      function savePainted() {
+        try { localStorage.setItem(savedKey(), JSON.stringify([...painted])); }
+        catch (error) { console.warn('Could not save picture progress.', error); }
+      }
+
+      function loadDesign(key) {
+        designKey = key;
+        const design = DESIGNS[key];
+        cells = design.make().flat();
+        painted = restorePainted();
+        history = [];
+        selectedColor = null;
+        colorCounts = new Map();
+        cells.forEach((color, index) => {
+          if (!painted.has(index)) colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
+        });
+        progressTotal = cells.length;
+        pictureTitle.textContent = design.title;
+        finish.hidden = painted.size !== progressTotal;
+        message.textContent = 'Choose a color to begin.';
+        render();
+      }
+
+      function render() {
+        art.replaceChildren();
+        palette.replaceChildren();
+        buttons = cells.map((number, index) => {
+          const button = document.createElement('button');
+          const isPainted = painted.has(index);
+          button.type = 'button';
+          button.className = 'cell';
+          button.setAttribute('role', 'gridcell');
+          button.dataset.index = String(index);
+          button.textContent = isPainted ? '' : String(number);
+          button.setAttribute('aria-label', isPainted
+            ? `Row ${Math.floor(index / SIZE) + 1}, column ${index % SIZE + 1}, painted ${COLORS[number - 1].name}`
+            : `Row ${Math.floor(index / SIZE) + 1}, column ${index % SIZE + 1}, color ${number}: ${COLORS[number - 1].name}`);
+          button.disabled = isPainted;
+          if (isPainted) button.style.backgroundColor = COLORS[number - 1].value;
+          button.addEventListener('click', () => paintCell(index));
+          art.append(button);
+          return button;
+        });
+
+        const usedColors = [...new Set(cells)].sort((a,b)=>a-b);
+        usedColors.forEach(number => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'color-choice';
+          button.dataset.color = String(number);
+          button.setAttribute('aria-pressed', selectedColor === number ? 'true' : 'false');
+          button.disabled = (colorCounts.get(number) || 0) === 0;
+          button.innerHTML = `<span class="swatch" style="--swatch:${COLORS[number - 1].value}" aria-hidden="true"></span><span class="color-name">${COLORS[number - 1].name}</span><span class="color-number">${number}</span>`;
+          button.setAttribute('aria-label', `Color ${number}, ${COLORS[number - 1].name}${button.disabled ? ', complete' : ''}`);
+          button.addEventListener('click', () => chooseColor(number));
+          palette.append(button);
+        });
+
+        updateProgress();
+        undoButton.disabled = history.length === 0;
+      }
+
+      function updateProgress() {
+        const done = painted.size;
+        const percent = Math.round(done / progressTotal * 100);
+        progressCopy.textContent = `${done} of ${progressTotal} tiles painted`;
+        progressBar.style.width = `${percent}%`;
+        progress.setAttribute('aria-valuenow', String(percent));
+        undoButton.disabled = history.length === 0;
+        finish.hidden = done !== progressTotal;
+        if (done === progressTotal) message.textContent = 'Picture complete — lovely work!';
+      }
+
+      function chooseColor(number) {
+        selectedColor = number;
+        message.textContent = `Color ${number} selected. Find the matching numbers in the picture.`;
+        palette.querySelectorAll('.color-choice').forEach(button => button.setAttribute('aria-pressed', button.dataset.color === String(number) ? 'true' : 'false'));
+      }
+
+      function paintCell(index) {
+        if (painted.has(index)) return;
+        const number = cells[index];
+        if (selectedColor === null) { chooseColor(number); }
+        if (selectedColor !== number) {
+          const button = buttons[index];
+          button.classList.remove('wrong');
+          void button.offsetWidth;
+          button.classList.add('wrong');
+          message.textContent = `That tile needs color ${number} (${COLORS[number - 1].name}).`;
+          return;
+        }
+        painted.add(index);
+        history.push(index);
+        colorCounts.set(number, Math.max(0, (colorCounts.get(number) || 0) - 1));
+        buttons[index].disabled = true;
+        buttons[index].textContent = '';
+        buttons[index].style.backgroundColor = COLORS[number - 1].value;
+        buttons[index].setAttribute('aria-label', `Row ${Math.floor(index / SIZE) + 1}, column ${index % SIZE + 1}, painted ${COLORS[number - 1].name}`);
+        const colorButton = palette.querySelector(`[data-color="${number}"]`);
+        if (colorButton && colorCounts.get(number) === 0) colorButton.disabled = true;
+        undoButton.disabled = false;
+        updateProgress();
+        savePainted();
+      }
+
+      function undo() {
+        const index = history.pop();
+        if (index === undefined) return;
+        const number = cells[index];
+        painted.delete(index);
+        colorCounts.set(number, (colorCounts.get(number) || 0) + 1);
+        message.textContent = `Undid color ${number}.`;
+        render();
+        savePainted();
+      }
+
+      document.addEventListener('keydown', event => {
+        const key = event.key.toLowerCase();
+        if ((event.ctrlKey || event.metaKey) && key === 'z') {
+          event.preventDefault();
+          undo();
+          return;
+        }
+        if (/^[1-8]$/.test(key) && COLORS[Number(key) - 1]) {
+          const number = Number(key);
+          if (colorCounts.has(number) && colorCounts.get(number) > 0) chooseColor(number);
+        }
+      });
+
+      select.addEventListener('change', () => loadDesign(select.value));
+      undoButton.addEventListener('click', undo);
+      resetButton.addEventListener('click', () => {
+        try { localStorage.removeItem(savedKey()); }
+        catch (error) { console.warn('Could not clear saved picture progress.', error); }
+        message.textContent = 'Picture reset. Choose a color to begin again.';
+        loadDesign(designKey);
+      });
+
+      loadDesign(designKey);
+    })();
+  </script>
+</body>
+</html>

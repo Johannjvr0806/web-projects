@@ -459,6 +459,12 @@
             gap: 16px;
         }
 
+        .foot-pedal-hint {
+            color: var(--text-muted);
+            font-size: 11px;
+            text-align: center;
+        }
+
         .btn-circle {
             width: 40px;
             height: 40px;
@@ -741,6 +747,7 @@
                     <button class="btn-circle" id="playPauseBtn"><i data-lucide="play" size="20"></i></button>
                     <button class="btn-icon" id="skipForwardBtn" title="Forward 10s"><i data-lucide="rotate-cw"></i></button>
                 </div>
+                <div class="foot-pedal-hint">Keyboard-emulating foot pedal: map left / middle / right to F9 / F10 / F11. Left rewinds 5s; hold middle to play and release to pause; right forwards 10s.</div>
             </div>
         </main>
     </div>
@@ -790,6 +797,7 @@
         let currentFolderId = 'inbox';
         let activeParentFolderForModal = null;
         let playingFileId = null;
+        let pedalPlayHeld = false;
 
         let folders = [
             { id: 'inbox', name: 'Inbox', icon: 'inbox', isSystem: true },
@@ -1163,6 +1171,12 @@
             lucide.createIcons();
         }
 
+        function seekAudio(offsetSeconds) {
+            if (!audioEngine.src) return;
+            const duration = Number.isFinite(audioEngine.duration) ? audioEngine.duration : Infinity;
+            audioEngine.currentTime = Math.max(0, Math.min(duration, audioEngine.currentTime + offsetSeconds));
+        }
+
         // --- PWA INSTALLATION PROMPT HANDLER ---
         let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => {
@@ -1228,11 +1242,40 @@
             });
 
             document.getElementById('skipBackBtn').addEventListener('click', () => {
-                if (audioEngine.src) audioEngine.currentTime = Math.max(0, audioEngine.currentTime - 5);
+                seekAudio(-5);
             });
 
             document.getElementById('skipForwardBtn').addEventListener('click', () => {
-                if (audioEngine.src) audioEngine.currentTime = Math.min(audioEngine.duration, audioEngine.currentTime + 10);
+                seekAudio(10);
+            });
+
+            window.addEventListener('keydown', (event) => {
+                const target = event.target;
+                if (target instanceof HTMLElement && (target.isContentEditable || target.matches('input, textarea, select'))) return;
+                if (!playingFileId || event.altKey || event.ctrlKey || event.metaKey || event.repeat) return;
+
+                if (event.key === 'F9') {
+                    event.preventDefault();
+                    seekAudio(-5);
+                } else if (event.key === 'F10') {
+                    event.preventDefault();
+                    pedalPlayHeld = true;
+                    if (audioEngine.paused) {
+                        audioEngine.play();
+                        updatePlayBtnIcon(true);
+                    }
+                } else if (event.key === 'F11') {
+                    event.preventDefault();
+                    seekAudio(10);
+                }
+            });
+
+            window.addEventListener('keyup', (event) => {
+                if (event.key !== 'F10' || !pedalPlayHeld) return;
+                event.preventDefault();
+                pedalPlayHeld = false;
+                audioEngine.pause();
+                updatePlayBtnIcon(false);
             });
 
             speedSelect.addEventListener('change', (e) => {

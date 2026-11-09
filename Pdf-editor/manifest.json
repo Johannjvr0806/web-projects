@@ -1,0 +1,29 @@
+{
+  "id": "./",
+  "name": "Folio PDF Editor",
+  "short_name": "Folio PDF",
+  "description": "Edit, sign, organize, and save PDF files on your device.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#f8f9fb",
+  "theme_color": "#65d6c1",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "./",
+      "accept": {
+        "application/pdf": [".pdf"]
+      }
+    }
+  ]
+}

@@ -4,13 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Folio PDF Editor</title>
+<meta name="theme-color" content="#65d6c1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Folio PDF">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Caveat:wght@600&family=Homemade+Apple&display=swap" rel="stylesheet">
 <style>
 :root{
   --desk:#d8dde3; --chrome:#f8f9fb; --chrome2:#eef1f4; --ink:#17202a; --muted:#5b6774; --line:#cad1d9;
-  --accent:#f6c915; --accent-ink:#17202a; --focus:#2457e6; --danger:#c62828; --hover:rgba(23,32,42,.07);
+  --accent:#65d6c1; --accent-ink:#17202a; --focus:#2457e6; --danger:#c62828; --hover:rgba(23,32,42,.07);
   --shadow:0 1px 2px rgba(23,32,42,.2),0 10px 28px rgba(23,32,42,.13);
   color-scheme:light;
   box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
@@ -61,6 +68,8 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .btn.primary:hover{filter:brightness(.96)}
 .btn.small{padding:6px 10px;font-size:13px}
+.btn.action{padding:7px 10px}
+.btn.action svg{width:18px;height:18px}
 
 /* tool rail */
 .rail{display:flex;align-items:center;gap:2px;padding:5px 8px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none;min-height:50px}
@@ -112,6 +121,10 @@ main{flex:1;display:flex;min-height:0;position:relative}
 .drop p{color:var(--muted);margin:0 0 22px;max-width:36em}
 .drop .row{display:flex;gap:8px;flex-wrap:wrap}
 .drop small{display:block;margin-top:18px;color:var(--muted)}
+.split-results{display:grid;gap:8px;max-height:220px;overflow:auto;margin-top:12px}
+.split-file{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;border:1px solid var(--line);border-radius:8px}
+.split-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:620px){.action-label{display:none}}
 
 /* right panel */
 .panel{width:320px;flex:none;border-left:1px solid var(--line);background:var(--chrome);display:flex;flex-direction:column;min-height:0}
@@ -170,6 +183,8 @@ main{flex:1;display:flex;min-height:0;position:relative}
   .pnav,.zoom,.bsave-label{display:none!important}
   .docname{flex:1 1 auto;width:auto}
   .btn.primary{padding:8px 10px}
+  .btn.action{padding:6px 8px}
+  #bInstall .action-label,#bUnlock .action-label{display:none}
 }
 @media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important}}
 </style>
@@ -192,6 +207,9 @@ main{flex:1;display:flex;min-height:0;position:relative}
   <div class="pnav"><input id="pageNum" inputmode="numeric" aria-label="Current page"><span id="pageTot">/ 0</span></div>
   <button class="ib" id="bOpen" title="Open a file" aria-label="Open a file"></button>
   <button class="ib" id="bPanel" title="Find, comments, forms and document settings" aria-label="Show side panel"></button>
+  <button class="btn action" id="bInstall" title="Install Folio on this device" aria-label="Install Folio on this device"></button>
+  <button class="btn action" id="bSign" title="Add a signature" aria-label="Add a signature"></button>
+  <button class="btn action" id="bUnlock" title="Create an unlocked copy" aria-label="Create an unlocked copy" hidden></button>
   <button class="btn primary" id="bSave" title="Save PDF (Ctrl+S)"><span id="saveIc"></span><span class="bsave-label">Save PDF</span></button>
 </header>
 
@@ -321,6 +339,8 @@ const ICONS = {
   blank:'<path d="M5 3h7l3 3v11H5z"/><path d="M12 3v3h3"/>',
   insert:'<path d="M5 3h7l3 3v11H5z"/><path d="M10 8.5v6M7 11.5h6"/>',
   extract:'<path d="M5 3h7l3 3v11H5z"/><path d="M10 8v6M7.5 11.5L10 14l2.5-2.5"/>',
+  split:'<path d="M5 3h7l3 3v11H5z"/><path d="M5 10h10M10 7v3M10 10v3"/>',
+  unlock:'<rect x="4" y="9" width="12" height="8" rx="1.5"/><path d="M7 9V6a3 3 0 016 0"/>',
   trash:'<path d="M4 6h12M8 6V4h4v2M6 6l1 11h6l1-11"/>',
   open:'<path d="M3 6a1 1 0 011-1h4l2 2h6a1 1 0 011 1v7a1 1 0 01-1 1H4a1 1 0 01-1-1z"/>',
   save:'<path d="M10 3v10M6 9l4 4 4-4M4 16.5h12"/>',
@@ -394,11 +414,11 @@ const isRotBox = a => a.type === 'text' || a.type === 'image' || a.type === 'sta
 /* ---------- toast & modal ---------- */
 let toastT;
 function toast(msg, ms = 3200) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); if (ms) toastT = setTimeout(() => t.hidden = true, ms); }
-function modal(title, body, actions) {
+function modal(title, body, actions, onClose) {
   return new Promise(res => {
     const back = h('div', {class:'modal-back'});
     const box = h('div', {class:'modal', role:'dialog', 'aria-modal':'true', 'aria-label':title});
-    const close = v => { back.remove(); document.removeEventListener('keydown', kd, true); res(v); };
+    const close = v => { back.remove(); document.removeEventListener('keydown', kd, true); if (onClose) onClose(); res(v); };
     const kd = e => { if (e.key === 'Escape') { e.stopPropagation(); close(null); } };
     const content = typeof body === 'function' ? body(close) : body;
     box.append(h('h2', {}, title), content, h('div', {class:'modal-actions'}, actions.map(a =>
@@ -440,11 +460,13 @@ function markDirty(p) { S.dirty = true; thumbDirty(p); if (S.tab === 'comments' 
 function openPdfjs(bytes) {
   return new Promise((res, rej) => {
     const task = pdfjs.getDocument({data: bytes.slice(), isEvalSupported:false});
+    let passwordProtected = false;
     task.onPassword = async (cb, reason) => {
+      passwordProtected = true;
       const v = await ask(reason === 2 ? 'That password didn’t work' : 'This PDF is password protected', [{k:'pw', label:'Password', type:'password'}], 'Unlock');
       if (!v) { task.destroy(); rej(new Error('A password is needed to open this file.')); } else cb(v.pw);
     };
-    task.promise.then(res, rej);
+    task.promise.then(pdf => res({pdf, passwordProtected}), rej);
   });
 }
 const fileToDataUrl = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
@@ -467,13 +489,15 @@ async function loadFile(file) {
   const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
   if (isPdf) {
     const bytes = new Uint8Array(await file.arrayBuffer());
-    let pdf; try { pdf = await openPdfjs(bytes); } catch (e) { toast(`Couldn’t open ${file.name}. ${e.message || ''}`, 5000); return []; }
+    let loaded; try { loaded = await openPdfjs(bytes); } catch (e) { toast(`Couldn’t open ${file.name}. ${e.message || ''}`, 5000); return []; }
+    const {pdf, passwordProtected} = loaded;
     let raster = false;
     try { await L.PDFDocument.load(bytes, {updateMetadata:false}); } catch (e) { raster = true; }
     const si = S.srcs.length;
-    const src = {kind:'pdf', name:file.name, bytes, pdf, raster, n:pdf.numPages, text:{}, fields:null};
+    const src = {kind:'pdf', name:file.name, bytes, pdf, raster, passwordProtected, n:pdf.numPages, text:{}, fields:null};
     S.srcs.push(src);
-    if (raster) toast(`${file.name} is protected, so its pages will be saved as images.`, 5000);
+    if (passwordProtected) toast(`${file.name} is password-protected. Its pages will be flattened in exported copies.`, 5000);
+    else if (raster) toast(`${file.name} can’t be edited directly, so its pages will be saved as images.`, 5000);
     const pages = [];
     for (let i = 1; i <= pdf.numPages; i++) {
       const pg = await pdf.getPage(i); const v = pg.view;
@@ -668,7 +692,9 @@ function syncView() {
   S.pages.forEach((p, i) => { const el = pageEls.get(p.id).wrap; if (viewer.children[i] !== el) viewer.insertBefore(el, viewer.children[i] || null); });
   for (const [id, o] of pageEls) if (!keep.has(id)) { io.unobserve(o.wrap); freePage(null, o); o.wrap.remove(); pageEls.delete(id); }
   for (const p of S.pages) { const o = pageEls.get(p.id); if (o.vis) ensure(p); }
-  $('#empty').hidden = S.pages.length > 0; updateLocks();
+  $('#empty').hidden = S.pages.length > 0;
+  $('#bUnlock').hidden = !S.pages.some(p => p.src >= 0 && S.srcs[p.src] && S.srcs[p.src].passwordProtected);
+  updateLocks();
 }
 
 /* ---------- thumbnails ---------- */
@@ -1030,6 +1056,7 @@ const PAGE_ACTS = [
   ['blank', 'Insert blank page after', () => pageOp((p, i) => { snap(); const [w, hh] = dims(p); S.pages.splice(i + 1, 0, {id:nid(), src:-1, sp:0, W:w, H:hh, view:[0, 0, w, hh], pr:0, ur:0, annots:[]}); afterPageChange(i + 1); })],
   ['insert', 'Insert pages from a file', () => { if (!S.pages.length) return openPicker('replace'); openPicker('insert'); }],
   ['extract', 'Extract pages to a new PDF', () => pageOp(() => extractFlow())],
+  ['split', 'Split PDF by page ranges', () => pageOp(() => splitFlow())],
   ['trash', 'Delete page', () => pageOp((p, i) => { if (S.pages.length === 1) return toast('A document needs at least one page.'); snap(); S.pages.splice(i, 1); S.sel = null; afterPageChange(Math.min(i, S.pages.length - 1)); })]
 ];
 function afterPageChange(i, changed) { syncAll(); if (changed) thumbDirty(changed); S.pages.forEach(thumbDirty); goTo(i); }
@@ -1047,6 +1074,63 @@ async function extractFlow() {
   toast('Building your PDF…', 0);
   try { const bytes = await buildPdf(idx); await deliver(bytes, baseName() + '-pages.pdf'); } catch (e) { console.error(e); toast('Couldn’t build the PDF. ' + (e.message || '')); }
 }
+function parseSplitRanges(str, n) {
+  const groups = [], used = new Set();
+  for (const part of str.split(',').map(s => s.trim()).filter(Boolean)) {
+    const m = part.match(/^(\d+)(?:\s*-\s*(\d+))?$/);
+    if (!m) return null;
+    let a = +m[1], b = m[2] ? +m[2] : a;
+    if (a > b) [a, b] = [b, a];
+    if (a < 1 || b > n) return null;
+    const group = [];
+    for (let i = a; i <= b; i++) {
+      if (used.has(i)) return null;
+      used.add(i); group.push(i - 1);
+    }
+    groups.push(group);
+  }
+  return groups.length > 1 ? groups : null;
+}
+async function splitFlow() {
+  if (S.pages.length < 2) return toast('A document needs at least two pages to split.');
+  const midpoint = Math.ceil(S.pages.length / 2);
+  const ranges = h('input', {type:'text', value:`1-${midpoint}, ${midpoint + 1}-${S.pages.length}`, spellcheck:'false', 'aria-label':'Page ranges'});
+  const info = h('p', {class:'muted', style:'margin:0'}, 'Enter page groups separated by commas. Each group becomes its own PDF; pages not listed are left out.');
+  const status = h('p', {class:'muted', 'aria-live':'polite', style:'margin:12px 0 0'});
+  const results = h('div', {class:'split-results'});
+  let busy = false, closed = false;
+  const urls = [];
+  const cleanup = () => { closed = true; urls.forEach(url => URL.revokeObjectURL(url)); };
+  await modal('Split PDF', h('div', {}, info,
+    h('label', {class:'field'}, h('span', {}, `Page ranges (1–${S.pages.length})`), ranges),
+    status, results), [
+    {label:'Cancel'},
+    {label:'Create split files', primary:true, onClick:async () => {
+      if (busy) return false;
+      const groups = parseSplitRanges(ranges.value, S.pages.length);
+      if (!groups) { status.textContent = 'Enter at least two non-overlapping groups, such as 1-3, 4-6, 8.'; ranges.focus(); return false; }
+      busy = true; results.replaceChildren();
+      try {
+        for (let i = 0; i < groups.length; i++) {
+          status.textContent = `Preparing PDF ${i + 1} of ${groups.length}…`;
+          const bytes = await buildPdf(groups[i]);
+          if (closed) return false;
+          const filename = `${baseName()}-part-${String(i + 1).padStart(2, '0')}.pdf`;
+          const url = URL.createObjectURL(new Blob([bytes], {type:'application/pdf'}));
+          urls.push(url);
+          results.append(h('div', {class:'split-file'},
+            h('span', {}, `${filename} · ${groups[i].length} page${groups[i].length === 1 ? '' : 's'}`),
+            h('a', {class:'btn small', href:url, download:filename}, 'Download')));
+        }
+        status.textContent = `Ready: ${groups.length} PDF files. Download each part below.`;
+      } catch (e) {
+        console.error(e);
+        status.textContent = 'Couldn’t split the PDF. ' + (e.message || '');
+      } finally { busy = false; }
+      return false;
+    }}
+  ], cleanup);
+}
 
 /* ---------- export ---------- */
 const hexRgb = hx => { const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hx || '#000000') || [0, '00', '00', '00']; return L.rgb(parseInt(m[1], 16) / 255, parseInt(m[2], 16) / 255, parseInt(m[3], 16) / 255); };
@@ -1055,9 +1139,9 @@ const canvasBytes = (c, type, q) => new Promise((res, rej) => c.toBlob(b => b ? 
 
 async function buildPdf(idxs) {
   const pages = idxs.map(i => S.pages[i]), total = pages.length;
-  const isRaster = p => p.annots.some(a => a.type === 'redact') || (p.src >= 0 && S.srcs[p.src].kind === 'pdf' && S.srcs[p.src].raster);
+  const isRaster = p => p.annots.some(a => a.type === 'redact') || (p.src >= 0 && S.srcs[p.src].kind === 'pdf' && (S.srcs[p.src].raster || S.srcs[p.src].passwordProtected));
   const s0 = S.srcs[0];
-  const inPlace = S.srcs.length === 1 && s0.kind === 'pdf' && !s0.raster && total === s0.n && pages.every((p, i) => p.src === 0 && p.sp === i) && !pages.some(isRaster);
+  const inPlace = S.srcs.length === 1 && s0.kind === 'pdf' && !s0.raster && !s0.passwordProtected && total === s0.n && pages.every((p, i) => p.src === 0 && p.sp === i) && !pages.some(isRaster);
   let out; const outPages = [], rast = [];
   if (inPlace) { out = await L.PDFDocument.load(s0.bytes); out.getPages().forEach(pg => { outPages.push(pg); rast.push(false); }); }
   else {
@@ -1151,6 +1235,22 @@ async function save() {
   try { const bytes = await buildPdf(S.pages.map((_, i) => i)); await deliver(bytes, baseName() + '.pdf'); }
   catch (e) { console.error(e); toast('Couldn’t build the PDF. ' + (e.message || ''), 6000); }
 }
+async function unlockFlow() {
+  const hasProtectedPages = S.pages.some(p => p.src >= 0 && S.srcs[p.src] && S.srcs[p.src].passwordProtected);
+  if (!hasProtectedPages) return toast('Open a password-protected PDF first.');
+  const accepted = await modal('Create an unlocked copy', h('p', {class:'muted', style:'margin:0'},
+    'This creates a new, unprotected PDF and leaves your original unchanged. Pages from password-protected files are flattened into images, so text selection, search, forms, and vector detail may not be retained.'), [
+    {label:'Cancel'}, {label:'Create unlocked copy', primary:true, value:true}
+  ]);
+  if (!accepted) return;
+  closeEditor(); toast('Building unlocked PDF…', 0);
+  try {
+    const bytes = await buildPdf(S.pages.map((_, i) => i));
+    await deliver(bytes, baseName() + '-unlocked.pdf');
+  } catch (e) {
+    console.error(e); toast('Couldn’t create an unlocked copy. ' + (e.message || ''), 6000);
+  }
+}
 
 /* ---------- panel: find / comments / forms / document ---------- */
 function openPanel(tab) { const pn = $('#panel'); pn.hidden = false; if (innerWidth <= 820) toggleSide(false); setTab(tab || S.tab); }
@@ -1243,7 +1343,7 @@ async function applyForms(si, flatten) {
     } catch (e) { console.warn('field', f.name, e); } }
     if (flatten) form.flatten();
     s.bytes = await d.save(); try { s.pdf.destroy(); } catch (e) {}
-    s.pdf = await openPdfjs(s.bytes); s.n = s.pdf.numPages; s.text = {}; s.fields = null; S.dirty = true;
+    const loaded = await openPdfjs(s.bytes); s.pdf = loaded.pdf; s.passwordProtected = loaded.passwordProtected; s.n = s.pdf.numPages; s.text = {}; s.fields = null; S.dirty = true;
     for (const p of S.pages) if (p.src === si) { const o = pageEls.get(p.id); if (o) { o.rz = 0; if (o.vis) ensure(p); } thumbDirty(p); }
     toast(flatten ? 'Form filled and locked.' : 'Form filled. Save the PDF to keep it.'); renderForms();
   } catch (e) { console.error(e); toast('Couldn’t fill this form. ' + (e.message || '')); }
@@ -1267,6 +1367,9 @@ $('#pnMode').addEventListener('change', e => { S.pn.mode = e.target.value; extra
 $('#tools').append(...TOOLS.map(([t, label, key]) => h('button', {class:'tool', 'data-t':t, title:`${label} (${key})`, 'aria-label':label, 'aria-pressed': t === 'select' ? 'true' : 'false', html:ic(t), onclick:() => pickTool(t)})));
 [['#bSide', 'pages'], ['#bUndo', 'undo'], ['#bRedo', 'redo'], ['#bZo', 'minus'], ['#bZi', 'plus'], ['#bOpen', 'open'], ['#bPanel', 'panel'], ['#bPanelX', 'close'], ['#bDel', 'trash'], ['#bDup', 'dup'], ['#bFill', 'fill']].forEach(([s, n]) => $(s).innerHTML = ic(n));
 $('#saveIc').outerHTML = ic('save');
+$('#bSign').innerHTML = ic('sign') + '<span class="action-label">Sign</span>';
+$('#bUnlock').innerHTML = ic('unlock') + '<span class="action-label">Unlock PDF</span>';
+$('#bInstall').innerHTML = ic('blank') + '<span class="action-label">Install</span>';
 function toggleSide(force) { const sd = $('#side'); const show = force ?? sd.hidden; sd.hidden = !show; if (show && innerWidth <= 820) $('#panel').hidden = true; }
 $('#bSide').addEventListener('click', () => toggleSide());
 $('#bPanel').addEventListener('click', () => { const pn = $('#panel'); if (pn.hidden) openPanel(); else pn.hidden = true; });
@@ -1274,6 +1377,36 @@ $('#bUndo').addEventListener('click', undo); $('#bRedo').addEventListener('click
 $('#bZo').addEventListener('click', () => setZoom(S.zoom / 1.2)); $('#bZi').addEventListener('click', () => setZoom(S.zoom * 1.2));
 $('#zoomLbl').addEventListener('click', () => fitWidth(false));
 $('#bSave').addEventListener('click', save);
+$('#bSign').addEventListener('click', () => pickTool('sign'));
+$('#bUnlock').addEventListener('click', unlockFlow);
+let installPrompt = null;
+const installedMode = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+if (installedMode()) $('#bInstall').hidden = true;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; $('#bInstall').hidden = false; });
+window.addEventListener('appinstalled', () => { installPrompt = null; $('#bInstall').hidden = true; toast('Folio is installed on this device.'); });
+$('#bInstall').addEventListener('click', async () => {
+  if (installPrompt) {
+    const prompt = installPrompt; installPrompt = null;
+    await prompt.prompt();
+    const choice = await prompt.userChoice;
+    if (choice.outcome === 'accepted') $('#bInstall').hidden = true;
+    return;
+  }
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+  if (ios) toast('In Safari, tap Share, then choose Add to Home Screen.', 6000);
+  else if (location.protocol !== 'https:' && location.hostname !== 'localhost') toast('Install Folio from its HTTPS website, then choose Install app in your browser menu.', 6500);
+  else toast('Choose Install app or Add to Home screen from your browser menu.', 6000);
+});
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  navigator.serviceWorker.register('./sw.js').catch(e => console.error('Couldn’t register the offline app shell.', e));
+}
+if ('launchQueue' in window && window.launchQueue && typeof window.launchQueue.setConsumer === 'function') {
+  window.launchQueue.setConsumer(async params => {
+    if (!params.files || !params.files.length) return;
+    try { await openFiles(await Promise.all(params.files.map(f => f.getFile())), 'replace'); }
+    catch (e) { console.error(e); toast('Couldn’t open the shared PDF. ' + (e.message || ''), 6000); }
+  });
+}
 $('#docName').addEventListener('input', e => S.name = e.target.value);
 $('#pageNum').addEventListener('change', e => { const n = parseInt(e.target.value, 10); if (n >= 1 && n <= S.pages.length) goTo(n - 1); else updPageNav(); });
 

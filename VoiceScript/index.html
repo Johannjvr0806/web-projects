@@ -51,7 +51,7 @@
                     <h1 class="font-bold text-lg leading-tight tracking-tight text-white flex items-center gap-2">
                         VoiceScript <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">AF & EN</span>
                     </h1>
-                    <p class="text-xs text-slate-400">Audio & Video Transcription Suite</p>
+                    <p class="text-xs text-slate-400">Private, on-device transcription</p>
                 </div>
             </div>
 
@@ -89,7 +89,7 @@
                     <p class="text-xs font-medium text-slate-200">
                         Drag & Drop video/audio here, or <span class="text-indigo-400 underline decoration-indigo-400/30">browse</span>
                     </p>
-                    <p class="text-[11px] text-slate-500 mt-1">MP4, MP3, WAV, M4A, WEBM, OGG (Max 250MB)</p>
+                    <p class="text-[11px] text-slate-500 mt-1">Audio or video up to 500 MB. Long recordings are downsampled and processed in 5-minute chunks; they may take a long time.</p>
                 </div>
 
                 <!-- Media Preview Section -->
@@ -146,28 +146,13 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3 pt-1">
-                    <div>
-                        <label class="block text-[11px] text-slate-400 mb-1 font-medium">Diarization (Speakers)</label>
-                        <select id="speakerCount" class="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none">
-                            <option value="auto">Auto Detect Speakers</option>
-                            <option value="1">Single Speaker</option>
-                            <option value="2">2 Speakers (Interview)</option>
-                            <option value="3">3+ Speakers (Meeting)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[11px] text-slate-400 mb-1 font-medium">Engine Mode</label>
-                        <select id="engineMode" class="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none">
-                            <option value="speech-api">Web Speech API (Live Native)</option>
-                            <option value="ai-pipeline" selected>VoiceScript AI Pipeline (Detailed)</option>
-                        </select>
-                    </div>
-                </div>
+                <p class="text-[11px] leading-relaxed text-slate-400">
+                    Choose Afrikaans or English, or use Auto-Detect. The speech model downloads on first use; your recording stays in this browser and is not uploaded.
+                </p>
 
                 <!-- Start Action Button -->
                 <button id="startTranscribeBtn" onclick="processTranscription()" class="w-full mt-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold text-xs transition shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2">
-                    <i class="ph-bold ph-play text-sm"></i> Start Transcription Process
+                    <i class="ph-bold ph-play text-sm"></i> Transcribe Recording
                 </button>
             </div>
 
@@ -175,14 +160,17 @@
             <div id="progressCard" class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl hidden space-y-3">
                 <div class="flex items-center justify-between text-xs">
                     <span id="progressStatus" class="font-medium text-indigo-400 flex items-center gap-2">
-                        <i class="ph-bold ph-circle-notch animate-spin text-sm"></i> Extracting Audio & Pre-processing...
+                        <i class="ph-bold ph-circle-notch animate-spin text-sm"></i> Preparing transcription...
                     </span>
-                    <span id="progressPercent" class="text-slate-400 font-semibold">0%</span>
+                    <div class="flex items-center gap-3">
+                        <span id="progressPercent" class="text-slate-400 font-semibold">0%</span>
+                        <button id="cancelTranscriptionBtn" onclick="cancelTranscription()" class="hidden text-rose-400 hover:text-rose-300">Cancel</button>
+                    </div>
                 </div>
                 <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
-                    <div id="progressBar" class="bg-gradient-to-r from-indigo-500 to-emerald-400 h-full w-0 transition-all duration-300"></div>
+                    <div id="progressBar" class="bg-gradient-to-r from-indigo-500 to-emerald-400 h-full w-0 transition-all duration-300" style="width: 0%"></div>
                 </div>
-                <p id="progressSubtext" class="text-[11px] text-slate-500 italic">Analyzing vocal cadence and frequency spectrum...</p>
+                <p id="progressSubtext" class="text-[11px] text-slate-500 italic">Audio is processed locally in your browser.</p>
             </div>
         </section>
 
@@ -200,17 +188,6 @@
                         <p class="text-[11px] text-slate-400">Click timestamps to jump media playback • Editable segments</p>
                     </div>
 
-                    <!-- View Modes & Tabs -->
-                    <div class="flex items-center gap-2">
-                        <div class="bg-slate-950 p-1 rounded-lg border border-slate-800 flex text-xs">
-                            <button id="viewTabOriginal" onclick="switchView('original')" class="px-2.5 py-1 rounded-md bg-indigo-600 text-white font-medium transition">
-                                Transcript
-                            </button>
-                            <button id="viewTabBilingual" onclick="switchView('bilingual')" class="px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 font-medium transition flex items-center gap-1">
-                                <i class="ph-bold ph-translate"></i> Side-by-Side (AF/EN)
-                            </button>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- Search & Filters -->
@@ -256,29 +233,11 @@
                             <i class="ph-bold ph-subtitles text-2xl"></i>
                         </div>
                         <h3 class="text-sm font-semibold text-slate-300 mb-1">No Transcript Generated Yet</h3>
-                        <p class="text-xs max-w-sm">Upload a video/audio file or toggle your live microphone, select Afrikaans or English, and hit Start Transcription.</p>
+                        <p class="text-xs max-w-sm">Choose an audio or video recording, select Afrikaans, English, or Auto-Detect, then start transcription. Long files may take a while on your device.</p>
                     </div>
 
                     <!-- Dynamic Transcript Items inserted here -->
                     <div id="transcriptSegments" class="hidden space-y-4"></div>
-                </div>
-
-                <!-- Summary & Key Topics Collapsible Panel -->
-                <div id="summaryPanel" class="mt-4 border-t border-slate-800/80 pt-4 hidden">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                            <i class="ph-bold ph-lightbulb text-amber-400"></i> AI Generated Summary & Highlights
-                        </span>
-                        <span id="confidenceBadge" class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
-                            Overall Confidence: 96.4%
-                        </span>
-                    </div>
-                    <p id="summaryText" class="text-xs text-slate-400 leading-relaxed bg-slate-950 p-3 rounded-lg border border-slate-800 mb-3">
-                        --
-                    </p>
-                    <div class="flex flex-wrap gap-1.5" id="keywordContainer">
-                        <!-- Key tags dynamic -->
-                    </div>
                 </div>
 
             </div>
@@ -295,14 +254,18 @@
     <script>
         // Data & App State
         let currentFile = null;
+        let currentFileUrl = null;
         let selectedLang = 'en-US';
-        let currentView = 'original'; // 'original' or 'bilingual'
         let transcriptData = [];
         let recognition = null;
         let isMicActive = false;
         let audioCtx = null;
         let analyser = null;
         let visualizerAnimFrame = null;
+        let ffmpegInstance = null;
+        let ffmpegLoadPromise = null;
+        let transcriberPromise = null;
+        let cancelRequested = false;
 
         // Sample Pre-populated Data (English & Afrikaans Demo)
         const sampleBilingualData = [
@@ -357,6 +320,11 @@
 
         // Handle File Drop / Select
         const dropZone = document.getElementById('dropZone');
+        dropZone.addEventListener('click', (event) => {
+            if (event.target !== document.getElementById('fileInput')) {
+                document.getElementById('fileInput').click();
+            }
+        });
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-indigo-500'); });
         dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-indigo-500'));
         dropZone.addEventListener('drop', (e) => {
@@ -374,6 +342,24 @@
         }
 
         function handleFile(file) {
+            if (document.getElementById('startTranscribeBtn').disabled) {
+                showToast('Wait for the current transcription to finish.');
+                return;
+            }
+            const maxFileSize = 500 * 1024 * 1024;
+            const supportedFile = file.type.startsWith('audio/') || file.type.startsWith('video/') ||
+                /\.(mp3|wav|m4a|mp4|webm|ogg|mov|mkv|aac|flac)$/i.test(file.name);
+            if (!supportedFile) {
+                showToast("Choose a supported audio or video file.");
+                return;
+            }
+            if (file.size > maxFileSize) {
+                showToast("This file is larger than the 500 MB limit.");
+                return;
+            }
+
+            if (currentFileUrl) URL.revokeObjectURL(currentFileUrl);
+            if (visualizerAnimFrame) cancelAnimationFrame(visualizerAnimFrame);
             currentFile = file;
             const mediaPreview = document.getElementById('mediaPreview');
             const fileName = document.getElementById('fileName');
@@ -385,15 +371,15 @@
             fileMeta.textContent = `${(file.size / (1024 * 1024)).toFixed(2)} MB • ${file.type || 'Media file'}`;
             mediaPreview.classList.remove('hidden');
 
-            const fileUrl = URL.createObjectURL(file);
-            const isVideo = file.type.startsWith('video');
+            currentFileUrl = URL.createObjectURL(file);
+            const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|mov|mkv)$/i.test(file.name);
 
             if(isVideo) {
                 mediaIcon.innerHTML = `<i class="ph-bold ph-video-camera text-lg"></i>`;
-                playerContainer.innerHTML = `<video id="activeMediaPlayer" controls class="w-full max-h-48 object-cover rounded-lg"><source src="${fileUrl}" type="${file.type}"></video>`;
+                playerContainer.innerHTML = `<video id="activeMediaPlayer" controls class="w-full max-h-48 object-cover rounded-lg"><source src="${currentFileUrl}" type="${file.type}"></video>`;
             } else {
                 mediaIcon.innerHTML = `<i class="ph-bold ph-file-audio text-lg"></i>`;
-                playerContainer.innerHTML = `<audio id="activeMediaPlayer" controls class="w-full p-2"><source src="${fileUrl}" type="${file.type}"></audio>`;
+                playerContainer.innerHTML = `<audio id="activeMediaPlayer" controls class="w-full p-2"><source src="${currentFileUrl}" type="${file.type}"></audio>`;
             }
 
             initAudioAnalyser();
@@ -401,11 +387,18 @@
         }
 
         function clearSelectedFile() {
+            if (document.getElementById('startTranscribeBtn').disabled) {
+                showToast('Wait for the current transcription to finish.');
+                return;
+            }
             currentFile = null;
+            if (currentFileUrl) URL.revokeObjectURL(currentFileUrl);
+            currentFileUrl = null;
             document.getElementById('mediaPreview').classList.add('hidden');
             document.getElementById('playerContainer').innerHTML = '';
             document.getElementById('fileInput').value = '';
             if (visualizerAnimFrame) cancelAnimationFrame(visualizerAnimFrame);
+            document.getElementById('analyserStatus').textContent = 'Idle';
         }
 
         // Web Audio Spectrum Visualizer
@@ -476,81 +469,250 @@
             setLanguage('auto');
             transcriptData = [...sampleBilingualData];
             renderTranscript();
-            renderSummary();
             showToast("Sample English/Afrikaans dialogue loaded!");
         }
 
-        // Process Transcription
-        function processTranscription() {
-            const engine = document.getElementById('engineMode').value;
+        function updateProgress(percent, status, detail) {
+            document.getElementById('progressBar').style.width = `${percent}%`;
+            document.getElementById('progressPercent').textContent = `${percent}%`;
+            document.getElementById('progressStatus').textContent = status;
+            document.getElementById('progressSubtext').textContent = detail;
+        }
 
-            if (engine === 'speech-api') {
-                runWebSpeechAPI();
+        async function getTranscriber() {
+            if (!transcriberPromise) {
+                transcriberPromise = (async () => {
+                    const { pipeline, env } = await import('https://esm.sh/@xenova/transformers@2.17.2');
+                    env.allowLocalModels = false;
+                    env.useBrowserCache = true;
+                    env.backends.onnx.wasm.numThreads = 1;
+                    return pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny', {
+                        quantized: true,
+                        progress_callback: (progress) => {
+                            if (progress.status === 'progress' && progress.total) {
+                                const percent = Math.round(progress.progress);
+                                document.getElementById('progressSubtext').textContent =
+                                    `Downloading the speech model: ${percent}% (first use only; cached by your browser).`;
+                            }
+                        }
+                    });
+                })().catch((error) => {
+                    transcriberPromise = null;
+                    throw error;
+                });
+            }
+            return transcriberPromise;
+        }
+
+        async function getMediaProcessor() {
+            if (!ffmpegLoadPromise) {
+                ffmpegLoadPromise = (async () => {
+                    const [{ FFmpeg }, { toBlobURL }] = await Promise.all([
+                        import('https://esm.sh/@ffmpeg/ffmpeg@0.12.10'),
+                        import('https://esm.sh/@ffmpeg/util@0.12.1')
+                    ]);
+                    ffmpegInstance = new FFmpeg();
+                    const coreUrl = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
+                    await ffmpegInstance.load({
+                        coreURL: await toBlobURL(`${coreUrl}/ffmpeg-core.js`, 'text/javascript'),
+                        wasmURL: await toBlobURL(`${coreUrl}/ffmpeg-core.wasm`, 'application/wasm')
+                    });
+                    return ffmpegInstance;
+                })().catch((error) => {
+                    ffmpegLoadPromise = null;
+                    ffmpegInstance = null;
+                    throw error;
+                });
+            }
+            return ffmpegLoadPromise;
+        }
+
+        function readMonoWav(wav) {
+            const view = new DataView(wav.buffer, wav.byteOffset, wav.byteLength);
+            let offset = 12;
+            let dataOffset = -1;
+            let dataLength = 0;
+
+            while (offset + 8 <= view.byteLength) {
+                const chunkName = String.fromCharCode(
+                    view.getUint8(offset), view.getUint8(offset + 1),
+                    view.getUint8(offset + 2), view.getUint8(offset + 3)
+                );
+                const chunkSize = view.getUint32(offset + 4, true);
+                if (chunkName === 'data') {
+                    dataOffset = offset + 8;
+                    dataLength = chunkSize;
+                    break;
+                }
+                offset += 8 + chunkSize + (chunkSize % 2);
+            }
+
+            if (dataOffset < 0 || dataOffset + dataLength > view.byteLength ||
+                view.getUint16(20, true) !== 1 || view.getUint16(22, true) !== 1 ||
+                view.getUint32(24, true) !== 16000 || view.getUint16(34, true) !== 16) {
+                throw new Error('Could not decode this recording as 16 kHz mono audio.');
+            }
+
+            const samples = new Float32Array(Math.floor(dataLength / 2));
+            for (let i = 0; i < samples.length; i++) {
+                samples[i] = view.getInt16(dataOffset + i * 2, true) / 32768;
+            }
+            return samples;
+        }
+
+        function cancelTranscription() {
+            cancelRequested = true;
+            document.getElementById('cancelTranscriptionBtn').disabled = true;
+            document.getElementById('progressSubtext').textContent = 'Cancellation requested. Finishing the current chunk first.';
+        }
+
+        async function processTranscription() {
+            if (!currentFile) {
+                showToast('Choose an audio or video file first.');
                 return;
             }
 
-            // AI Pipeline Simulated Progress Workflow
-            const progressCard = document.getElementById('progressCard');
-            const progressBar = document.getElementById('progressBar');
-            const progressStatus = document.getElementById('progressStatus');
-            const progressPercent = document.getElementById('progressPercent');
-            const progressSubtext = document.getElementById('progressSubtext');
-
-            progressCard.classList.remove('hidden');
-            let percent = 0;
-
-            const steps = [
-                { p: 15, text: "Extracting audio stream & normalization...", sub: "Converting sample rate to 16kHz mono..." },
-                { p: 40, text: `Applying ${selectedLang} acoustic model...`, sub: "Detecting speaker cadence and pauses..." },
-                { p: 70, text: "Translating & aligning Afrikaans / English segments...", sub: "Performing cross-language embedding check..." },
-                { p: 95, text: "Generating timestamped transcript blocks...", sub: "Calculating confidence scores..." },
-                { p: 100, text: "Transcription Completed!", sub: "Ready for review and export." }
-            ];
-
-            let stepIdx = 0;
-            const interval = setInterval(() => {
-                if (stepIdx < steps.length) {
-                    const step = steps[stepIdx];
-                    progressBar.style.width = `${step.p}%`;
-                    progressPercent.textContent = `${step.p}%`;
-                    progressStatus.innerHTML = `<i class="ph-bold ph-circle-notch animate-spin text-sm"></i> ${step.text}`;
-                    progressSubtext.textContent = step.sub;
-                    stepIdx++;
-                } else {
-                    clearInterval(interval);
-                    setTimeout(() => {
-                        progressCard.classList.add('hidden');
-                        generateMockTranscriptData();
-                        showToast("Transcription complete!");
-                    }, 500);
-                }
-            }, 700);
-        }
-
-        function generateMockTranscriptData() {
-            const isAF = selectedLang === 'af-ZA';
-            if (isAF) {
-                transcriptData = [
-                    { start: 0, end: 4, speaker: "Spreker 1", text: "Goeiedag en welkom by die opname.", translation: "Good day and welcome to the recording.", confidence: 0.97 },
-                    { start: 5, end: 11, speaker: "Spreker 1", text: "Ons toets tans die Afrikaanse spraakherkenning stelsel.", translation: "We are currently testing the Afrikaans speech recognition system.", confidence: 0.95 },
-                    { start: 12, end: 18, speaker: "Spreker 2", text: "Dit werk uitsonderlik goed met hoë akkuraatheid.", translation: "It works exceptionally well with high accuracy.", confidence: 0.98 }
-                ];
-            } else {
-                transcriptData = [
-                    { start: 0, end: 4, speaker: "Speaker 1", text: "Hello everyone, starting the session now.", translation: "Hallo almal, ons begin nou die sessie.", confidence: 0.99 },
-                    { start: 5, end: 10, speaker: "Speaker 1", text: "This application supports both English and Afrikaans translation.", translation: "Hierdie toepassing ondersteun beide Engels en Afrikaans vertaling.", confidence: 0.96 },
-                    { start: 11, end: 16, speaker: "Speaker 2", text: "You can click on any timestamp to seek the video player.", translation: "Jy kan op enige tydstempel klik om die videospeler te soek.", confidence: 0.94 }
-                ];
+            const player = document.getElementById('activeMediaPlayer');
+            if (!player || !Number.isFinite(player.duration) || player.duration <= 0) {
+                showToast('Wait for the media preview to finish loading, then try again.');
+                return;
             }
-            renderTranscript();
-            renderSummary();
+            const sourceFile = currentFile;
+            const sourceDuration = player.duration;
+            const sourceLanguage = selectedLang;
+
+            const button = document.getElementById('startTranscribeBtn');
+            const progressCard = document.getElementById('progressCard');
+            const cancelButton = document.getElementById('cancelTranscriptionBtn');
+            button.disabled = true;
+            cancelRequested = false;
+            cancelButton.disabled = false;
+            cancelButton.classList.remove('hidden');
+            progressCard.classList.remove('hidden');
+            updateProgress(0, 'Loading on-device speech model', 'The model is downloaded once and then cached in this browser.');
+
+            let ffmpeg;
+            let completed = false;
+            try {
+                const transcriber = await getTranscriber();
+                if (cancelRequested) {
+                    updateProgress(0, 'Transcription cancelled', 'No recording was processed.');
+                    return;
+                }
+
+                updateProgress(2, 'Preparing your recording', 'Extracting mono audio in small chunks; your file stays on this device.');
+                ffmpeg = await getMediaProcessor();
+                await ffmpeg.writeFile('input.media', new Uint8Array(await sourceFile.arrayBuffer()));
+
+                const duration = sourceDuration;
+                const chunkDuration = 300;
+                const chunkCount = Math.ceil(duration / chunkDuration);
+                const segments = [];
+                let completedChunks = 0;
+
+                for (let index = 0; index < chunkCount; index++) {
+                    if (cancelRequested) break;
+
+                    const start = index * chunkDuration;
+                    const length = Math.min(chunkDuration, duration - start);
+                    const percent = Math.round(5 + (index / chunkCount) * 90);
+                    updateProgress(percent, `Preparing audio chunk ${index + 1} of ${chunkCount}`,
+                        `Transcribing ${formatTime(start)}–${formatTime(start + length)}. A 90-minute recording can take a long time.`);
+
+                    const exitCode = await ffmpeg.exec([
+                        '-y', '-ss', String(start), '-i', 'input.media', '-t', String(length),
+                        '-vn', '-ac', '1', '-ar', '16000', '-c:a', 'pcm_s16le', '-f', 'wav', 'chunk.wav'
+                    ]);
+                    if (exitCode !== 0) {
+                        throw new Error(`Could not extract audio from chunk ${index + 1}. The file format may not be supported.`);
+                    }
+
+                    const wav = await ffmpeg.readFile('chunk.wav');
+                    const audio = readMonoWav(wav);
+                    const options = {
+                        chunk_length_s: 30,
+                        stride_length_s: 5,
+                        return_timestamps: true,
+                        generate_kwargs: { task: 'transcribe' }
+                    };
+                    if (sourceLanguage === 'af-ZA') options.generate_kwargs.language = 'afrikaans';
+                    if (sourceLanguage === 'en-US') options.generate_kwargs.language = 'english';
+
+                    updateProgress(percent, `Transcribing audio chunk ${index + 1} of ${chunkCount}`,
+                        'Speech recognition runs locally. Accuracy depends on recording quality.');
+                    const result = await transcriber(audio, options);
+
+                    if (result.chunks && result.chunks.length) {
+                        for (const chunk of result.chunks) {
+                            const text = chunk.text.trim();
+                            if (!text) continue;
+                            const timestamps = chunk.timestamp || [];
+                            const chunkStart = Number.isFinite(timestamps[0]) ? timestamps[0] : 0;
+                            const chunkEnd = Number.isFinite(timestamps[1]) ? timestamps[1] : length;
+                            segments.push({
+                                start: start + chunkStart,
+                                end: start + chunkEnd,
+                                speaker: sourceLanguage === 'af-ZA' ? 'Afrikaans' : sourceLanguage === 'en-US' ? 'English' : 'Transcription',
+                                text
+                            });
+                        }
+                    } else if (result.text && result.text.trim()) {
+                        segments.push({
+                            start,
+                            end: start + length,
+                            speaker: sourceLanguage === 'af-ZA' ? 'Afrikaans' : sourceLanguage === 'en-US' ? 'English' : 'Transcription',
+                            text: result.text.trim()
+                        });
+                    }
+
+                    await ffmpeg.deleteFile('chunk.wav');
+                    completedChunks++;
+                    updateProgress(Math.round(5 + (completedChunks / chunkCount) * 90),
+                        `Transcribed audio chunk ${completedChunks} of ${chunkCount}`,
+                        `${segments.length} transcript segments found so far.`);
+                }
+
+                transcriptData = segments;
+                renderTranscript();
+                completed = !cancelRequested;
+                updateProgress(completed ? 100 : Math.round((completedChunks / chunkCount) * 95),
+                    completed ? 'Transcription complete' : 'Transcription cancelled',
+                    completed ? `${segments.length} transcript segments. Review the text and export it below.` :
+                        `${segments.length} segments were kept. You can export the partial transcript.`);
+                if (!segments.length && !cancelRequested) {
+                    showToast('No speech was detected in this recording.');
+                } else {
+                    showToast(completed ? 'Transcription complete.' : 'Transcription stopped; partial results were saved.');
+                }
+            } catch (error) {
+                console.error('Transcription failed:', error);
+                updateProgress(0, 'Transcription failed', error.message || 'Check your connection and try again.');
+                showToast(error.message || 'Transcription failed. Check your connection and try again.');
+            } finally {
+                if (ffmpegInstance) {
+                    try {
+                        if (ffmpeg) await ffmpeg.deleteFile('input.media');
+                    } catch (error) {
+                        console.warn('Could not remove the temporary media file:', error);
+                    }
+                    ffmpegInstance.terminate();
+                    ffmpegInstance = null;
+                    ffmpegLoadPromise = null;
+                }
+                button.disabled = false;
+                cancelButton.classList.add('hidden');
+                cancelButton.disabled = false;
+                if (completed) {
+                    setTimeout(() => progressCard.classList.add('hidden'), 4000);
+                }
+            }
         }
 
         // Web Speech API Native Browser Recognition
         function runWebSpeechAPI() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognition) {
-                showToast("Web Speech API is not supported in this browser. Switch to AI Pipeline.");
+                showToast("Live microphone recognition is not supported in this browser.");
                 return;
             }
 
@@ -567,8 +729,6 @@
                 end: 0,
                 speaker: "Live Engine",
                 text: "Listening...",
-                translation: "Besig om te luister...",
-                confidence: 0.90
             });
 
             renderTranscript();
@@ -610,6 +770,16 @@
             }
         }
 
+        function escapeHTML(value) {
+            return String(value).replace(/[&<>"']/g, (character) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            })[character]);
+        }
+
         // Render Transcript
         function renderTranscript() {
             const emptyState = document.getElementById('emptyState');
@@ -631,47 +801,18 @@
 
                 const formattedStart = formatTime(seg.start);
                 const formattedEnd = formatTime(seg.end || seg.start + 4);
-
-                if (currentView === 'original') {
-                    segEl.innerHTML = `
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="flex items-center gap-2">
-                                <button onclick="seekMedia(${seg.start})" class="text-xs font-mono font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded hover:bg-indigo-600 hover:text-white transition flex items-center gap-1">
-                                    <i class="ph-bold ph-play"></i> ${formattedStart} - ${formattedEnd}
-                                </button>
-                                <span class="text-xs font-medium text-slate-400">${seg.speaker}</span>
-                            </div>
-                            <span class="text-[10px] text-slate-500">${(seg.confidence * 100).toFixed(0)}% conf</span>
-                        </div>
-                        <div contenteditable="true" onblur="updateSegmentText(${idx}, 'text', this.innerText)" class="text-xs text-slate-200 outline-none focus:bg-slate-950/80 p-1.5 rounded transition leading-relaxed">
-                            ${seg.text}
-                        </div>
-                    `;
-                } else {
-                    // Bilingual Dual-Column View
-                    segEl.innerHTML = `
-                        <div class="flex items-center justify-between mb-2">
-                            <button onclick="seekMedia(${seg.start})" class="text-xs font-mono font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded hover:bg-indigo-600 hover:text-white transition flex items-center gap-1">
-                                <i class="ph-bold ph-play"></i> ${formattedStart}
-                            </button>
-                            <span class="text-xs font-medium text-slate-400">${seg.speaker}</span>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                            <div class="bg-slate-950/70 p-2 rounded-lg border border-slate-800/80">
-                                <span class="text-[9px] uppercase font-bold text-indigo-400 tracking-wider block mb-1">Original</span>
-                                <div contenteditable="true" onblur="updateSegmentText(${idx}, 'text', this.innerText)" class="text-xs text-slate-200 outline-none">
-                                    ${seg.text}
-                                </div>
-                            </div>
-                            <div class="bg-slate-950/70 p-2 rounded-lg border border-slate-800/80">
-                                <span class="text-[9px] uppercase font-bold text-emerald-400 tracking-wider block mb-1">Translated (AF/EN)</span>
-                                <div contenteditable="true" onblur="updateSegmentText(${idx}, 'translation', this.innerText)" class="text-xs text-slate-300 outline-none">
-                                    ${seg.translation || 'N/A'}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }
+                const start = Number(seg.start) || 0;
+                segEl.innerHTML = `
+                    <div class="flex items-center gap-2 mb-2">
+                        <button onclick="seekMedia(${start})" class="text-xs font-mono font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded hover:bg-indigo-600 hover:text-white transition flex items-center gap-1">
+                            <i class="ph-bold ph-play"></i> ${formattedStart} - ${formattedEnd}
+                        </button>
+                        <span class="text-xs font-medium text-slate-400">${escapeHTML(seg.speaker || 'Transcript')}</span>
+                    </div>
+                    <div contenteditable="true" onblur="updateSegmentText(${idx}, 'text', this.innerText)" class="text-xs text-slate-200 outline-none focus:bg-slate-950/80 p-1.5 rounded transition leading-relaxed">
+                        ${escapeHTML(seg.text)}
+                    </div>
+                `;
                 transcriptSegments.appendChild(segEl);
             });
         }
@@ -683,28 +824,13 @@
             }
         }
 
-        function switchView(view) {
-            currentView = view;
-            const btnOrig = document.getElementById('viewTabOriginal');
-            const btnBilingual = document.getElementById('viewTabBilingual');
-
-            if (view === 'original') {
-                btnOrig.className = "px-2.5 py-1 rounded-md bg-indigo-600 text-white font-medium transition";
-                btnBilingual.className = "px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 font-medium transition flex items-center gap-1";
-            } else {
-                btnBilingual.className = "px-2.5 py-1 rounded-md bg-indigo-600 text-white font-medium transition flex items-center gap-1";
-                btnOrig.className = "px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 font-medium transition";
-            }
-            renderTranscript();
-        }
-
         function filterTranscript() {
             const query = document.getElementById('searchInput').value.toLowerCase();
             const items = document.querySelectorAll('#transcriptSegments > div');
             items.forEach((item, idx) => {
                 const seg = transcriptData[idx];
                 if (seg) {
-                    const match = seg.text.toLowerCase().includes(query) || (seg.translation && seg.translation.toLowerCase().includes(query));
+                    const match = seg.text.toLowerCase().includes(query);
                     item.style.display = match ? 'block' : 'none';
                 }
             });
@@ -717,18 +843,6 @@
                 player.play();
                 showToast(`Jumped to ${formatTime(seconds)}`);
             }
-        }
-
-        function renderSummary() {
-            const summaryPanel = document.getElementById('summaryPanel');
-            const summaryText = document.getElementById('summaryText');
-            const keywordContainer = document.getElementById('keywordContainer');
-
-            summaryPanel.classList.remove('hidden');
-            summaryText.textContent = "Discussion focused on regional language integration, speech recognition fidelity in South Africa, and technical deployment of Afrikaans-to-English translation pipelines.";
-
-            const tags = ["Afrikaans AI", "Voice Recognition", "Cape Town Conf", "Diarization", "Subtitles"];
-            keywordContainer.innerHTML = tags.map(t => `<span class="text-[10px] bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2 py-0.5 rounded-full font-medium">#${t}</span>`).join('');
         }
 
         // Export Utilities
@@ -786,16 +900,21 @@
 
         // Helper Time Formatters
         function formatTime(seconds) {
-            const m = Math.floor(seconds / 60);
-            const s = Math.floor(seconds % 60);
-            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            const totalSeconds = Math.floor(seconds);
+            const h = Math.floor(totalSeconds / 3600);
+            const m = Math.floor(totalSeconds / 60) % 60;
+            const s = totalSeconds % 60;
+            if (h) return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            return `${Math.floor(totalSeconds / 60).toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
         }
 
         function formatSRTTime(seconds) {
-            const m = Math.floor(seconds / 60);
-            const s = Math.floor(seconds % 60);
+            const totalSeconds = Math.floor(seconds);
+            const h = Math.floor(totalSeconds / 3600);
+            const m = Math.floor(totalSeconds / 60) % 60;
+            const s = totalSeconds % 60;
             const ms = Math.floor((seconds % 1) * 1000);
-            return `00:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
+            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
         }
 
         // Toast Notification System

@@ -1,0 +1,38 @@
+{
+  "name": "voicescript-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Windows desktop app for Afrikaans and English transcription",
+  "main": "desktop/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.voicescript.desktop",
+    "productName": "VoiceScript",
+    "asar": true,
+    "electronDist": "node_modules/electron/dist",
+    "files": [
+      "desktop/main.cjs",
+      "index.html",
+      "README.md",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

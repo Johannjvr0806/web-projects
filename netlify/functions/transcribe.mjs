@@ -15,9 +15,22 @@ function getAllowedOrigins() {
   return new Set(configuredOrigins?.length ? configuredOrigins : DEFAULT_ALLOWED_ORIGINS);
 }
 
+function isAllowedOrigin(origin) {
+  if (getAllowedOrigins().has(origin)) return true;
+
+  try {
+    const url = new URL(origin);
+    return url.protocol === "http:"
+      && (url.hostname === "127.0.0.1" || url.hostname === "localhost")
+      && Number(url.port) > 0;
+  } catch {
+    return false;
+  }
+}
+
 function jsonResponse(status, data, origin) {
   const headers = { "Content-Type": "application/json; charset=utf-8" };
-  if (origin && getAllowedOrigins().has(origin)) {
+  if (origin && isAllowedOrigin(origin)) {
     headers["Access-Control-Allow-Origin"] = origin;
     headers["Access-Control-Allow-Methods"] = "POST, OPTIONS";
     headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type";
@@ -35,7 +48,7 @@ function matchesAccessCode(received, expected) {
 
 export default async function transcribe(request) {
   const origin = request.headers.get("origin");
-  if (!origin || !getAllowedOrigins().has(origin)) {
+  if (!origin || !isAllowedOrigin(origin)) {
     return jsonResponse(403, { error: "This website is not allowed to use the transcription service." }, origin);
   }
 

@@ -13,3 +13,14 @@ VoiceScript can transcribe audio locally in the browser or use Groq Cloud for fa
 4. Open VoiceScript and choose **Groq Cloud**. Select the recording language and enter the private access code.
 
 Cloud mode extracts audio locally into 90-second mono WAV chunks, then uploads each chunk to the Netlify Function, which forwards it to Groq's `whisper-large-v3-turbo` model. A 90-minute recording requires about 60 sequential requests. Netlify's function payload limit means cloud chunks must remain small; the function rejects a chunk larger than 3 MiB. Cloud processing time depends on network and provider response times; sub-minute completion is not guaranteed. The local on-device mode remains available and does not upload recordings.
+
+## Windows desktop app
+
+The desktop app runs VoiceScript in an isolated Electron window served from a local-only web server, so browser audio workers can work without opening the HTML directly. Install Node.js, open a terminal in the `VoiceScript` folder, and run:
+
+```powershell
+npm install
+npm run dist:win
+```
+
+The Windows installer is created in `VoiceScript/release`. It still uses the same transcription engines: local speed depends on your computer, and Groq Cloud still needs a working internet connection, configured Netlify secrets, and may incur charges. The desktop app does not by itself make Groq transcription faster.

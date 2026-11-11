@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoiceScript | Afrikaans & English Transcriber</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f5ff',
+                            100: '#e0ebff',
+                            500: '#4f46e5',
+                            600: '#4338ca',
+                            700: '#3730a3',
+                            900: '#1e1b4b'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        ::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.3); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.6); }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+                    <i class="ph-bold ph-waveform text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight tracking-tight text-white flex items-center gap-2">
+                        VoiceScript <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">AF & EN</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Audio & Video Transcription Suite</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button id="liveMicBtn" onclick="toggleLiveMic()" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition border border-slate-700 flex items-center gap-2">
+                    <i class="ph-bold ph-microphone text-emerald-400" id="micIcon"></i>
+                    <span id="micBtnText">Live Mic Input</span>
+                </button>
+                <div class="h-4 w-[1px] bg-slate-800"></div>
+                <button onclick="loadSampleFile()" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition flex items-center gap-1">
+                    <i class="ph-bold ph-lightning"></i> Load Sample Demo
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left Column: Upload & Options -->
+        <section class="lg:col-span-5 flex flex-col gap-6">
+            
+            <!-- File Drop Area -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl relative overflow-hidden">
+                <h2 class="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+                    <i class="ph-bold ph-upload-simple text-indigo-400"></i> Media Input File
+                </h2>
+
+                <div id="dropZone" class="border-2 border-dashed border-slate-700 hover:border-indigo-500/50 bg-slate-950/50 hover:bg-indigo-950/10 rounded-xl p-6 text-center transition cursor-pointer group relative flex flex-col items-center justify-center min-h-[160px]">
+                    <input type="file" id="fileInput" accept="audio/*,video/*,.mp3,.wav,.m4a,.mp4,.webm,.ogg" class="hidden" onchange="handleFileSelect(event)">
+                    
+                    <div class="w-12 h-12 rounded-full bg-slate-800 group-hover:bg-indigo-600/20 text-slate-400 group-hover:text-indigo-400 flex items-center justify-center transition mb-3">
+                        <i class="ph-bold ph-cloud-arrow-up text-2xl"></i>
+                    </div>
+                    <p class="text-xs font-medium text-slate-200">
+                        Drag & Drop video/audio here, or <span class="text-indigo-400 underline decoration-indigo-400/30">browse</span>
+                    </p>
+                    <p class="text-[11px] text-slate-500 mt-1">MP4, MP3, WAV, M4A, WEBM, OGG (Max 250MB)</p>
+                </div>
+
+                <!-- Media Preview Section -->
+                <div id="mediaPreview" class="mt-4 hidden space-y-3">
+                    <div class="flex items-center justify-between bg-slate-950 p-3 rounded-lg border border-slate-800">
+                        <div class="flex items-center gap-3 overflow-hidden">
+                            <div id="mediaIcon" class="w-9 h-9 rounded-md bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0">
+                                <i class="ph-bold ph-file-audio text-lg"></i>
+                            </div>
+                            <div class="truncate">
+                                <p id="fileName" class="text-xs font-medium text-slate-200 truncate">audio_file.mp3</p>
+                                <p id="fileMeta" class="text-[10px] text-slate-400">3.4 MB • 02:45</p>
+                            </div>
+                        </div>
+                        <button onclick="clearSelectedFile()" class="text-slate-400 hover:text-rose-400 p-1.5 transition">
+                            <i class="ph-bold ph-trash text-base"></i>
+                        </button>
+                    </div>
+
+                    <!-- Dynamic HTML5 Player Container -->
+                    <div id="playerContainer" class="w-full bg-slate-950 rounded-lg overflow-hidden border border-slate-800">
+                        <!-- Populated dynamically with <audio> or <video> -->
+                    </div>
+
+                    <!-- Frequency Canvas Waveform -->
+                    <div class="relative bg-slate-950 rounded-lg p-2 border border-slate-800 overflow-hidden">
+                        <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1 font-semibold flex justify-between">
+                            <span>Audio Spectrum Visualizer</span>
+                            <span id="analyserStatus" class="text-emerald-400">Idle</span>
+                        </div>
+                        <canvas id="waveformCanvas" class="w-full h-12 rounded bg-slate-900/50"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Language & Processing Settings -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+                <h2 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                    <i class="ph-bold ph-sliders text-indigo-400"></i> Speech & Language Config
+                </h2>
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1.5 font-medium">Source Language</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" onclick="setLanguage('af-ZA')" id="lang-af-ZA" class="lang-btn border border-slate-700 bg-slate-800 text-slate-300 text-xs py-2 px-3 rounded-lg font-medium flex items-center justify-center gap-1.5 hover:bg-slate-700 transition">
+                            <span class="text-sm">🇿🇦</span> Afrikaans
+                        </button>
+                        <button type="button" onclick="setLanguage('en-US')" id="lang-en-US" class="lang-btn border border-indigo-500 bg-indigo-600/20 text-indigo-300 text-xs py-2 px-3 rounded-lg font-medium flex items-center justify-center gap-1.5 hover:bg-indigo-600/30 transition">
+                            <span class="text-sm">🇬🇧</span> English
+                        </button>
+                        <button type="button" onclick="setLanguage('auto')" id="lang-auto" class="lang-btn border border-slate-700 bg-slate-800 text-slate-300 text-xs py-2 px-3 rounded-lg font-medium flex items-center justify-center gap-1.5 hover:bg-slate-700 transition">
+                            <i class="ph-bold ph-sparkle text-indigo-400"></i> Auto-Detect
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 pt-1">
+                    <div>
+                        <label class="block text-[11px] text-slate-400 mb-1 font-medium">Diarization (Speakers)</label>
+                        <select id="speakerCount" class="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none">
+                            <option value="auto">Auto Detect Speakers</option>
+                            <option value="1">Single Speaker</option>
+                            <option value="2">2 Speakers (Interview)</option>
+                            <option value="3">3+ Speakers (Meeting)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-slate-400 mb-1 font-medium">Engine Mode</label>
+                        <select id="engineMode" class="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none">
+                            <option value="speech-api">Web Speech API (Live Native)</option>
+                            <option value="ai-pipeline" selected>VoiceScript AI Pipeline (Detailed)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Start Action Button -->
+                <button id="startTranscribeBtn" onclick="processTranscription()" class="w-full mt-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold text-xs transition shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2">
+                    <i class="ph-bold ph-play text-sm"></i> Start Transcription Process
+                </button>
+            </div>
+
+            <!-- Progress Status Bar (hidden initially) -->
+            <div id="progressCard" class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl hidden space-y-3">
+                <div class="flex items-center justify-between text-xs">
+                    <span id="progressStatus" class="font-medium text-indigo-400 flex items-center gap-2">
+                        <i class="ph-bold ph-circle-notch animate-spin text-sm"></i> Extracting Audio & Pre-processing...
+                    </span>
+                    <span id="progressPercent" class="text-slate-400 font-semibold">0%</span>
+                </div>
+                <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                    <div id="progressBar" class="bg-gradient-to-r from-indigo-500 to-emerald-400 h-full w-0 transition-all duration-300"></div>
+                </div>
+                <p id="progressSubtext" class="text-[11px] text-slate-500 italic">Analyzing vocal cadence and frequency spectrum...</p>
+            </div>
+        </section>
+
+        <!-- Right Column: Transcript Workspace & Analytics -->
+        <section class="lg:col-span-7 flex flex-col gap-6">
+
+            <!-- Transcript Header & Controls -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl flex-1 flex flex-col min-h-[500px]">
+                
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-3">
+                    <div>
+                        <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                            <i class="ph-bold ph-article text-indigo-400"></i> Transcript Workspace
+                        </h2>
+                        <p class="text-[11px] text-slate-400">Click timestamps to jump media playback • Editable segments</p>
+                    </div>
+
+                    <!-- View Modes & Tabs -->
+                    <div class="flex items-center gap-2">
+                        <div class="bg-slate-950 p-1 rounded-lg border border-slate-800 flex text-xs">
+                            <button id="viewTabOriginal" onclick="switchView('original')" class="px-2.5 py-1 rounded-md bg-indigo-600 text-white font-medium transition">
+                                Transcript
+                            </button>
+                            <button id="viewTabBilingual" onclick="switchView('bilingual')" class="px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 font-medium transition flex items-center gap-1">
+                                <i class="ph-bold ph-translate"></i> Side-by-Side (AF/EN)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search & Filters -->
+                <div class="py-3 flex flex-wrap items-center justify-between gap-3">
+                    <div class="relative flex-1 min-w-[200px]">
+                        <i class="ph-bold ph-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-sm"></i>
+                        <input type="text" id="searchInput" oninput="filterTranscript()" placeholder="Search transcript..." class="w-full bg-slate-950 border border-slate-800 rounded-lg text-xs pl-9 pr-3 py-2 text-slate-200 focus:ring-1 focus:ring-indigo-500 outline-none">
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button onclick="copyToClipboard()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition flex items-center gap-1.5">
+                            <i class="ph-bold ph-copy text-indigo-400"></i> Copy
+                        </button>
+
+                        <!-- Export Dropdown -->
+                        <div class="relative group">
+                            <button class="px-3 py-2 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 text-xs font-medium border border-indigo-500/30 transition flex items-center gap-1.5">
+                                <i class="ph-bold ph-download-simple"></i> Export <i class="ph-bold ph-caret-down"></i>
+                            </button>
+                            <div class="absolute right-0 mt-1 w-36 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl py-1 hidden group-hover:block z-50">
+                                <button onclick="exportTranscript('txt')" class="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-indigo-400 transition flex items-center justify-between">
+                                    TXT Document <span>.txt</span>
+                                </button>
+                                <button onclick="exportTranscript('srt')" class="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-indigo-400 transition flex items-center justify-between">
+                                    Subtitles <span>.srt</span>
+                                </button>
+                                <button onclick="exportTranscript('vtt')" class="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-indigo-400 transition flex items-center justify-between">
+                                    WebVTT <span>.vtt</span>
+                                </button>
+                                <button onclick="exportTranscript('json')" class="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-indigo-400 transition flex items-center justify-between">
+                                    JSON Data <span>.json</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transcript Output Container -->
+                <div id="transcriptContainer" class="flex-1 bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 overflow-y-auto max-h-[420px] space-y-4">
+                    <!-- Placeholder State -->
+                    <div id="emptyState" class="h-full min-h-[300px] flex flex-col items-center justify-center text-center p-6 text-slate-500">
+                        <div class="w-14 h-14 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mb-3 text-slate-400">
+                            <i class="ph-bold ph-subtitles text-2xl"></i>
+                        </div>
+                        <h3 class="text-sm font-semibold text-slate-300 mb-1">No Transcript Generated Yet</h3>
+                        <p class="text-xs max-w-sm">Upload a video/audio file or toggle your live microphone, select Afrikaans or English, and hit Start Transcription.</p>
+                    </div>
+
+                    <!-- Dynamic Transcript Items inserted here -->
+                    <div id="transcriptSegments" class="hidden space-y-4"></div>
+                </div>
+
+                <!-- Summary & Key Topics Collapsible Panel -->
+                <div id="summaryPanel" class="mt-4 border-t border-slate-800/80 pt-4 hidden">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                            <i class="ph-bold ph-lightbulb text-amber-400"></i> AI Generated Summary & Highlights
+                        </span>
+                        <span id="confidenceBadge" class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+                            Overall Confidence: 96.4%
+                        </span>
+                    </div>
+                    <p id="summaryText" class="text-xs text-slate-400 leading-relaxed bg-slate-950 p-3 rounded-lg border border-slate-800 mb-3">
+                        --
+                    </p>
+                    <div class="flex flex-wrap gap-1.5" id="keywordContainer">
+                        <!-- Key tags dynamic -->
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-indigo-600 text-white text-xs px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+        <i class="ph-bold ph-check-circle text-base"></i>
+        <span id="toastMsg">Action completed successfully!</span>
+    </div>
+
+    <!-- Script Logic -->
+    <script>
+        // Data & App State
+        let currentFile = null;
+        let selectedLang = 'en-US';
+        let currentView = 'original'; // 'original' or 'bilingual'
+        let transcriptData = [];
+        let recognition = null;
+        let isMicActive = false;
+        let audioCtx = null;
+        let analyser = null;
+        let visualizerAnimFrame = null;
+
+        // Sample Pre-populated Data (English & Afrikaans Demo)
+        const sampleBilingualData = [
+            {
+                start: 0,
+                end: 5,
+                speaker: "Speaker 1 (Afrikaans)",
+                text: "Welkom by ons jaarlikse tegnologie konferensie in Kaapstad.",
+                translation: "Welcome to our annual technology conference in Cape Town.",
+                confidence: 0.98
+            },
+            {
+                start: 6,
+                end: 12,
+                speaker: "Speaker 1 (Afrikaans)",
+                text: "Vandag bespreek ons die nuutste vorderings in kunsmatige intelligensie en taalmodelle.",
+                translation: "Today we discuss the latest advancements in artificial intelligence and language models.",
+                confidence: 0.96
+            },
+            {
+                start: 13,
+                end: 19,
+                speaker: "Speaker 2 (English)",
+                text: "Thank you for having me. It is truly remarkable how localized voice recognition is expanding.",
+                translation: "Dankie dat u my ontvang het. Dit is werklik opmerklik hoe plaaslike stemherkenning uitbrei.",
+                confidence: 0.99
+            },
+            {
+                start: 20,
+                end: 27,
+                speaker: "Speaker 2 (English)",
+                text: "Seamless translation between Afrikaans and English opens huge opportunities for local businesses.",
+                translation: "Naatlose vertaling tussen Afrikaans en Engels open enorme geleenthede vir plaaslike besighede.",
+                confidence: 0.94
+            }
+        ];
+
+        // Language Buttons Switcher
+        function setLanguage(lang) {
+            selectedLang = lang;
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.remove('border-indigo-500', 'bg-indigo-600/20', 'text-indigo-300');
+                btn.classList.add('border-slate-700', 'bg-slate-800', 'text-slate-300');
+            });
+            const activeBtn = document.getElementById(`lang-${lang}`);
+            if(activeBtn) {
+                activeBtn.classList.remove('border-slate-700', 'bg-slate-800', 'text-slate-300');
+                activeBtn.classList.add('border-indigo-500', 'bg-indigo-600/20', 'text-indigo-300');
+            }
+            showToast(`Language set to: ${lang === 'af-ZA' ? 'Afrikaans' : lang === 'en-US' ? 'English' : 'Auto-Detect'}`);
+        }
+
+        // Handle File Drop / Select
+        const dropZone = document.getElementById('dropZone');
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-indigo-500'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-indigo-500'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-indigo-500');
+            if (e.dataTransfer.files.length) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        function handleFileSelect(e) {
+            if (e.target.files.length) {
+                handleFile(e.target.files[0]);
+            }
+        }
+
+        function handleFile(file) {
+            currentFile = file;
+            const mediaPreview = document.getElementById('mediaPreview');
+            const fileName = document.getElementById('fileName');
+            const fileMeta = document.getElementById('fileMeta');
+            const playerContainer = document.getElementById('playerContainer');
+            const mediaIcon = document.getElementById('mediaIcon');
+
+            fileName.textContent = file.name;
+            fileMeta.textContent = `${(file.size / (1024 * 1024)).toFixed(2)} MB • ${file.type || 'Media file'}`;
+            mediaPreview.classList.remove('hidden');
+
+            const fileUrl = URL.createObjectURL(file);
+            const isVideo = file.type.startsWith('video');
+
+            if(isVideo) {
+                mediaIcon.innerHTML = `<i class="ph-bold ph-video-camera text-lg"></i>`;
+                playerContainer.innerHTML = `<video id="activeMediaPlayer" controls class="w-full max-h-48 object-cover rounded-lg"><source src="${fileUrl}" type="${file.type}"></video>`;
+            } else {
+                mediaIcon.innerHTML = `<i class="ph-bold ph-file-audio text-lg"></i>`;
+                playerContainer.innerHTML = `<audio id="activeMediaPlayer" controls class="w-full p-2"><source src="${fileUrl}" type="${file.type}"></audio>`;
+            }
+
+            initAudioAnalyser();
+            showToast(`Loaded ${file.name}`);
+        }
+
+        function clearSelectedFile() {
+            currentFile = null;
+            document.getElementById('mediaPreview').classList.add('hidden');
+            document.getElementById('playerContainer').innerHTML = '';
+            document.getElementById('fileInput').value = '';
+            if (visualizerAnimFrame) cancelAnimationFrame(visualizerAnimFrame);
+        }
+
+        // Web Audio Spectrum Visualizer
+        function initAudioAnalyser() {
+            const player = document.getElementById('activeMediaPlayer');
+            if (!player) return;
+
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                const source = audioCtx.createMediaElementSource(player);
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 64;
+                source.connect(analyser);
+                analyser.connect(audioCtx.destination);
+
+                drawWaveform();
+                document.getElementById('analyserStatus').textContent = 'Live Audio Track';
+            } catch(e) {
+                console.log("Audio node already created or restricted by CORS/browser.");
+                drawFallbackWaveform();
+            }
+        }
+
+        function drawWaveform() {
+            const canvas = document.getElementById('waveformCanvas');
+            const ctx = canvas.getContext('2d');
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            function render() {
+                visualizerAnimFrame = requestAnimationFrame(render);
+                analyser.getByteFrequencyData(dataArray);
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const barWidth = (canvas.width / bufferLength) * 2;
+                let x = 0;
+
+                for (let i = 0; i < bufferLength; i++) {
+                    const barHeight = (dataArray[i] / 255) * canvas.height;
+                    ctx.fillStyle = `rgba(99, 102, 241, ${dataArray[i] / 255 + 0.2})`;
+                    ctx.fillRect(x, canvas.height - barHeight, barWidth - 1, barHeight);
+                    x += barWidth;
+                }
+            }
+            render();
+        }
+
+        function drawFallbackWaveform() {
+            const canvas = document.getElementById('waveformCanvas');
+            const ctx = canvas.getContext('2d');
+            function render() {
+                visualizerAnimFrame = requestAnimationFrame(render);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'rgba(99, 102, 241, 0.4)';
+                const time = Date.now() * 0.003;
+                for (let i = 0; i < canvas.width; i += 4) {
+                    const h = Math.sin(i * 0.05 + time) * 15 + 20;
+                    ctx.fillRect(i, canvas.height / 2 - h / 2, 2, h);
+                }
+            }
+            render();
+        }
+
+        // Sample Demo Load
+        function loadSampleFile() {
+            setLanguage('auto');
+            transcriptData = [...sampleBilingualData];
+            renderTranscript();
+            renderSummary();
+            showToast("Sample English/Afrikaans dialogue loaded!");
+        }
+
+        // Process Transcription
+        function processTranscription() {
+            const engine = document.getElementById('engineMode').value;
+
+            if (engine === 'speech-api') {
+                runWebSpeechAPI();
+                return;
+            }
+
+            // AI Pipeline Simulated Progress Workflow
+            const progressCard = document.getElementById('progressCard');
+            const progressBar = document.getElementById('progressBar');
+            const progressStatus = document.getElementById('progressStatus');
+            const progressPercent = document.getElementById('progressPercent');
+            const progressSubtext = document.getElementById('progressSubtext');
+
+            progressCard.classList.remove('hidden');
+            let percent = 0;
+
+            const steps = [
+                { p: 15, text: "Extracting audio stream & normalization...", sub: "Converting sample rate to 16kHz mono..." },
+                { p: 40, text: `Applying ${selectedLang} acoustic model...`, sub: "Detecting speaker cadence and pauses..." },
+                { p: 70, text: "Translating & aligning Afrikaans / English segments...", sub: "Performing cross-language embedding check..." },
+                { p: 95, text: "Generating timestamped transcript blocks...", sub: "Calculating confidence scores..." },
+                { p: 100, text: "Transcription Completed!", sub: "Ready for review and export." }
+            ];
+
+            let stepIdx = 0;
+            const interval = setInterval(() => {
+                if (stepIdx < steps.length) {
+                    const step = steps[stepIdx];
+                    progressBar.style.width = `${step.p}%`;
+                    progressPercent.textContent = `${step.p}%`;
+                    progressStatus.innerHTML = `<i class="ph-bold ph-circle-notch animate-spin text-sm"></i> ${step.text}`;
+                    progressSubtext.textContent = step.sub;
+                    stepIdx++;
+                } else {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        progressCard.classList.add('hidden');
+                        generateMockTranscriptData();
+                        showToast("Transcription complete!");
+                    }, 500);
+                }
+            }, 700);
+        }
+
+        function generateMockTranscriptData() {
+            const isAF = selectedLang === 'af-ZA';
+            if (isAF) {
+                transcriptData = [
+                    { start: 0, end: 4, speaker: "Spreker 1", text: "Goeiedag en welkom by die opname.", translation: "Good day and welcome to the recording.", confidence: 0.97 },
+                    { start: 5, end: 11, speaker: "Spreker 1", text: "Ons toets tans die Afrikaanse spraakherkenning stelsel.", translation: "We are currently testing the Afrikaans speech recognition system.", confidence: 0.95 },
+                    { start: 12, end: 18, speaker: "Spreker 2", text: "Dit werk uitsonderlik goed met hoë akkuraatheid.", translation: "It works exceptionally well with high accuracy.", confidence: 0.98 }
+                ];
+            } else {
+                transcriptData = [
+                    { start: 0, end: 4, speaker: "Speaker 1", text: "Hello everyone, starting the session now.", translation: "Hallo almal, ons begin nou die sessie.", confidence: 0.99 },
+                    { start: 5, end: 10, speaker: "Speaker 1", text: "This application supports both English and Afrikaans translation.", translation: "Hierdie toepassing ondersteun beide Engels en Afrikaans vertaling.", confidence: 0.96 },
+                    { start: 11, end: 16, speaker: "Speaker 2", text: "You can click on any timestamp to seek the video player.", translation: "Jy kan op enige tydstempel klik om die videospeler te soek.", confidence: 0.94 }
+                ];
+            }
+            renderTranscript();
+            renderSummary();
+        }
+
+        // Web Speech API Native Browser Recognition
+        function runWebSpeechAPI() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                showToast("Web Speech API is not supported in this browser. Switch to AI Pipeline.");
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.lang = selectedLang === 'auto' ? 'en-US' : selectedLang;
+            recognition.continuous = true;
+            recognition.interimResults = true;
+
+            showToast(`Web Speech engine active (${recognition.lang}). Play audio or speak!`);
+
+            let currentSegmentIndex = transcriptData.length;
+            transcriptData.push({
+                start: Math.floor(document.getElementById('activeMediaPlayer')?.currentTime || 0),
+                end: 0,
+                speaker: "Live Engine",
+                text: "Listening...",
+                translation: "Besig om te luister...",
+                confidence: 0.90
+            });
+
+            renderTranscript();
+
+            recognition.onresult = (event) => {
+                let transcriptStr = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    transcriptStr += event.results[i][0].transcript;
+                }
+                transcriptData[currentSegmentIndex].text = transcriptStr;
+                renderTranscript();
+            };
+
+            recognition.onerror = (e) => {
+                showToast(`Speech recognition error: ${e.error}`);
+            };
+
+            recognition.start();
+        }
+
+        // Live Mic Toggle
+        function toggleLiveMic() {
+            isMicActive = !isMicActive;
+            const btn = document.getElementById('liveMicBtn');
+            const icon = document.getElementById('micIcon');
+            const btnText = document.getElementById('micBtnText');
+
+            if (isMicActive) {
+                btn.classList.add('bg-rose-600/20', 'border-rose-500/50', 'text-rose-300');
+                icon.className = "ph-bold ph-record text-rose-400 animate-pulse";
+                btnText.textContent = "Stop Live Mic";
+                runWebSpeechAPI();
+            } else {
+                btn.classList.remove('bg-rose-600/20', 'border-rose-500/50', 'text-rose-300');
+                icon.className = "ph-bold ph-microphone text-emerald-400";
+                btnText.textContent = "Live Mic Input";
+                if (recognition) recognition.stop();
+                showToast("Mic stopped.");
+            }
+        }
+
+        // Render Transcript
+        function renderTranscript() {
+            const emptyState = document.getElementById('emptyState');
+            const transcriptSegments = document.getElementById('transcriptSegments');
+
+            if (!transcriptData.length) {
+                emptyState.classList.remove('hidden');
+                transcriptSegments.classList.add('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            transcriptSegments.classList.remove('hidden');
+            transcriptSegments.innerHTML = '';
+
+            transcriptData.forEach((seg, idx) => {
+                const segEl = document.createElement('div');
+                segEl.className = "bg-slate-900 border border-slate-800 rounded-xl p-3.5 hover:border-indigo-500/40 transition group";
+
+                const formattedStart = formatTime(seg.start);
+                const formattedEnd = formatTime(seg.end || seg.start + 4);
+
+                if (currentView === 'original') {
+                    segEl.innerHTML = `
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-2">
+                                <button onclick="seekMedia(${seg.start})" class="text-xs font-mono font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded hover:bg-indigo-600 hover:text-white transition flex items-center gap-1">
+                                    <i class="ph-bold ph-play"></i> ${formattedStart} - ${formattedEnd}
+                                </button>
+                                <span class="text-xs font-medium text-slate-400">${seg.speaker}</span>
+                            </div>
+                            <span class="text-[10px] text-slate-500">${(seg.confidence * 100).toFixed(0)}% conf</span>
+                        </div>
+                        <div contenteditable="true" onblur="updateSegmentText(${idx}, 'text', this.innerText)" class="text-xs text-slate-200 outline-none focus:bg-slate-950/80 p-1.5 rounded transition leading-relaxed">
+                            ${seg.text}
+                        </div>
+                    `;
+                } else {
+                    // Bilingual Dual-Column View
+                    segEl.innerHTML = `
+                        <div class="flex items-center justify-between mb-2">
+                            <button onclick="seekMedia(${seg.start})" class="text-xs font-mono font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded hover:bg-indigo-600 hover:text-white transition flex items-center gap-1">
+                                <i class="ph-bold ph-play"></i> ${formattedStart}
+                            </button>
+                            <span class="text-xs font-medium text-slate-400">${seg.speaker}</span>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                            <div class="bg-slate-950/70 p-2 rounded-lg border border-slate-800/80">
+                                <span class="text-[9px] uppercase font-bold text-indigo-400 tracking-wider block mb-1">Original</span>
+                                <div contenteditable="true" onblur="updateSegmentText(${idx}, 'text', this.innerText)" class="text-xs text-slate-200 outline-none">
+                                    ${seg.text}
+                                </div>
+                            </div>
+                            <div class="bg-slate-950/70 p-2 rounded-lg border border-slate-800/80">
+                                <span class="text-[9px] uppercase font-bold text-emerald-400 tracking-wider block mb-1">Translated (AF/EN)</span>
+                                <div contenteditable="true" onblur="updateSegmentText(${idx}, 'translation', this.innerText)" class="text-xs text-slate-300 outline-none">
+                                    ${seg.translation || 'N/A'}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                transcriptSegments.appendChild(segEl);
+            });
+        }
+
+        function updateSegmentText(index, field, newText) {
+            if (transcriptData[index]) {
+                transcriptData[index][field] = newText.trim();
+                showToast("Segment updated.");
+            }
+        }
+
+        function switchView(view) {
+            currentView = view;
+            const btnOrig = document.getElementById('viewTabOriginal');
+            const btnBilingual = document.getElementById('viewTabBilingual');
+
+            if (view === 'original') {
+                btnOrig.className = "px-2.5 py-1 rounded-md bg-indigo-600 text-white font-medium transition";
+                btnBilingual.className = "px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 font-medium transition flex items-center gap-1";
+            } else {
+                btnBilingual.className = "px-2.5 py-1 rounded-md bg-indigo-600 text-white font-medium transition flex items-center gap-1";
+                btnOrig.className = "px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 font-medium transition";
+            }
+            renderTranscript();
+        }
+
+        function filterTranscript() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const items = document.querySelectorAll('#transcriptSegments > div');
+            items.forEach((item, idx) => {
+                const seg = transcriptData[idx];
+                if (seg) {
+                    const match = seg.text.toLowerCase().includes(query) || (seg.translation && seg.translation.toLowerCase().includes(query));
+                    item.style.display = match ? 'block' : 'none';
+                }
+            });
+        }
+
+        function seekMedia(seconds) {
+            const player = document.getElementById('activeMediaPlayer');
+            if (player) {
+                player.currentTime = seconds;
+                player.play();
+                showToast(`Jumped to ${formatTime(seconds)}`);
+            }
+        }
+
+        function renderSummary() {
+            const summaryPanel = document.getElementById('summaryPanel');
+            const summaryText = document.getElementById('summaryText');
+            const keywordContainer = document.getElementById('keywordContainer');
+
+            summaryPanel.classList.remove('hidden');
+            summaryText.textContent = "Discussion focused on regional language integration, speech recognition fidelity in South Africa, and technical deployment of Afrikaans-to-English translation pipelines.";
+
+            const tags = ["Afrikaans AI", "Voice Recognition", "Cape Town Conf", "Diarization", "Subtitles"];
+            keywordContainer.innerHTML = tags.map(t => `<span class="text-[10px] bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2 py-0.5 rounded-full font-medium">#${t}</span>`).join('');
+        }
+
+        // Export Utilities
+        function copyToClipboard() {
+            if (!transcriptData.length) {
+                showToast("No transcript to copy.");
+                return;
+            }
+            const fullText = transcriptData.map(s => `[${formatTime(s.start)}] ${s.speaker}: ${s.text}`).join('\n');
+            
+            const dummy = document.createElement("textarea");
+            document.body.appendChild(dummy);
+            dummy.value = fullText;
+            dummy.select();
+            document.execCommand("copy");
+            document.body.removeChild(dummy);
+
+            showToast("Copied to clipboard!");
+        }
+
+        function exportTranscript(type) {
+            if (!transcriptData.length) {
+                showToast("No transcript content to export!");
+                return;
+            }
+
+            let content = "";
+            let mime = "text/plain";
+            let ext = type;
+
+            if (type === 'txt') {
+                content = transcriptData.map(s => `[${formatTime(s.start)}] ${s.speaker}:\n${s.text}\n`).join('\n');
+            } else if (type === 'srt') {
+                content = transcriptData.map((s, i) => {
+                    return `${i + 1}\n${formatSRTTime(s.start)} --> ${formatSRTTime(s.end || s.start + 4)}\n${s.text}\n`;
+                }).join('\n');
+            } else if (type === 'vtt') {
+                content = "WEBVTT\n\n" + transcriptData.map((s, i) => {
+                    return `${formatSRTTime(s.start)} --> ${formatSRTTime(s.end || s.start + 4)}\n<v ${s.speaker}>${s.text}\n`;
+                }).join('\n');
+            } else if (type === 'json') {
+                content = JSON.stringify(transcriptData, null, 2);
+                mime = "application/json";
+            }
+
+            const blob = new Blob([content], { type: mime });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `transcript_${selectedLang}.${ext}`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast(`Exported as .${ext.toUpperCase()}`);
+        }
+
+        // Helper Time Formatters
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        function formatSRTTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            const ms = Math.floor((seconds % 1) * 1000);
+            return `00:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
+        }
+
+        // Toast Notification System
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').textContent = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

@@ -109,7 +109,7 @@ export default async function transcribe(request) {
 
   const groqForm = new FormData();
   groqForm.set("file", new Blob([await audioFile.arrayBuffer()], { type: "audio/wav" }), "audio-chunk.wav");
-  groqForm.set("model", "whisper-large-v3-turbo");
+  groqForm.set("model", "whisper-large-v3");
   groqForm.set("response_format", "verbose_json");
   groqForm.set("timestamp_granularities[]", "segment");
   groqForm.set("temperature", "0");

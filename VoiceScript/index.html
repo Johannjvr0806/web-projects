@@ -81,7 +81,7 @@
                 </h2>
 
                 <div id="dropZone" class="border-2 border-dashed border-slate-700 hover:border-indigo-500/50 bg-slate-950/50 hover:bg-indigo-950/10 rounded-xl p-6 text-center transition cursor-pointer group relative flex flex-col items-center justify-center min-h-[160px]">
-                    <input type="file" id="fileInput" accept="audio/*,video/*,.mp3,.wav,.m4a,.mp4,.webm,.ogg" class="hidden" onchange="handleFileSelect(event)">
+                    <input type="file" id="fileInput" accept="audio/*,video/*,.mp3,.wav,.m4a,.mp4,.webm,.ogg,.mov,.mkv,.aac,.flac" class="hidden" onchange="handleFileSelect(event)">
                     
                     <div class="w-12 h-12 rounded-full bg-slate-800 group-hover:bg-indigo-600/20 text-slate-400 group-hover:text-indigo-400 flex items-center justify-center transition mb-3">
                         <i class="ph-bold ph-cloud-arrow-up text-2xl"></i>
@@ -89,7 +89,7 @@
                     <p class="text-xs font-medium text-slate-200">
                         Drag & Drop video/audio here, or <span class="text-indigo-400 underline decoration-indigo-400/30">browse</span>
                     </p>
-                    <p class="text-[11px] text-slate-500 mt-1">Audio or video up to 500 MB. Long recordings are downsampled and processed in 5-minute chunks; they may take a long time.</p>
+                    <p class="text-[11px] text-slate-500 mt-1">Audio or video up to 1 GB. Long recordings are downsampled and processed in 5-minute chunks; they may take a long time.</p>
                 </div>
 
                 <!-- Media Preview Section -->
@@ -346,7 +346,7 @@
                 showToast('Wait for the current transcription to finish.');
                 return;
             }
-            const maxFileSize = 500 * 1024 * 1024;
+            const maxFileSize = 1024 * 1024 * 1024;
             const supportedFile = file.type.startsWith('audio/') || file.type.startsWith('video/') ||
                 /\.(mp3|wav|m4a|mp4|webm|ogg|mov|mkv|aac|flac)$/i.test(file.name);
             if (!supportedFile) {
@@ -354,7 +354,7 @@
                 return;
             }
             if (file.size > maxFileSize) {
-                showToast("This file is larger than the 500 MB limit.");
+                showToast("This file is larger than the 1 GB limit.");
                 return;
             }
 
@@ -603,6 +603,7 @@
             updateProgress(0, 'Loading on-device speech model', 'The model is downloaded once and then cached in this browser.');
 
             let ffmpeg;
+            let inputMounted = false;
             let completed = false;
             let currentStage = 'loading the speech model';
             try {
@@ -613,9 +614,12 @@
                 }
 
                 currentStage = 'loading the audio processor';
-                updateProgress(2, 'Preparing your recording', 'Extracting mono audio in small chunks; your file stays on this device.');
+                updateProgress(2, 'Preparing your recording', 'Opening your original file directly; extracting mono audio in small chunks.');
                 ffmpeg = await getMediaProcessor();
-                await ffmpeg.writeFile('input.media', new Uint8Array(await sourceFile.arrayBuffer()));
+                await ffmpeg.createDir('/input');
+                await ffmpeg.mount('WORKERFS', { files: [sourceFile] }, '/input');
+                inputMounted = true;
+                const inputPath = `/input/${sourceFile.name}`;
 
                 const duration = sourceDuration;
                 const chunkDuration = 300;
@@ -633,7 +637,7 @@
                         `Transcribing ${formatTime(start)}–${formatTime(start + length)}. A 90-minute recording can take a long time.`);
 
                     const exitCode = await ffmpeg.exec([
-                        '-y', '-ss', String(start), '-i', 'input.media', '-t', String(length),
+                        '-y', '-ss', String(start), '-i', inputPath, '-t', String(length),
                         '-vn', '-ac', '1', '-ar', '16000', '-c:a', 'pcm_s16le', '-f', 'wav', 'chunk.wav'
                     ]);
                     if (exitCode !== 0) {
@@ -708,9 +712,9 @@
             } finally {
                 if (ffmpegInstance) {
                     try {
-                        if (ffmpeg) await ffmpeg.deleteFile('input.media');
+                        if (ffmpeg && inputMounted) await ffmpeg.unmount('/input');
                     } catch (error) {
-                        console.warn('Could not remove the temporary media file:', error);
+                        console.warn('Could not unmount the source recording:', error);
                     }
                     ffmpegInstance.terminate();
                     ffmpegInstance = null;

@@ -512,8 +512,10 @@
                         import('https://esm.sh/@ffmpeg/util@0.12.1')
                     ]);
                     ffmpegInstance = new FFmpeg();
-                    const coreUrl = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
+                    const ffmpegBaseUrl = 'https://cdn.jsdelivr.net/npm/@ffmpeg';
+                    const coreUrl = `${ffmpegBaseUrl}/core@0.12.6/dist/umd`;
                     await ffmpegInstance.load({
+                        classWorkerURL: await toBlobURL(`${ffmpegBaseUrl}/ffmpeg@0.12.10/dist/umd/814.ffmpeg.js`, 'text/javascript'),
                         coreURL: await toBlobURL(`${coreUrl}/ffmpeg-core.js`, 'text/javascript'),
                         wasmURL: await toBlobURL(`${coreUrl}/ffmpeg-core.wasm`, 'application/wasm')
                     });
@@ -567,6 +569,14 @@
         }
 
         async function processTranscription() {
+            if (window.location.protocol === 'file:') {
+                showToast('Open VoiceScript from GitHub Pages or a local web server, not directly as a file.');
+                updateProgress(0, 'Open VoiceScript from a web server',
+                    'Transcription needs browser workers. Use your HTTPS GitHub Pages link or start a local web server.');
+                document.getElementById('progressCard').classList.remove('hidden');
+                return;
+            }
+
             if (!currentFile) {
                 showToast('Choose an audio or video file first.');
                 return;

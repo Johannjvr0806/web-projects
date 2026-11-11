@@ -651,10 +651,10 @@
                         chunk_length_s: 30,
                         stride_length_s: 5,
                         return_timestamps: true,
-                        generate_kwargs: { task: 'transcribe' }
+                        task: 'transcribe'
                     };
-                    if (sourceLanguage === 'af-ZA') options.generate_kwargs.language = 'afrikaans';
-                    if (sourceLanguage === 'en-US') options.generate_kwargs.language = 'english';
+                    if (sourceLanguage === 'af-ZA') options.language = 'afrikaans';
+                    if (sourceLanguage === 'en-US') options.language = 'english';
 
                     updateProgress(percent, `Transcribing audio chunk ${index + 1} of ${chunkCount}`,
                         'Speech recognition runs locally. Accuracy depends on recording quality.');

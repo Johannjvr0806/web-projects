@@ -483,7 +483,7 @@
             if (!transcriberPromise) {
                 transcriberPromise = (async () => {
                     const { pipeline, env } = await import(
-                        'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2/dist/transformers.min.js'
+                        'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2/+esm'
                     );
                     env.allowLocalModels = false;
                     env.useBrowserCache = true;
@@ -514,11 +514,11 @@
                     ]);
                     ffmpegInstance = new FFmpeg();
                     const ffmpegBaseUrl = 'https://cdn.jsdelivr.net/npm/@ffmpeg';
-                    const coreUrl = `${ffmpegBaseUrl}/core@0.12.6/dist/umd`;
+                    const coreUrl = `${ffmpegBaseUrl}/core@0.12.6/dist/esm`;
                     await ffmpegInstance.load({
                         classWorkerURL: await toBlobURL(`${ffmpegBaseUrl}/ffmpeg@0.12.10/dist/umd/814.ffmpeg.js`, 'text/javascript'),
-                        coreURL: await toBlobURL(`${coreUrl}/ffmpeg-core.js`, 'text/javascript'),
-                        wasmURL: await toBlobURL(`${coreUrl}/ffmpeg-core.wasm`, 'application/wasm')
+                        coreURL: `${coreUrl}/ffmpeg-core.js`,
+                        wasmURL: `${coreUrl}/ffmpeg-core.wasm`
                     });
                     return ffmpegInstance;
                 })().catch((error) => {
@@ -604,6 +604,7 @@
 
             let ffmpeg;
             let completed = false;
+            let currentStage = 'loading the speech model';
             try {
                 const transcriber = await getTranscriber();
                 if (cancelRequested) {
@@ -611,6 +612,7 @@
                     return;
                 }
 
+                currentStage = 'loading the audio processor';
                 updateProgress(2, 'Preparing your recording', 'Extracting mono audio in small chunks; your file stays on this device.');
                 ffmpeg = await getMediaProcessor();
                 await ffmpeg.writeFile('input.media', new Uint8Array(await sourceFile.arrayBuffer()));
@@ -638,6 +640,7 @@
                         throw new Error(`Could not extract audio from chunk ${index + 1}. The file format may not be supported.`);
                     }
 
+                    currentStage = `transcribing audio chunk ${index + 1} of ${chunkCount}`;
                     const wav = await ffmpeg.readFile('chunk.wav');
                     const audio = readMonoWav(wav);
                     const options = {
@@ -697,8 +700,11 @@
                 }
             } catch (error) {
                 console.error('Transcription failed:', error);
-                updateProgress(0, 'Transcription failed', error.message || 'Check your connection and try again.');
-                showToast(error.message || 'Transcription failed. Check your connection and try again.');
+                const message = error && typeof error.message === 'string' && error.message.trim()
+                    ? error.message
+                    : String(error);
+                updateProgress(0, `Transcription failed while ${currentStage}`, message);
+                showToast(`Transcription failed while ${currentStage}.`);
             } finally {
                 if (ffmpegInstance) {
                     try {

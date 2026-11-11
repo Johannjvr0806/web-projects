@@ -114,6 +114,9 @@ export default async function transcribe(request) {
   groqForm.set("timestamp_granularities[]", "segment");
   groqForm.set("temperature", "0");
   if (language !== "auto") groqForm.set("language", language);
+  if (language === "af") {
+    groqForm.set("prompt", "Transcribe in South African Afrikaans, not Dutch. Use standard Afrikaans spelling. Do not translate or rewrite the speaker's words.");
+  }
 
   let groqResponse;
   try {

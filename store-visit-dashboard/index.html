@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PnP Clothing Store Visits</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><span class="pnp">PnP</span><span>Clothing</span></div>
+    <nav id="nav">
+      <button data-page="dashboard" class="active">⌂ <span>Dashboard</span></button>
+      <button data-page="visit">▣ <span>New Store Visit</span></button>
+      <button data-page="actions">◉ <span>Action Tracker</span><b id="actionBadge">0</b></button>
+      <button data-page="history">◷ <span>Visit History</span></button>
+      <button data-page="reports">▥ <span>Reports</span></button>
+      <button data-page="stores">☷ <span>Store List</span></button>
+      <button data-page="settings">⚙ <span>Settings</span></button>
+    </nav>
+    <div class="profile"><div class="avatar">JR</div><div><strong>Johann Janse van Rensburg</strong><small>Area Manager</small></div></div>
+  </aside>
+  <main>
+    <header><button id="menuBtn" aria-label="Open menu">☰</button><div><h1 id="pageTitle">Dashboard</h1><p id="pageSub">Store standards, actions and visit follow-up.</p></div><button class="primary" data-go="visit">+ New Visit</button></header>
+    <p id="statusMessage" class="statusMessage" role="status" aria-live="polite" hidden></p>
+    <section id="content"></section>
+  </main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

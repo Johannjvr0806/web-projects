@@ -163,7 +163,7 @@
                 </div>
 
                 <p class="text-[11px] leading-relaxed text-slate-400">
-                    Choose Afrikaans or English, or use Auto-Detect. On-device mode downloads its speech model once; your recording stays in this browser.
+                    Choose Afrikaans or English, or use Auto-Detect. On-device mode downloads Whisper Small (about 250 MB on first use); your recording stays in this browser.
                 </p>
 
                 <!-- Start Action Button -->
@@ -521,7 +521,7 @@
                     env.useBrowserCache = true;
                     env.backends.onnx.wasm.numThreads = 1;
                     return pipeline('automatic-speech-recognition', 'onnx-community/whisper-small', {
-                        dtype: 'q8',
+                        dtype: 'int8',
                         progress_callback: (progress) => {
                             if (progress.status === 'progress' && progress.total) {
                                 const percent = Math.round(progress.progress);

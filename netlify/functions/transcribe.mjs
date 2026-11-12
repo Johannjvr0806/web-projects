@@ -69,11 +69,10 @@ export default async function transcribe(request) {
     return jsonResponse(405, { error: "Use POST to request a transcription." }, origin);
   }
 
-  const apiKey = process.env.GROQ_API_KEY;
   const expectedAccessCode = process.env.TRANSCRIPTION_ACCESS_CODE;
-  if (!apiKey || !expectedAccessCode) {
+  if (!expectedAccessCode) {
     return jsonResponse(503, {
-      error: "Cloud transcription is not configured yet. Add GROQ_API_KEY and TRANSCRIPTION_ACCESS_CODE in Netlify site environment variables, then redeploy.",
+      error: "Cloud transcription is not configured yet. Add TRANSCRIPTION_ACCESS_CODE in Netlify site environment variables, then redeploy.",
     }, origin);
   }
 
@@ -97,6 +96,7 @@ export default async function transcribe(request) {
 
   const audioFile = formData.get("file");
   const language = formData.get("language");
+  const provider = formData.get("provider") || "groq";
   if (!(audioFile instanceof File) || audioFile.size === 0) {
     return jsonResponse(400, { error: "The audio chunk is missing or empty." }, origin);
   }
@@ -105,6 +105,82 @@ export default async function transcribe(request) {
   }
   if (language !== "af" && language !== "en" && language !== "auto") {
     return jsonResponse(400, { error: "Choose Afrikaans, English, or Auto-Detect." }, origin);
+  }
+  if (provider !== "groq" && provider !== "deepgram") {
+    return jsonResponse(400, { error: "Choose Groq or Deepgram as the transcription provider." }, origin);
+  }
+
+  const apiKey = provider === "deepgram" ? process.env.DEEPGRAM_API_KEY : process.env.GROQ_API_KEY;
+  if (!apiKey) {
+    const keyName = provider === "deepgram" ? "DEEPGRAM_API_KEY" : "GROQ_API_KEY";
+    return jsonResponse(503, {
+      error: `Cloud transcription is not configured yet. Add ${keyName} and TRANSCRIPTION_ACCESS_CODE in Netlify site environment variables, then redeploy.`,
+    }, origin);
+  }
+
+  if (provider === "deepgram") {
+    const query = new URLSearchParams({
+      model: "nova-3",
+      diarize_model: "latest",
+      utterances: "true",
+      punctuate: "true",
+      smart_format: "true",
+      language: language === "auto" ? "multi" : language,
+    });
+
+    let deepgramResponse;
+    try {
+      deepgramResponse = await fetch(`https://api.deepgram.com/v1/listen?${query}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Token ${apiKey}`,
+          "Content-Type": "audio/wav",
+        },
+        body: new Blob([await audioFile.arrayBuffer()], { type: "audio/wav" }),
+        signal: AbortSignal.timeout(50_000),
+      });
+    } catch (error) {
+      console.error("Deepgram transcription request failed:", error);
+      return jsonResponse(502, { error: "Could not reach Deepgram. Check the connection and try the chunk again." }, origin);
+    }
+
+    const responseText = await deepgramResponse.text();
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch {
+      console.error("Deepgram returned a non-JSON transcription response:", deepgramResponse.status);
+      return jsonResponse(502, { error: "Deepgram returned an unreadable response. Try the chunk again." }, origin);
+    }
+
+    if (!deepgramResponse.ok) {
+      const providerMessage = result.err_msg || result.error?.message || result.message;
+      console.error("Deepgram transcription API returned an error:", deepgramResponse.status, providerMessage || "No details");
+      const message = deepgramResponse.status === 429
+        ? "Deepgram's rate limit was reached. Wait a minute, then retry the remaining audio."
+        : providerMessage || `Deepgram transcription failed (${deepgramResponse.status}).`;
+      return jsonResponse(deepgramResponse.status, { error: message }, origin);
+    }
+
+    const utterances = Array.isArray(result.results?.utterances) ? result.results.utterances : [];
+    const alternative = result.results?.channels?.[0]?.alternatives?.[0];
+    const words = utterances.flatMap((utterance) => Array.isArray(utterance.words) ? utterance.words : []);
+    const sourceWords = words.length
+      ? words
+      : Array.isArray(alternative?.words) ? alternative.words : [];
+
+    return jsonResponse(200, {
+      text: typeof alternative?.transcript === "string" ? alternative.transcript : "",
+      words: sourceWords.map((word) => ({
+        start: Number(word.start),
+        end: Number(word.end),
+        speakerId: Number.isInteger(word.speaker) ? word.speaker : null,
+        text: typeof word.punctuated_word === "string" ? word.punctuated_word : word.word,
+      })).filter((word) => Number.isFinite(word.start)
+        && Number.isFinite(word.end)
+        && typeof word.text === "string"
+        && word.text.trim()),
+    }, origin);
   }
 
   const groqForm = new FormData();
@@ -115,7 +191,7 @@ export default async function transcribe(request) {
   groqForm.set("temperature", "0");
   if (language !== "auto") groqForm.set("language", language);
   if (language === "af") {
-    groqForm.set("prompt", "Transcribe in South African Afrikaans, not Dutch. Use standard Afrikaans spelling. Do not translate or rewrite the speaker's words.");
+    groqForm.set("prompt", "Dankie, ek verstaan. Ja, akkoord, ons gaan dit nou doen. Nie so nie, maar soos ons gesê het.");
   }
 
   let groqResponse;
@@ -149,8 +225,24 @@ export default async function transcribe(request) {
     return jsonResponse(groqResponse.status, { error: message }, origin);
   }
 
+  const promptEcho = "Dankie, ek verstaan. Ja, akkoord, ons gaan dit nou doen";
+  const looksHallucinated = (segment) => {
+    const text = typeof segment.text === "string" ? segment.text : "";
+    if (!text.trim()) return true;
+
+    const noSpeechProbability = Number(segment.no_speech_prob);
+    const averageLogProbability = Number(segment.avg_logprob);
+    const compressionRatio = Number(segment.compression_ratio);
+    const likelySilence = noSpeechProbability > 0.6 && averageLogProbability < -1;
+    const repeatedLoop = compressionRatio > 2.4;
+    const likelyPromptEcho = text.toLowerCase().includes(promptEcho.toLowerCase())
+      && noSpeechProbability > 0.3
+      && averageLogProbability < -0.5;
+    return likelySilence || repeatedLoop || likelyPromptEcho;
+  };
+
   const segments = Array.isArray(result.segments)
-    ? result.segments.map((segment) => ({
+    ? result.segments.filter((segment) => !looksHallucinated(segment)).map((segment) => ({
       start: Number(segment.start) || 0,
       end: Number(segment.end) || 0,
       text: typeof segment.text === "string" ? segment.text : "",
@@ -158,7 +250,7 @@ export default async function transcribe(request) {
     : [];
 
   return jsonResponse(200, {
-    text: typeof result.text === "string" ? result.text : "",
+    text: segments.map((segment) => segment.text).join(" "),
     segments,
   }, origin);
 }

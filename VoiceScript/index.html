@@ -213,6 +213,10 @@
                     </div>
 
                     <div class="flex items-center gap-2">
+                        <label class="cursor-pointer px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition flex items-center gap-1.5">
+                            <i class="ph-bold ph-upload-simple text-indigo-400"></i> Import SRT
+                            <input type="file" id="srtFileInput" accept=".srt,application/x-subrip,text/plain" class="hidden" onchange="importSrt(event)">
+                        </label>
                         <button onclick="copyToClipboard()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition flex items-center gap-1.5">
                             <i class="ph-bold ph-copy text-indigo-400"></i> Copy
                         </button>
@@ -239,6 +243,9 @@
                         </div>
                     </div>
                 </div>
+                <p class="text-[11px] leading-relaxed text-slate-400 pb-3">
+                    You can <a href="https://app.clipchamp.com/" target="_blank" rel="noopener noreferrer" class="text-indigo-300 hover:text-indigo-200 underline">generate captions in Clipchamp</a>, download its .srt file, and import it here. For Afrikaans proofreading, export the .srt, edit only the caption text in Word with <a href="https://wspel.wordpress.com/" target="_blank" rel="noopener noreferrer" class="text-indigo-300 hover:text-indigo-200 underline">WSpel</a>, then import the corrected .srt. WSpel runs in Office; it cannot be called directly from this browser app.
+                </p>
 
                 <!-- Transcript Output Container -->
                 <div id="transcriptContainer" class="flex-1 bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 overflow-y-auto max-h-[420px] space-y-4">
@@ -940,6 +947,65 @@
         }
 
         // Export Utilities
+        function parseSRTTime(value) {
+            const match = value.trim().match(/^(\d+):(\d{2}):(\d{2})[,.](\d{1,3})$/);
+            if (!match) throw new Error(`Invalid SRT timestamp: ${value}`);
+
+            const hours = Number(match[1]);
+            const minutes = Number(match[2]);
+            const seconds = Number(match[3]);
+            if (minutes > 59 || seconds > 59) throw new Error(`Invalid SRT timestamp: ${value}`);
+
+            const milliseconds = Number(match[4].padEnd(3, '0').slice(0, 3));
+            return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000;
+        }
+
+        function parseSRT(content) {
+            const normalized = content.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').trim();
+            if (!normalized) throw new Error('The selected SRT file is empty.');
+
+            const blocks = normalized.split(/\n\s*\n+/);
+            return blocks.map((block, index) => {
+                const lines = block.split('\n');
+                const timingIndex = lines.findIndex(line => line.includes('-->'));
+                if (timingIndex < 0) throw new Error(`Caption ${index + 1} is missing its timestamp.`);
+
+                const timing = lines[timingIndex].match(/^(\d+:\d{2}:\d{2}[,.]\d{1,3})\s*-->\s*(\d+:\d{2}:\d{2}[,.]\d{1,3})(?:\s+.*)?$/);
+                if (!timing) throw new Error(`Caption ${index + 1} has an invalid timestamp.`);
+
+                const start = parseSRTTime(timing[1]);
+                const end = parseSRTTime(timing[2]);
+                if (end < start) throw new Error(`Caption ${index + 1} ends before it starts.`);
+
+                const text = lines.slice(timingIndex + 1).join('\n')
+                    .replace(/<\/?(?:b|i|u|font|c)(?:\s+[^>]*)?>/gi, '')
+                    .trim();
+                if (!text) throw new Error(`Caption ${index + 1} has no text.`);
+
+                return { start, end, speaker: 'Transcript', text };
+            });
+        }
+
+        async function importSrt(event) {
+            const input = event.currentTarget;
+            const file = input.files && input.files[0];
+            if (!file) return;
+
+            try {
+                const importedSegments = parseSRT(await file.text());
+                transcriptData = importedSegments;
+                renderTranscript();
+                showToast(`Imported ${importedSegments.length} captions from ${file.name}.`);
+            } catch (error) {
+                const message = error && typeof error.message === 'string'
+                    ? error.message
+                    : 'The SRT file could not be imported.';
+                showToast(`SRT import failed: ${message}`);
+            } finally {
+                input.value = '';
+            }
+        }
+
         function copyToClipboard() {
             if (!transcriptData.length) {
                 showToast("No transcript to copy.");

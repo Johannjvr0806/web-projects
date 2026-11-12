@@ -134,10 +134,10 @@
                 <div>
                     <label class="block text-xs text-slate-400 mb-1.5 font-medium">Source Language</label>
                     <div class="grid grid-cols-3 gap-2">
-                        <button type="button" onclick="setLanguage('af-ZA')" id="lang-af-ZA" class="lang-btn border border-slate-700 bg-slate-800 text-slate-300 text-xs py-2 px-3 rounded-lg font-medium flex items-center justify-center gap-1.5 hover:bg-slate-700 transition">
+                        <button type="button" onclick="setLanguage('af-ZA')" id="lang-af-ZA" class="lang-btn border border-indigo-500 bg-indigo-600/20 text-indigo-300 text-xs py-2 px-3 rounded-lg font-medium flex items-center justify-center gap-1.5 hover:bg-slate-700 transition">
                             <span class="text-sm">🇿🇦</span> Afrikaans
                         </button>
-                        <button type="button" onclick="setLanguage('en-US')" id="lang-en-US" class="lang-btn border border-indigo-500 bg-indigo-600/20 text-indigo-300 text-xs py-2 px-3 rounded-lg font-medium flex items-center justify-center gap-1.5 hover:bg-indigo-600/30 transition">
+                        <button type="button" onclick="setLanguage('en-US')" id="lang-en-US" class="lang-btn border border-slate-700 bg-slate-800 text-slate-300 text-xs py-2 px-3 rounded-lg font-medium flex items-center justify-center gap-1.5 hover:bg-indigo-600/30 transition">
                             <span class="text-sm">🇬🇧</span> English
                         </button>
                         <button type="button" onclick="setLanguage('auto')" id="lang-auto" class="lang-btn border border-slate-700 bg-slate-800 text-slate-300 text-xs py-2 px-3 rounded-lg font-medium flex items-center justify-center gap-1.5 hover:bg-slate-700 transition">
@@ -151,13 +151,14 @@
                     <select id="engineMode" onchange="updateProcessingMethod()" class="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none">
                         <option value="local">On this device (private)</option>
                         <option value="groq">Groq Cloud (uploads audio; usage charges may apply)</option>
+                        <option value="deepgram">Deepgram Nova-3 Cloud (speaker labels; usage charges may apply)</option>
                     </select>
                 </div>
                 <div id="cloudSettings" class="hidden space-y-2">
                     <label for="cloudAccessCode" class="block text-[11px] text-slate-400 font-medium">Private access code</label>
                     <input type="password" id="cloudAccessCode" autocomplete="off" placeholder="Enter your Netlify access code" class="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none">
-                    <p class="text-[11px] leading-relaxed text-amber-300/90">
-                        Cloud mode sends 90-second audio chunks to Groq for transcription. This recording is not kept private to your device; provider charges may apply. Your access code and Groq key must be configured in Netlify.
+                    <p id="cloudHint" class="text-[11px] leading-relaxed text-amber-300/90">
+                        Cloud mode uploads audio to the selected provider. Provider charges may apply. Configure the provider key and access code in Netlify.
                     </p>
                 </div>
 
@@ -277,7 +278,7 @@
         // Data & App State
         let currentFile = null;
         let currentFileUrl = null;
-        let selectedLang = 'en-US';
+        let selectedLang = 'af-ZA';
         let transcriptData = [];
         let recognition = null;
         let isMicActive = false;
@@ -341,8 +342,12 @@
         }
 
         function updateProcessingMethod() {
-            const isCloud = document.getElementById('engineMode').value === 'groq';
+            const engine = document.getElementById('engineMode').value;
+            const isCloud = engine !== 'local';
             document.getElementById('cloudSettings').classList.toggle('hidden', !isCloud);
+            document.getElementById('cloudHint').textContent = engine === 'deepgram'
+                ? 'Deepgram receives 90-second audio chunks with overlap to help match speakers across boundaries. Labels may still change if a speaker is not heard in the overlap. Usage charges may apply.'
+                : 'Groq receives 90-second audio chunks for transcription. This recording is uploaded to the provider and usage charges may apply.';
         }
 
         // Handle File Drop / Select
@@ -515,7 +520,8 @@
                     env.allowLocalModels = false;
                     env.useBrowserCache = true;
                     env.backends.onnx.wasm.numThreads = 1;
-                    return pipeline('automatic-speech-recognition', 'onnx-community/whisper-tiny', {
+                    return pipeline('automatic-speech-recognition', 'onnx-community/whisper-small', {
+                        dtype: 'q8',
                         progress_callback: (progress) => {
                             if (progress.status === 'progress' && progress.total) {
                                 const percent = Math.round(progress.progress);
@@ -611,7 +617,7 @@
             }
             const engine = document.getElementById('engineMode').value;
             const cloudAccessCode = document.getElementById('cloudAccessCode').value.trim();
-            if (engine === 'groq' && !cloudAccessCode) {
+            if (engine !== 'local' && !cloudAccessCode) {
                 document.getElementById('cloudAccessCode').focus();
                 showToast('Enter the private access code configured in Netlify.');
                 return;
@@ -635,16 +641,21 @@
             cancelButton.classList.remove('hidden');
             progressCard.classList.remove('hidden');
             updateProgress(0,
-                engine === 'groq' ? 'Preparing secure cloud transcription' : 'Loading on-device speech model',
-                engine === 'groq'
-                    ? 'Your audio will be sent to Groq in small chunks; usage charges may apply.'
+                engine !== 'local' ? `Preparing ${engine === 'deepgram' ? 'Deepgram' : 'Groq'} cloud transcription` : 'Loading on-device speech model',
+                engine !== 'local'
+                    ? 'Your audio will be uploaded in small chunks; provider charges may apply.'
                     : 'The model is downloaded once and then cached in this browser.');
 
             let ffmpeg;
             let inputMounted = false;
             let completed = false;
-            let currentStage = engine === 'groq' ? 'connecting to Groq Cloud' : 'loading the speech model';
+            let currentStage = engine !== 'local'
+                ? `connecting to ${engine === 'deepgram' ? 'Deepgram' : 'Groq'} Cloud`
+                : 'loading the speech model';
             let segments = [];
+            let diarizedWords = [];
+            let nextSpeakerId = 0;
+            let previousChunkEnd = null;
             try {
                 let transcriber = null;
                 if (engine === 'local') {
@@ -664,14 +675,16 @@
                 const inputPath = `/input/${sourceFile.name}`;
 
                 const duration = sourceDuration;
-                const chunkDuration = engine === 'groq' ? 90 : 300;
-                const chunkCount = Math.ceil(duration / chunkDuration);
+                const chunkDuration = engine === 'local' ? 300 : 90;
+                const chunkOverlap = engine === 'deepgram' ? 8 : 0;
+                const chunkStep = chunkDuration - chunkOverlap;
+                const chunkCount = Math.max(1, Math.ceil(Math.max(0, duration - chunkOverlap) / chunkStep));
                 let completedChunks = 0;
 
                 for (let index = 0; index < chunkCount; index++) {
                     if (cancelRequested) break;
 
-                    const start = index * chunkDuration;
+                    const start = index * chunkStep;
                     const length = Math.min(chunkDuration, duration - start);
                     const percent = Math.round(5 + (index / chunkCount) * 90);
                     updateProgress(percent, `Preparing audio chunk ${index + 1} of ${chunkCount}`,
@@ -688,14 +701,59 @@
                     currentStage = `transcribing audio chunk ${index + 1} of ${chunkCount}`;
                     const wav = await ffmpeg.readFile('chunk.wav');
                     updateProgress(percent, `Transcribing audio chunk ${index + 1} of ${chunkCount}`,
-                        engine === 'groq'
-                            ? 'This audio chunk is sent to Groq. Processing remains sequential to limit usage.'
-                            : 'Speech recognition runs locally. Accuracy depends on recording quality.');
+                        engine === 'deepgram'
+                            ? 'This audio chunk is sent to Deepgram for transcription and speaker detection.'
+                            : engine === 'groq'
+                                ? 'This audio chunk is sent to Groq. Processing remains sequential to limit usage.'
+                                : 'Speech recognition runs locally. Accuracy depends on recording quality.');
 
-                    if (engine === 'groq') {
+                    if (engine === 'deepgram') {
                         const formData = new FormData();
                         formData.append('file', new Blob([wav], { type: 'audio/wav' }), `chunk-${index + 1}.wav`);
                         formData.append('language', sourceLanguage === 'af-ZA' ? 'af' : sourceLanguage === 'en-US' ? 'en' : 'auto');
+                        formData.append('provider', 'deepgram');
+
+                        const response = await fetch('https://johann-dev-workspace.netlify.app/.netlify/functions/transcribe', {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${cloudAccessCode}` },
+                            body: formData
+                        });
+                        const payload = await response.json().catch(() => ({}));
+                        if (!response.ok) {
+                            throw new Error(payload.error || `Deepgram transcription failed (${response.status}).`);
+                        }
+
+                        const currentWords = Array.isArray(payload.words)
+                            ? payload.words.map((word) => ({
+                                start: start + Number(word.start),
+                                end: start + Number(word.end),
+                                speakerId: Number.isInteger(word.speakerId) ? word.speakerId : null,
+                                text: typeof word.text === 'string' ? word.text.trim() : ''
+                            })).filter((word) => Number.isFinite(word.start) && Number.isFinite(word.end) && word.text)
+                            : [];
+                        const mapped = mapDeepgramSpeakers(
+                            currentWords,
+                            diarizedWords,
+                            start,
+                            previousChunkEnd === null ? start : previousChunkEnd,
+                            nextSpeakerId
+                        );
+                        nextSpeakerId = mapped.nextSpeakerId;
+
+                        if (previousChunkEnd === null) {
+                            diarizedWords = mapped.words;
+                        } else {
+                            const overlapCutoff = (start + previousChunkEnd) / 2;
+                            diarizedWords = diarizedWords.filter((word) => (word.start + word.end) / 2 <= overlapCutoff);
+                            diarizedWords.push(...mapped.words.filter((word) => (word.start + word.end) / 2 > overlapCutoff));
+                        }
+                        previousChunkEnd = start + length;
+                        segments = buildDiarizedSegments(diarizedWords);
+                    } else if (engine === 'groq') {
+                        const formData = new FormData();
+                        formData.append('file', new Blob([wav], { type: 'audio/wav' }), `chunk-${index + 1}.wav`);
+                        formData.append('language', sourceLanguage === 'af-ZA' ? 'af' : sourceLanguage === 'en-US' ? 'en' : 'auto');
+                        formData.append('provider', 'groq');
 
                         const response = await fetch('https://johann-dev-workspace.netlify.app/.netlify/functions/transcribe', {
                             method: 'POST',
@@ -807,6 +865,79 @@
                     setTimeout(() => progressCard.classList.add('hidden'), 4000);
                 }
             }
+
+            function mapDeepgramSpeakers(words, previousWords, overlapStart, overlapEnd, nextId) {
+                const localSpeakerIds = [...new Set(words
+                    .map((word) => word.speakerId)
+                    .filter((speakerId) => Number.isInteger(speakerId)))];
+                const scores = [];
+
+                if (overlapEnd > overlapStart) {
+                    for (const localId of localSpeakerIds) {
+                        for (const previousSpeakerId of new Set(previousWords
+                            .map((word) => word.speakerId)
+                            .filter((speakerId) => Number.isInteger(speakerId)))) {
+                            let overlap = 0;
+                            for (const word of words) {
+                                if (word.speakerId !== localId || word.end <= overlapStart || word.start >= overlapEnd) continue;
+                                for (const previousWord of previousWords) {
+                                    if (previousWord.speakerId !== previousSpeakerId
+                                        || previousWord.end <= overlapStart
+                                        || previousWord.start >= overlapEnd) continue;
+                                    overlap += Math.max(0,
+                                        Math.min(word.end, previousWord.end, overlapEnd)
+                                        - Math.max(word.start, previousWord.start, overlapStart));
+                                }
+                            }
+                            if (overlap > 0) scores.push({ localId, previousSpeakerId, overlap });
+                        }
+                    }
+                }
+
+                const speakerMap = new Map();
+                const assignedGlobalIds = new Set();
+                scores.sort((left, right) => right.overlap - left.overlap);
+                for (const candidate of scores) {
+                    if (candidate.overlap < 0.2
+                        || speakerMap.has(candidate.localId)
+                        || assignedGlobalIds.has(candidate.previousSpeakerId)) continue;
+                    speakerMap.set(candidate.localId, candidate.previousSpeakerId);
+                    assignedGlobalIds.add(candidate.previousSpeakerId);
+                }
+                for (const localId of localSpeakerIds) {
+                    if (!speakerMap.has(localId)) speakerMap.set(localId, nextId++);
+                }
+
+                return {
+                    words: words.map((word) => ({
+                        ...word,
+                        speakerId: Number.isInteger(word.speakerId) ? speakerMap.get(word.speakerId) : null
+                    })),
+                    nextSpeakerId: nextId
+                };
+            }
+
+            function buildDiarizedSegments(words) {
+                const segments = [];
+                for (const word of [...words].sort((left, right) => left.start - right.start)) {
+                    const previous = segments[segments.length - 1];
+                    if (previous
+                        && previous.speakerId === word.speakerId
+                        && word.start - previous.end <= 2.5) {
+                        previous.end = Math.max(previous.end, word.end);
+                        previous.text += ` ${word.text}`;
+                    } else {
+                        segments.push({
+                            start: word.start,
+                            end: word.end,
+                            speakerId: word.speakerId,
+                            speaker: Number.isInteger(word.speakerId) ? `Speaker ${word.speakerId + 1}` : '',
+                            text: word.text
+                        });
+                    }
+                }
+                return segments;
+            }
         }
 
         // Web Speech API Native Browser Recognition
@@ -881,6 +1012,11 @@
             })[character]);
         }
 
+        function getSpeakerLabel(segment) {
+            const label = String(segment.speaker || '').trim();
+            return /^Speaker\s+\d+(?:\b|$)/i.test(label) ? label : '';
+        }
+
         // Render Transcript
         function renderTranscript() {
             const emptyState = document.getElementById('emptyState');
@@ -903,12 +1039,13 @@
                 const formattedStart = formatTime(seg.start);
                 const formattedEnd = formatTime(seg.end || seg.start + 4);
                 const start = Number(seg.start) || 0;
+                const speakerLabel = getSpeakerLabel(seg);
                 segEl.innerHTML = `
                     <div class="flex items-center gap-2 mb-2">
                         <button onclick="seekMedia(${start})" class="text-xs font-mono font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded hover:bg-indigo-600 hover:text-white transition flex items-center gap-1">
                             <i class="ph-bold ph-play"></i> ${formattedStart} - ${formattedEnd}
                         </button>
-                        <span class="text-xs font-medium text-slate-400">${escapeHTML(seg.speaker || 'Transcript')}</span>
+                        ${speakerLabel ? `<span class="text-xs font-medium text-slate-400">${escapeHTML(speakerLabel)}</span>` : ''}
                     </div>
                     <div contenteditable="true" onblur="updateSegmentText(${idx}, 'text', this.innerText)" class="text-xs text-slate-200 outline-none focus:bg-slate-950/80 p-1.5 rounded transition leading-relaxed">
                         ${escapeHTML(seg.text)}
@@ -1011,7 +1148,10 @@
                 showToast("No transcript to copy.");
                 return;
             }
-            const fullText = transcriptData.map(s => `[${formatTime(s.start)}] ${s.speaker}: ${s.text}`).join('\n');
+            const fullText = transcriptData.map(s => {
+                const speaker = getSpeakerLabel(s);
+                return `[${formatTime(s.start)}]${speaker ? ` ${speaker}:` : ''} ${s.text}`;
+            }).join('\n');
             
             const dummy = document.createElement("textarea");
             document.body.appendChild(dummy);
@@ -1034,14 +1174,18 @@
             let ext = type;
 
             if (type === 'txt') {
-                content = transcriptData.map(s => `[${formatTime(s.start)}] ${s.speaker}:\n${s.text}\n`).join('\n');
+                content = transcriptData.map(s => {
+                    const speaker = getSpeakerLabel(s);
+                    return `[${formatTime(s.start)}]${speaker ? ` ${speaker}:` : ''}\n${s.text}\n`;
+                }).join('\n');
             } else if (type === 'srt') {
                 content = transcriptData.map((s, i) => {
                     return `${i + 1}\n${formatSRTTime(s.start)} --> ${formatSRTTime(s.end || s.start + 4)}\n${s.text}\n`;
                 }).join('\n');
             } else if (type === 'vtt') {
                 content = "WEBVTT\n\n" + transcriptData.map((s, i) => {
-                    return `${formatSRTTime(s.start)} --> ${formatSRTTime(s.end || s.start + 4)}\n<v ${s.speaker}>${s.text}\n`;
+                    const speaker = getSpeakerLabel(s);
+                    return `${formatSRTTime(s.start)} --> ${formatSRTTime(s.end || s.start + 4)}\n${speaker ? `<v ${escapeHTML(speaker)}>` : ''}${s.text}\n`;
                 }).join('\n');
             } else if (type === 'json') {
                 content = JSON.stringify(transcriptData, null, 2);

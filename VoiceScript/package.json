@@ -6,7 +6,8 @@
   "main": "desktop/main.cjs",
   "scripts": {
     "start": "electron .",
-    "dist:win": "electron-builder --win nsis"
+    "dist:win": "electron-builder --win nsis",
+    "release:win": "electron-builder --win nsis --publish always"
   },
   "devDependencies": {
     "electron": "^39.0.0",
@@ -29,10 +30,19 @@
     "win": {
       "target": "nsis"
     },
+    "publish": {
+      "provider": "github",
+      "owner": "Johannjvr0806",
+      "repo": "web-projects",
+      "releaseType": "release"
+    },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true
     }
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
   }
 }

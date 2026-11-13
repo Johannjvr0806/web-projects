@@ -1,4 +1,5 @@
 const { app, BrowserWindow, dialog } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -44,6 +45,31 @@ function startLocalServer() {
   });
 }
 
+function checkForUpdates() {
+  if (!app.isPackaged) return;
+
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.on("update-downloaded", async () => {
+    const { response } = await dialog.showMessageBox({
+      type: "info",
+      buttons: ["Restart now", "Later"],
+      defaultId: 0,
+      cancelId: 1,
+      title: "VoiceScript update ready",
+      message: "A VoiceScript update has been downloaded.",
+      detail: "Restart now to install it, or choose Later to install it when you quit.",
+    });
+
+    if (response === 0) autoUpdater.quitAndInstall();
+  });
+  autoUpdater.on("error", (error) => {
+    console.error("Could not update VoiceScript:", error);
+  });
+  autoUpdater.checkForUpdates().catch((error) => {
+    console.error("Could not check for VoiceScript updates:", error);
+  });
+}
+
 async function createWindow() {
   const port = await startLocalServer();
   const window = new BrowserWindow({
@@ -68,6 +94,7 @@ app.whenReady().then(async () => {
   app.setAppUserModelId("com.voicescript.desktop");
   try {
     await createWindow();
+    checkForUpdates();
   } catch (error) {
     console.error("Could not start VoiceScript:", error);
     await dialog.showMessageBox({

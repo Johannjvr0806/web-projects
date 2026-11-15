@@ -65,3 +65,73 @@ test("Cloudflare Worker uses env secrets and preserves Groq Afrikaans behavior",
     globalThis.fetch = originalFetch;
   }
 });
+
+test("Cloudflare Worker sends validated Deepgram keyterms without smart formatting", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalAbortTimeout = AbortSignal.timeout;
+  const env = {
+    TRANSCRIPTION_ACCESS_CODE: "worker-access-code",
+    DEEPGRAM_API_KEY: "worker-deepgram-key",
+  };
+  let upstreamUrl;
+  let upstreamOptions;
+  let upstreamCalls = 0;
+  let timeoutMilliseconds;
+  AbortSignal.timeout = (milliseconds) => {
+    timeoutMilliseconds = milliseconds;
+    return new AbortController().signal;
+  };
+  globalThis.fetch = async (url, options) => {
+    upstreamCalls++;
+    upstreamUrl = new URL(url);
+    upstreamOptions = options;
+    return new Response(JSON.stringify({
+      results: {
+        utterances: [],
+        channels: [{ alternatives: [{ transcript: "half", words: [] }] }],
+      },
+    }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
+  const makeRequest = (keyterms) => {
+    const form = new FormData();
+    form.append("file", new Blob(["audio"]), "sample.wav");
+    form.set("language", "af");
+    form.set("provider", "deepgram");
+    if (keyterms !== undefined) form.set("keyterms", keyterms);
+    return new Request("https://voicescript.example/transcribe", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer worker-access-code",
+        Origin: "https://johannjvr0806.github.io",
+      },
+      body: form,
+    });
+  };
+
+  try {
+    const response = await worker.fetch(makeRequest(" Superdynamic , liquidator "), env);
+    assert.equal(response.status, 200);
+    assert.equal(upstreamOptions.headers.Authorization, "Token worker-deepgram-key");
+    assert.deepEqual(upstreamUrl.searchParams.getAll("keyterm"), ["Superdynamic", "liquidator"]);
+    assert.equal(upstreamUrl.searchParams.get("smart_format"), null);
+    assert.equal(upstreamUrl.searchParams.get("punctuate"), "true");
+    assert.equal(upstreamUrl.searchParams.get("utterances"), "true");
+    assert.equal(upstreamOptions.signal instanceof AbortSignal, true);
+    assert.equal(timeoutMilliseconds, 120_000);
+
+    const tooManyTerms = Array.from({ length: 21 }, (_, index) => `term${index}`).join(",");
+    const invalidResponse = await worker.fetch(makeRequest(tooManyTerms), env);
+    assert.equal(invalidResponse.status, 400);
+
+    const oversizedTermResponse = await worker.fetch(makeRequest("x".repeat(51)), env);
+    assert.equal(oversizedTermResponse.status, 400);
+    assert.equal(upstreamCalls, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+    AbortSignal.timeout = originalAbortTimeout;
+  }
+});

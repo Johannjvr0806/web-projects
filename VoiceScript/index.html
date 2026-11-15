@@ -210,6 +210,12 @@
                     <div id="progressBar" class="bg-gradient-to-r from-indigo-500 to-emerald-400 h-full w-0 transition-all duration-300" style="width: 0%"></div>
                 </div>
                 <p id="progressSubtext" class="text-[11px] text-slate-500 italic">Audio is processed locally in your browser.</p>
+                <div id="retryFailedChunkCard" class="hidden rounded-lg border border-rose-500/30 bg-rose-950/20 p-3 space-y-2">
+                    <p id="retryFailedChunkMessage" class="text-[11px] text-rose-200"></p>
+                    <button id="retryFailedChunkBtn" onclick="retryFromFailedChunk()" class="px-3 py-2 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 text-xs font-medium border border-rose-500/30 transition">
+                        Retry from here
+                    </button>
+                </div>
             </div>
         </section>
 
@@ -227,6 +233,14 @@
                         <p class="text-[11px] text-slate-400">Click timestamps to jump media playback • Editable segments</p>
                     </div>
 
+                </div>
+
+                <div id="restoreTranscriptCard" class="hidden my-3 rounded-lg border border-indigo-500/30 bg-indigo-950/20 p-3">
+                    <p id="restoreTranscriptMessage" class="text-[11px] text-indigo-200 mb-2"></p>
+                    <div class="flex gap-2">
+                        <button onclick="restoreSavedTranscript()" class="px-3 py-2 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-200 text-xs font-medium border border-indigo-500/30 transition">Restore transcript</button>
+                        <button onclick="dismissSavedTranscript()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition">Dismiss</button>
+                    </div>
                 </div>
 
                 <!-- Search & Filters -->
@@ -301,6 +315,7 @@
         // Replace with the URL printed by "wrangler deploy" if the Worker address changes.
     const TRANSCRIPTION_API_URL = 'https://voicescript-transcribe.johann-dev.workers.dev';
 
+        const TRANSCRIPT_STORAGE_KEY = 'voicescript.transcript';
         const DEEPGRAM_KEYTERMS_STORAGE_KEY = 'voicescript.deepgram.keyterms';
         const DEEPGRAM_REPLACEMENTS_STORAGE_KEY = 'voicescript.deepgram.replacements';
         const DEFAULT_DEEPGRAM_REPLACEMENTS = [
@@ -328,6 +343,9 @@
         let currentFileUrl = null;
         let selectedLang = 'af-ZA';
         let transcriptData = [];
+        let pendingTranscriptRestore = null;
+        let failedChunk = null;
+        let transcriptSaveWarningShown = false;
         let recognition = null;
         let isMicActive = false;
         let audioCtx = null;
@@ -584,6 +602,37 @@
             document.getElementById('progressSubtext').textContent = detail;
         }
 
+        async function fetchCloudChunk(formData, cloudAccessCode, providerName, chunk) {
+            const retryDelays = [5000, 15000, 30000];
+            let attempt = 0;
+            while (true) {
+                try {
+                    const response = await fetch(TRANSCRIPTION_API_URL, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${cloudAccessCode}` },
+                        body: formData
+                    });
+                    const payload = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        throw new Error(payload.error || `${providerName} transcription failed (${response.status}).`);
+                    }
+                    return payload;
+                } catch (error) {
+                    if (attempt >= retryDelays.length) {
+                        failedChunk = chunk;
+                        throw error;
+                    }
+                    const delay = retryDelays[attempt];
+                    attempt++;
+                    const message = error && typeof error.message === 'string' ? error.message : String(error);
+                    updateProgress(chunk.percent,
+                        `${providerName} request failed; retry ${attempt} of ${retryDelays.length}`,
+                        `${formatTime(chunk.start)}–${formatTime(chunk.end)} failed: ${message} Retrying in ${delay / 1000} seconds.`);
+                    await new Promise((resolve) => setTimeout(resolve, delay));
+                }
+            }
+        }
+
         async function getTranscriber() {
             if (!transcriberPromise) {
                 transcriberPromise = (async () => {
@@ -682,6 +731,20 @@
             return Number.isSafeInteger(seconds) ? seconds : null;
         }
 
+        function formatStartInput(seconds) {
+            const wholeSeconds = Math.floor(seconds);
+            return `${Math.floor(wholeSeconds / 60).toString().padStart(2, '0')}:${(wholeSeconds % 60).toString().padStart(2, '0')}`;
+        }
+
+        function retryFromFailedChunk() {
+            if (!failedChunk || !currentFile) return;
+            document.getElementById('startFrom').value = formatStartInput(failedChunk.start);
+            document.getElementById('appendTranscript').checked = true;
+            failedChunk = null;
+            document.getElementById('retryFailedChunkCard').classList.add('hidden');
+            processTranscription();
+        }
+
         async function processTranscription() {
             if (window.location.protocol === 'file:') {
                 showToast('Open VoiceScript from GitHub Pages or a local web server, not directly as a file.');
@@ -728,6 +791,9 @@
             const button = document.getElementById('startTranscribeBtn');
             const progressCard = document.getElementById('progressCard');
             const cancelButton = document.getElementById('cancelTranscriptionBtn');
+            failedChunk = null;
+            document.getElementById('retryFailedChunkCard').classList.add('hidden');
+            dismissSavedTranscript();
             button.disabled = true;
             cancelRequested = false;
             cancelButton.disabled = false;
@@ -782,6 +848,7 @@
                     const start = startOffset + relativeStart;
                     const length = Math.min(chunkDuration, duration - relativeStart);
                     const percent = Math.round(5 + (index / chunkCount) * 90);
+                    const retryInfo = { start, end: start + length, index: index + 1, total: chunkCount, percent };
                     updateProgress(percent, `Preparing audio chunk ${index + 1} of ${chunkCount}`,
                         `Transcribing ${formatTime(start)}–${formatTime(start + length)}. A 90-minute recording can take a long time.`);
 
@@ -803,6 +870,9 @@
                         if (rms < 0.005) {
                             await ffmpeg.deleteFile('chunk.wav');
                             completedChunks++;
+                            transcriptData = appendToExisting ? [...existingTranscript, ...segments] : segments;
+                            renderTranscript();
+                            saveTranscriptToBrowser();
                             updateProgress(Math.round(5 + (completedChunks / chunkCount) * 90),
                                 `Skipped near-silent audio chunk ${completedChunks} of ${chunkCount}`,
                                 `Chunk RMS was below 0.005 for ${formatTime(start)}–${formatTime(start + length)}.`);
@@ -824,15 +894,7 @@
                         const keyterms = deepgramKeytermsInput.value.trim();
                         if (keyterms) formData.append('keyterms', keyterms);
 
-                        const response = await fetch(TRANSCRIPTION_API_URL, {
-                            method: 'POST',
-                            headers: { 'Authorization': `Bearer ${cloudAccessCode}` },
-                            body: formData
-                        });
-                        const payload = await response.json().catch(() => ({}));
-                        if (!response.ok) {
-                            throw new Error(payload.error || `Deepgram transcription failed (${response.status}).`);
-                        }
+                        const payload = await fetchCloudChunk(formData, cloudAccessCode, 'Deepgram', retryInfo);
 
                         const currentWords = Array.isArray(payload.words)
                             ? payload.words.map((word) => ({
@@ -872,15 +934,7 @@
                             formData.append('prompt', previousGroqTranscript);
                         }
 
-                        const response = await fetch(TRANSCRIPTION_API_URL, {
-                            method: 'POST',
-                            headers: { 'Authorization': `Bearer ${cloudAccessCode}` },
-                            body: formData
-                        });
-                        const payload = await response.json().catch(() => ({}));
-                        if (!response.ok) {
-                            throw new Error(payload.error || `Cloud transcription failed (${response.status}).`);
-                        }
+                        const payload = await fetchCloudChunk(formData, cloudAccessCode, 'Groq', retryInfo);
                         const chunkTranscript = typeof payload.text === 'string' && payload.text.trim()
                             ? payload.text.trim()
                             : Array.isArray(payload.segments)
@@ -944,9 +998,10 @@
                         }
                     }
 
-                    await ffmpeg.deleteFile('chunk.wav');
                     transcriptData = appendToExisting ? [...existingTranscript, ...segments] : segments;
                     renderTranscript();
+                    saveTranscriptToBrowser();
+                    await ffmpeg.deleteFile('chunk.wav');
                     completedChunks++;
                     updateProgress(Math.round(5 + (completedChunks / chunkCount) * 90),
                         `Transcribed audio chunk ${completedChunks} of ${chunkCount}`,
@@ -955,6 +1010,7 @@
 
                 transcriptData = appendToExisting ? [...existingTranscript, ...segments] : segments;
                 renderTranscript();
+                saveTranscriptToBrowser();
                 completed = !cancelRequested;
                 updateProgress(completed ? 100 : Math.round((completedChunks / chunkCount) * 95),
                     completed ? 'Transcription complete' : 'Transcription cancelled',
@@ -970,7 +1026,18 @@
                 const message = error && typeof error.message === 'string' && error.message.trim()
                     ? error.message
                     : String(error);
-                updateProgress(0, `Transcription failed while ${currentStage}`, message);
+                if (failedChunk) {
+                    transcriptData = appendToExisting ? [...existingTranscript, ...segments] : segments;
+                    renderTranscript();
+                    saveTranscriptToBrowser();
+                    const range = `${formatTime(failedChunk.start)}–${formatTime(failedChunk.end)}`;
+                    document.getElementById('retryFailedChunkMessage').textContent =
+                        `Chunk ${failedChunk.index} of ${failedChunk.total} (${range}) failed after 3 retries. Your completed transcript is kept. ${message}`;
+                    updateProgress(failedChunk.percent, `Chunk failed: ${range}`,
+                        'The completed transcript was saved in this browser. Retry from here to continue with Append enabled.');
+                } else {
+                    updateProgress(0, `Transcription failed while ${currentStage}`, message);
+                }
                 showToast(`Transcription failed while ${currentStage}.`);
             } finally {
                 if (ffmpegInstance) {
@@ -986,6 +1053,9 @@
                 button.disabled = false;
                 cancelButton.classList.add('hidden');
                 cancelButton.disabled = false;
+                if (failedChunk) {
+                    document.getElementById('retryFailedChunkCard').classList.remove('hidden');
+                }
                 if (completed) {
                     setTimeout(() => progressCard.classList.add('hidden'), 4000);
                 }
@@ -1327,6 +1397,58 @@
             showToast(`Exported as .${ext.toUpperCase()}`);
         }
 
+        function saveTranscriptToBrowser() {
+            try {
+                localStorage.setItem(TRANSCRIPT_STORAGE_KEY, JSON.stringify({
+                    version: 1,
+                    savedAt: new Date().toISOString(),
+                    segments: transcriptData
+                }));
+            } catch (error) {
+                console.error('Could not save the transcript in this browser:', error);
+                if (!transcriptSaveWarningShown) {
+                    transcriptSaveWarningShown = true;
+                    showToast('Could not save the transcript in this browser. Export it to keep a copy.');
+                }
+            }
+        }
+
+        function initializeTranscriptRestoreOffer() {
+            try {
+                const saved = localStorage.getItem(TRANSCRIPT_STORAGE_KEY);
+                if (!saved) return;
+                const record = JSON.parse(saved);
+                if (!record || record.version !== 1 || !Array.isArray(record.segments) || !record.segments.length ||
+                    !record.segments.every((segment) => segment && typeof segment.text === 'string')) {
+                    console.warn('Ignoring an invalid saved transcript record.');
+                    return;
+                }
+                pendingTranscriptRestore = record;
+                const savedDate = new Date(record.savedAt);
+                const savedWhen = Number.isFinite(savedDate.getTime()) ? ` from ${savedDate.toLocaleString()}` : '';
+                document.getElementById('restoreTranscriptMessage').textContent =
+                    `A saved transcript with ${record.segments.length} segments${savedWhen} is available in this browser.`;
+                document.getElementById('restoreTranscriptCard').classList.remove('hidden');
+            } catch (error) {
+                console.error('Could not read the saved transcript from this browser:', error);
+                showToast('Could not read the saved transcript from this browser.');
+            }
+        }
+
+        function restoreSavedTranscript() {
+            if (!pendingTranscriptRestore) return;
+            transcriptData = pendingTranscriptRestore.segments;
+            renderTranscript();
+            pendingTranscriptRestore = null;
+            document.getElementById('restoreTranscriptCard').classList.add('hidden');
+            showToast('Saved transcript restored.');
+        }
+
+        function dismissSavedTranscript() {
+            pendingTranscriptRestore = null;
+            document.getElementById('restoreTranscriptCard').classList.add('hidden');
+        }
+
         // Helper Time Formatters
         function formatTime(seconds) {
             const totalSeconds = Math.floor(seconds);
@@ -1355,6 +1477,8 @@
                 toast.classList.add('translate-y-20', 'opacity-0');
             }, 3000);
         }
+
+        initializeTranscriptRestoreOffer();
     </script>
 </body>
 </html>

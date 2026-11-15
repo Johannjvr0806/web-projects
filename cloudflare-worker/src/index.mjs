@@ -121,14 +121,26 @@ export default {
     }
 
     if (provider === "deepgram") {
+      const keytermsField = formData.get("keyterms");
+      if (keytermsField !== null && typeof keytermsField !== "string") {
+        return jsonResponse(400, { error: "Deepgram keyterms must be text." }, origin, env);
+      }
+
+      const keyterms = typeof keytermsField === "string"
+        ? keytermsField.split(",").map((term) => term.trim()).filter(Boolean)
+        : [];
+      if (keyterms.length > 20 || keyterms.some((term) => term.length > 50)) {
+        return jsonResponse(400, { error: "Deepgram accepts up to 20 keyterms, each 50 characters or fewer." }, origin, env);
+      }
+
       const query = new URLSearchParams({
         model: "nova-3",
         diarize_model: "latest",
         utterances: "true",
         punctuate: "true",
-        smart_format: "true",
         language: language === "auto" ? "multi" : language,
       });
+      for (const keyterm of keyterms) query.append("keyterm", keyterm);
 
       let deepgramResponse;
       try {
@@ -139,7 +151,7 @@ export default {
             "Content-Type": "audio/wav",
           },
           body: new Blob([await audioFile.arrayBuffer()], { type: "audio/wav" }),
-          signal: AbortSignal.timeout(50_000),
+          signal: AbortSignal.timeout(120_000),
         });
       } catch (error) {
         console.error("Deepgram transcription request failed:", error);

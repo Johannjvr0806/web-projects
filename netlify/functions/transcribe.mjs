@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 
 const MAX_AUDIO_BYTES = 3 * 1024 * 1024;
+const GROQ_AFRIKAANS_PROMPT = "Die likwidateur het die boedel van die maatskappy ondersoek en gelde terugvorder weens onbehoorlike vervreemding en roekelose bestuur. Hulle kan aanspreeklik gehou word.";
 const DEFAULT_ALLOWED_ORIGINS = [
   "https://johannjvr0806.github.io",
   "https://johann-dev-workspace.netlify.app",
@@ -183,6 +184,15 @@ export default async function transcribe(request) {
     }, origin);
   }
 
+  const promptField = formData.get("prompt");
+  if (promptField !== null && typeof promptField !== "string") {
+    return jsonResponse(400, { error: "The transcription prompt must be text." }, origin);
+  }
+  if (typeof promptField === "string" && promptField.length > 200) {
+    return jsonResponse(400, { error: "The transcription prompt must be 200 characters or fewer." }, origin);
+  }
+  const clientPrompt = typeof promptField === "string" ? promptField.trim() : "";
+
   const groqForm = new FormData();
   groqForm.set("file", new Blob([await audioFile.arrayBuffer()], { type: "audio/wav" }), "audio-chunk.wav");
   groqForm.set("model", "whisper-large-v3");
@@ -190,9 +200,7 @@ export default async function transcribe(request) {
   groqForm.set("timestamp_granularities[]", "segment");
   groqForm.set("temperature", "0");
   if (language !== "auto") groqForm.set("language", language);
-  if (language === "af") {
-    groqForm.set("prompt", "Dankie, ek verstaan. Ja, akkoord, ons gaan dit nou doen. Nie so nie, maar soos ons gesê het.");
-  }
+  if (language === "af") groqForm.set("prompt", clientPrompt || GROQ_AFRIKAANS_PROMPT);
 
   let groqResponse;
   try {
@@ -225,7 +233,15 @@ export default async function transcribe(request) {
     return jsonResponse(groqResponse.status, { error: message }, origin);
   }
 
-  const promptEcho = "Dankie, ek verstaan. Ja, akkoord, ons gaan dit nou doen";
+  const normalize = (s) => s.toLowerCase().replace(/[^\p{L}\s]/gu, " ").split(/\s+/).filter(Boolean);
+  const promptWords = new Set(normalize(GROQ_AFRIKAANS_PROMPT));
+  const echoesPrompt = (text) => {
+    const words = normalize(text);
+    if (words.length < 3) return false;
+    const hits = words.filter((word) => promptWords.has(word)).length;
+    return hits / words.length > 0.6;
+  };
+
   const looksHallucinated = (segment) => {
     const text = typeof segment.text === "string" ? segment.text : "";
     if (!text.trim()) return true;
@@ -235,10 +251,8 @@ export default async function transcribe(request) {
     const compressionRatio = Number(segment.compression_ratio);
     const likelySilence = noSpeechProbability > 0.6 && averageLogProbability < -1;
     const repeatedLoop = compressionRatio > 2.4;
-    const likelyPromptEcho = text.toLowerCase().includes(promptEcho.toLowerCase())
-      && noSpeechProbability > 0.3
-      && averageLogProbability < -0.5;
-    return likelySilence || repeatedLoop || likelyPromptEcho;
+    if (language === "af" && echoesPrompt(text)) return true;
+    return likelySilence || repeatedLoop;
   };
 
   const segments = Array.isArray(result.segments)

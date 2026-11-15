@@ -680,6 +680,7 @@
                 const chunkStep = chunkDuration - chunkOverlap;
                 const chunkCount = Math.max(1, Math.ceil(Math.max(0, duration - chunkOverlap) / chunkStep));
                 let completedChunks = 0;
+                let previousGroqTranscript = '';
 
                 for (let index = 0; index < chunkCount; index++) {
                     if (cancelRequested) break;
@@ -700,6 +701,20 @@
 
                     currentStage = `transcribing audio chunk ${index + 1} of ${chunkCount}`;
                     const wav = await ffmpeg.readFile('chunk.wav');
+                    if (engine === 'groq') {
+                        const samples = readMonoWav(wav);
+                        let squaredSum = 0;
+                        for (const sample of samples) squaredSum += sample * sample;
+                        const rms = samples.length ? Math.sqrt(squaredSum / samples.length) : 0;
+                        if (rms < 0.005) {
+                            await ffmpeg.deleteFile('chunk.wav');
+                            completedChunks++;
+                            updateProgress(Math.round(5 + (completedChunks / chunkCount) * 90),
+                                `Skipped near-silent audio chunk ${completedChunks} of ${chunkCount}`,
+                                `Chunk RMS was below 0.005 for ${formatTime(start)}–${formatTime(start + length)}.`);
+                            continue;
+                        }
+                    }
                     updateProgress(percent, `Transcribing audio chunk ${index + 1} of ${chunkCount}`,
                         engine === 'deepgram'
                             ? 'This audio chunk is sent to Deepgram for transcription and speaker detection.'
@@ -754,6 +769,9 @@
                         formData.append('file', new Blob([wav], { type: 'audio/wav' }), `chunk-${index + 1}.wav`);
                         formData.append('language', sourceLanguage === 'af-ZA' ? 'af' : sourceLanguage === 'en-US' ? 'en' : 'auto');
                         formData.append('provider', 'groq');
+                        if (sourceLanguage === 'af-ZA' && previousGroqTranscript) {
+                            formData.append('prompt', previousGroqTranscript);
+                        }
 
                         const response = await fetch('https://johann-dev-workspace.netlify.app/.netlify/functions/transcribe', {
                             method: 'POST',
@@ -763,6 +781,14 @@
                         const payload = await response.json().catch(() => ({}));
                         if (!response.ok) {
                             throw new Error(payload.error || `Cloud transcription failed (${response.status}).`);
+                        }
+                        const chunkTranscript = typeof payload.text === 'string' && payload.text.trim()
+                            ? payload.text.trim()
+                            : Array.isArray(payload.segments)
+                                ? payload.segments.map((segment) => typeof segment.text === 'string' ? segment.text.trim() : '').filter(Boolean).join(' ')
+                                : '';
+                        if (sourceLanguage === 'af-ZA') {
+                            previousGroqTranscript = chunkTranscript.slice(-200).trim();
                         }
                         if (Array.isArray(payload.segments) && payload.segments.length) {
                             for (const segment of payload.segments) {

@@ -147,6 +147,18 @@
                 </div>
 
                 <div>
+                    <label for="deepgramKeyterms" class="block text-[11px] text-slate-400 mb-1 font-medium">Names and terms</label>
+                    <textarea id="deepgramKeyterms" rows="2" placeholder="Comma-separated; up to 20 terms, 50 characters each" class="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none"></textarea>
+                    <p class="text-[10px] text-slate-500 mt-1">Deepgram only. Saved in this browser.</p>
+                </div>
+
+                <div>
+                    <label for="deepgramReplacements" class="block text-[11px] text-slate-400 mb-1 font-medium">Transcript replacements</label>
+                    <textarea id="deepgramReplacements" rows="4" class="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none"></textarea>
+                    <p class="text-[10px] text-slate-500 mt-1">One wrong->correct spelling per line. Applied to Deepgram results only; saved in this browser.</p>
+                </div>
+
+                <div>
                     <label for="engineMode" class="block text-[11px] text-slate-400 mb-1 font-medium">Processing Method</label>
                     <select id="engineMode" onchange="updateProcessingMethod()" class="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none">
                         <option value="local">On this device (private)</option>
@@ -156,9 +168,9 @@
                 </div>
                 <div id="cloudSettings" class="hidden space-y-2">
                     <label for="cloudAccessCode" class="block text-[11px] text-slate-400 font-medium">Private access code</label>
-                    <input type="password" id="cloudAccessCode" autocomplete="off" placeholder="Enter your Netlify access code" class="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none">
+                    <input type="password" id="cloudAccessCode" autocomplete="off" placeholder="Enter your transcription access code" class="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none">
                     <p id="cloudHint" class="text-[11px] leading-relaxed text-amber-300/90">
-                        Cloud mode uploads audio to the selected provider. Provider charges may apply. Configure the provider key and access code in Netlify.
+                        Cloud mode uploads audio to the selected provider. Provider charges may apply. Configure the provider key and access code as Worker secrets.
                     </p>
                 </div>
 
@@ -275,8 +287,30 @@
 
     <!-- Script Logic -->
     <script>
-        // After deploying the Worker, replace this Netlify URL with its Worker URL.
+        // Replace with the URL printed by "wrangler deploy" if the Worker address changes.
     const TRANSCRIPTION_API_URL = 'https://voicescript-transcribe.johann-dev.workers.dev';
+
+        const DEEPGRAM_KEYTERMS_STORAGE_KEY = 'voicescript.deepgram.keyterms';
+        const DEEPGRAM_REPLACEMENTS_STORAGE_KEY = 'voicescript.deepgram.replacements';
+        const DEFAULT_DEEPGRAM_REPLACEMENTS = [
+            'likooratuur->likwidateur',
+            'onboorlike->onbehoorlike',
+            'verveemdings->vervreemdings',
+            'budel->boedel',
+            'skuld ysers->skuldeisers',
+            'super disamic->Superdynamic',
+            'suikerdianamic->Superdynamic'
+        ].join('\n');
+        const deepgramKeytermsInput = document.getElementById('deepgramKeyterms');
+        const deepgramReplacementsInput = document.getElementById('deepgramReplacements');
+        deepgramKeytermsInput.value = localStorage.getItem(DEEPGRAM_KEYTERMS_STORAGE_KEY) ?? '';
+        deepgramReplacementsInput.value = localStorage.getItem(DEEPGRAM_REPLACEMENTS_STORAGE_KEY) ?? DEFAULT_DEEPGRAM_REPLACEMENTS;
+        deepgramKeytermsInput.addEventListener('input', () => {
+            localStorage.setItem(DEEPGRAM_KEYTERMS_STORAGE_KEY, deepgramKeytermsInput.value);
+        });
+        deepgramReplacementsInput.addEventListener('input', () => {
+            localStorage.setItem(DEEPGRAM_REPLACEMENTS_STORAGE_KEY, deepgramReplacementsInput.value);
+        });
 
         // Data & App State
         let currentFile = null;
@@ -349,8 +383,33 @@
             const isCloud = engine !== 'local';
             document.getElementById('cloudSettings').classList.toggle('hidden', !isCloud);
             document.getElementById('cloudHint').textContent = engine === 'deepgram'
-                ? 'Deepgram receives 90-second audio chunks with overlap to help match speakers across boundaries. Labels may still change if a speaker is not heard in the overlap. Usage charges may apply.'
+                ? 'Deepgram receives 5-minute audio chunks with overlap to help match speakers across boundaries. Labels may still change if a speaker is not heard in the overlap. Usage charges may apply.'
                 : 'Groq receives 90-second audio chunks for transcription. This recording is uploaded to the provider and usage charges may apply.';
+        }
+
+        function cleanDeepgramText(text) {
+            let cleaned = text
+                .replace(/' n\b/g, "'n")
+                .replace(/(\w)' (?=\w)/g, "$1 'n ")
+                .replace(/(^|\s)' (?=\w)/g, "$1'n ");
+            const rules = deepgramReplacementsInput.value
+                .split(/\r?\n/)
+                .map((line) => {
+                    const separator = line.indexOf('->');
+                    if (separator < 0) return null;
+                    const wrong = line.slice(0, separator).trim();
+                    const correct = line.slice(separator + 2).trim();
+                    return wrong && correct ? { wrong, correct } : null;
+                })
+                .filter(Boolean);
+
+            for (const { wrong, correct } of rules) {
+                const pattern = wrong.split(/\s+/)
+                    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+                    .join('\\s+');
+                cleaned = cleaned.replace(new RegExp(`\\b${pattern}\\b`, 'gi'), correct);
+            }
+            return cleaned;
         }
 
         // Handle File Drop / Select
@@ -622,7 +681,7 @@
             const cloudAccessCode = document.getElementById('cloudAccessCode').value.trim();
             if (engine !== 'local' && !cloudAccessCode) {
                 document.getElementById('cloudAccessCode').focus();
-                showToast('Enter the private access code configured in Netlify.');
+                showToast('Enter the transcription access code configured as a Worker secret.');
                 return;
             }
 
@@ -678,7 +737,7 @@
                 const inputPath = `/input/${sourceFile.name}`;
 
                 const duration = sourceDuration;
-                const chunkDuration = engine === 'local' ? 300 : 90;
+                const chunkDuration = engine === 'groq' ? 90 : 300;
                 const chunkOverlap = engine === 'deepgram' ? 8 : 0;
                 const chunkStep = chunkDuration - chunkOverlap;
                 const chunkCount = Math.max(1, Math.ceil(Math.max(0, duration - chunkOverlap) / chunkStep));
@@ -730,6 +789,8 @@
                         formData.append('file', new Blob([wav], { type: 'audio/wav' }), `chunk-${index + 1}.wav`);
                         formData.append('language', sourceLanguage === 'af-ZA' ? 'af' : sourceLanguage === 'en-US' ? 'en' : 'auto');
                         formData.append('provider', 'deepgram');
+                        const keyterms = deepgramKeytermsInput.value.trim();
+                        if (keyterms) formData.append('keyterms', keyterms);
 
                         const response = await fetch(TRANSCRIPTION_API_URL, {
                             method: 'POST',
@@ -766,7 +827,10 @@
                             diarizedWords.push(...mapped.words.filter((word) => (word.start + word.end) / 2 > overlapCutoff));
                         }
                         previousChunkEnd = start + length;
-                        segments = buildDiarizedSegments(diarizedWords);
+                        segments = buildDiarizedSegments(diarizedWords).map((segment) => ({
+                            ...segment,
+                            text: cleanDeepgramText(segment.text)
+                        }));
                     } else if (engine === 'groq') {
                         const formData = new FormData();
                         formData.append('file', new Blob([wav], { type: 'audio/wav' }), `chunk-${index + 1}.wav`);

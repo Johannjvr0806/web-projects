@@ -92,6 +92,17 @@
                     <p class="text-[11px] text-slate-500 mt-1">Audio or video up to 1 GB. Long recordings are downsampled and processed in 5-minute chunks; they may take a long time.</p>
                 </div>
 
+                <div class="mt-4 flex flex-wrap items-end gap-4">
+                    <div class="w-32">
+                        <label for="startFrom" class="block text-[11px] text-slate-400 mb-1 font-medium">Start from (mm:ss)</label>
+                        <input id="startFrom" type="text" inputmode="numeric" value="00:00" placeholder="00:00" class="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <label for="appendTranscript" class="flex items-center gap-2 text-xs text-slate-300 py-2">
+                        <input id="appendTranscript" type="checkbox" class="accent-indigo-500">
+                        Append to existing transcript
+                    </label>
+                </div>
+
                 <!-- Media Preview Section -->
                 <div id="mediaPreview" class="mt-4 hidden space-y-3">
                     <div class="flex items-center justify-between bg-slate-950 p-3 rounded-lg border border-slate-800">
@@ -664,6 +675,13 @@
             document.getElementById('progressSubtext').textContent = 'Cancellation requested. Finishing the current chunk first.';
         }
 
+        function parseStartTime(value) {
+            const match = /^(\d+):([0-5]\d)$/.exec(value.trim());
+            if (!match) return null;
+            const seconds = Number(match[1]) * 60 + Number(match[2]);
+            return Number.isSafeInteger(seconds) ? seconds : null;
+        }
+
         async function processTranscription() {
             if (window.location.protocol === 'file:') {
                 showToast('Open VoiceScript from GitHub Pages or a local web server, not directly as a file.');
@@ -690,9 +708,22 @@
                 showToast('Wait for the media preview to finish loading, then try again.');
                 return;
             }
+            const startOffset = parseStartTime(document.getElementById('startFrom').value);
+            if (startOffset === null) {
+                document.getElementById('startFrom').focus();
+                showToast('Enter the start time as mm:ss.');
+                return;
+            }
+            if (startOffset >= player.duration) {
+                document.getElementById('startFrom').focus();
+                showToast('Start time must be before the end of the recording.');
+                return;
+            }
             const sourceFile = currentFile;
             const sourceDuration = player.duration;
             const sourceLanguage = selectedLang;
+            const appendToExisting = document.getElementById('appendTranscript').checked;
+            const existingTranscript = appendToExisting ? [...transcriptData] : [];
 
             const button = document.getElementById('startTranscribeBtn');
             const progressCard = document.getElementById('progressCard');
@@ -736,7 +767,7 @@
                 inputMounted = true;
                 const inputPath = `/input/${sourceFile.name}`;
 
-                const duration = sourceDuration;
+                const duration = sourceDuration - startOffset;
                 const chunkDuration = engine === 'groq' ? 90 : 300;
                 const chunkOverlap = engine === 'deepgram' ? 8 : 0;
                 const chunkStep = chunkDuration - chunkOverlap;
@@ -747,8 +778,9 @@
                 for (let index = 0; index < chunkCount; index++) {
                     if (cancelRequested) break;
 
-                    const start = index * chunkStep;
-                    const length = Math.min(chunkDuration, duration - start);
+                    const relativeStart = index * chunkStep;
+                    const start = startOffset + relativeStart;
+                    const length = Math.min(chunkDuration, duration - relativeStart);
                     const percent = Math.round(5 + (index / chunkCount) * 90);
                     updateProgress(percent, `Preparing audio chunk ${index + 1} of ${chunkCount}`,
                         `Transcribing ${formatTime(start)}–${formatTime(start + length)}. A 90-minute recording can take a long time.`);
@@ -913,7 +945,7 @@
                     }
 
                     await ffmpeg.deleteFile('chunk.wav');
-                    transcriptData = segments;
+                    transcriptData = appendToExisting ? [...existingTranscript, ...segments] : segments;
                     renderTranscript();
                     completedChunks++;
                     updateProgress(Math.round(5 + (completedChunks / chunkCount) * 90),
@@ -921,7 +953,7 @@
                         `${segments.length} transcript segments found so far.`);
                 }
 
-                transcriptData = segments;
+                transcriptData = appendToExisting ? [...existingTranscript, ...segments] : segments;
                 renderTranscript();
                 completed = !cancelRequested;
                 updateProgress(completed ? 100 : Math.round((completedChunks / chunkCount) * 95),

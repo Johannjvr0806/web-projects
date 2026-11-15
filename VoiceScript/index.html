@@ -275,6 +275,9 @@
 
     <!-- Script Logic -->
     <script>
+        // After deploying the Worker, replace this Netlify URL with its Worker URL.
+        const TRANSCRIPTION_API_URL = 'https://johann-dev-workspace.netlify.app/.netlify/functions/transcribe';
+
         // Data & App State
         let currentFile = null;
         let currentFileUrl = null;
@@ -728,7 +731,7 @@
                         formData.append('language', sourceLanguage === 'af-ZA' ? 'af' : sourceLanguage === 'en-US' ? 'en' : 'auto');
                         formData.append('provider', 'deepgram');
 
-                        const response = await fetch('https://johann-dev-workspace.netlify.app/.netlify/functions/transcribe', {
+                        const response = await fetch(TRANSCRIPTION_API_URL, {
                             method: 'POST',
                             headers: { 'Authorization': `Bearer ${cloudAccessCode}` },
                             body: formData
@@ -773,7 +776,7 @@
                             formData.append('prompt', previousGroqTranscript);
                         }
 
-                        const response = await fetch('https://johann-dev-workspace.netlify.app/.netlify/functions/transcribe', {
+                        const response = await fetch(TRANSCRIPTION_API_URL, {
                             method: 'POST',
                             headers: { 'Authorization': `Bearer ${cloudAccessCode}` },
                             body: formData

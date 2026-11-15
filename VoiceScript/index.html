@@ -319,7 +319,24 @@
         const DEEPGRAM_KEYTERMS_STORAGE_KEY = 'voicescript.deepgram.keyterms';
         const DEEPGRAM_REPLACEMENTS_STORAGE_KEY = 'voicescript.deepgram.replacements';
         const DEFAULT_DEEPGRAM_REPLACEMENTS = [
+            'super dinamic->Superdynamic',
+            'super diamic->Superdynamic',
+            'super dimamic->Superdynamic',
+            'super dimanic->Superdynamic',
+            'super dynamic->Superdynamic',
+            'super dinamics->Superdynamic',
+            'super dionomics->Superdynamic',
+            'super dionamic->Superdynamic',
+            'superdionamic->Superdynamic',
+            'superdisamic->Superdynamic',
+            'superdnamic->Superdynamic',
+            'superdynomic->Superdynamic',
+            'superdynamiks->Superdynamic',
+            'everdreen tuiers->Evergreen Tires',
+            'trailer where haels->The Trailer Warehouse',
             'likooratuur->likwidateur',
+            'insofensie->insolvensie',
+            'insopensie->insolvensie',
             'onboorlike->onbehoorlike',
             'verveemdings->vervreemdings',
             'budel->boedel',
@@ -430,7 +447,8 @@
                     const correct = line.slice(separator + 2).trim();
                     return wrong && correct ? { wrong, correct } : null;
                 })
-                .filter(Boolean);
+                .filter(Boolean)
+                .sort((left, right) => right.wrong.length - left.wrong.length);
 
             for (const { wrong, correct } of rules) {
                 const pattern = wrong.split(/\s+/)

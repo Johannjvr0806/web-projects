@@ -1,23 +1,29 @@
 # VoiceScript
 
-VoiceScript can transcribe audio locally in the browser with Whisper Small or use Groq and Deepgram Cloud. The local model is quantized to int8 and downloads about 250 MB on first use; it uses more device memory and may run slower than Whisper Tiny, while generally providing better recognition. Cloud modes upload audio to the selected provider and may incur charges. Provider API keys are kept in Netlify Functions and must never be added to the HTML or committed to Git.
+VoiceScript can transcribe audio locally in the browser with Whisper Small or use Groq and Deepgram Cloud. The local model is quantized to int8 and downloads about 250 MB on first use; it uses more device memory and may run slower than Whisper Tiny, while generally providing better recognition. Cloud modes upload audio to the selected provider and may incur charges. Provider API keys are kept as Cloudflare Worker secrets and must never be added to the HTML or committed to Git.
 
-## Enable Cloud Transcription on Netlify
+## Enable Cloud Transcription on Cloudflare
 
-1. Deploy this repository to the Netlify site `johann-dev-workspace.netlify.app`. The root `netlify.toml` publishes the existing site and registers `netlify/functions`.
-2. In Netlify, open **Site configuration → Environment variables** and add:
-   - `TRANSCRIPTION_ACCESS_CODE`: a long, private passphrase of your choice. Enter the same passphrase in VoiceScript's Cloud mode. Do not commit this value or share it publicly.
-   - `GROQ_API_KEY`: your API key from the Groq Console, if you use Groq.
-   - `DEEPGRAM_API_KEY`: your API key from the Deepgram Console, if you use Deepgram.
-   - Optionally, `ALLOWED_ORIGINS`: comma-separated allowed website origins. If omitted, the function allows this repository's GitHub Pages origin and the Netlify site origin.
-3. Redeploy the Netlify site after setting or changing environment variables.
+1. From the repository root, enter `cloudflare-worker` and set the secrets with Wrangler:
+   ```powershell
+   Set-Location .\cloudflare-worker
+   npx wrangler secret put TRANSCRIPTION_ACCESS_CODE
+   npx wrangler secret put GROQ_API_KEY
+   npx wrangler secret put DEEPGRAM_API_KEY
+   ```
+   Wrangler prompts for each value. `ALLOWED_ORIGINS` is optional; the Worker defaults to this repository's GitHub Pages origin and the Netlify site origin.
+2. Deploy the Worker:
+   ```powershell
+   npx wrangler deploy
+   ```
+3. If the deployed Worker URL differs from the configured URL, update `TRANSCRIPTION_API_URL` in `VoiceScript/index.html`.
 4. Open VoiceScript from its HTTPS GitHub Pages/Netlify address or the desktop app's local web server. Choose a cloud provider, select the recording language, and enter the private access code. Cloud mode does not work when opening the HTML directly as `file://`.
 
-Groq extracts audio locally into 90-second mono WAV chunks, skips near-silent chunks, and uploads each remaining chunk to the Netlify Function. Afrikaans requests use a short Afrikaans context prompt by default and pass the previous chunk's transcript as context for the next chunk. The function filters prompt echoes and forwards the audio to Groq's multilingual `whisper-large-v3` model at temperature 0. These safeguards cannot guarantee a perfect transcript; review it before relying on it.
+Groq extracts audio locally into 90-second mono WAV chunks, skips near-silent chunks, and uploads each remaining chunk to the Cloudflare Worker. Afrikaans requests use a short Afrikaans context prompt by default and pass the previous chunk's transcript as context for the next chunk. The Worker filters prompt echoes and forwards the audio to Groq's multilingual `whisper-large-v3` model at temperature 0. These safeguards cannot guarantee a perfect transcript; review it before relying on it.
 
-Deepgram uses Nova-3 with diarization and utterance timestamps. Afrikaans and English are supported; Auto-Detect uses Nova-3's multilingual mode. Audio is extracted into 90-second chunks with an 8-second overlap. The app uses shared speech in the overlap to match speaker IDs across adjacent chunks, but a speaker who is not heard in the overlap may receive a new ID later in the recording. The overlap also means slightly more audio is sent and billed. Review speaker labels before relying on them.
+Deepgram uses Nova-3 with diarization and utterance timestamps. Afrikaans and English are supported; Auto-Detect uses Nova-3's multilingual mode. Audio is extracted into 5-minute chunks with an 8-second overlap. Names and terms can be added as browser-stored Deepgram keyterms, and Deepgram results use the browser-stored spelling replacements. The app uses shared speech in the overlap to match speaker IDs across adjacent chunks, but a speaker who is not heard in the overlap may receive a new ID later in the recording. The overlap also means slightly more audio is sent and billed. Review speaker labels and corrected text before relying on them.
 
-Both cloud modes send sequential requests through the Netlify Function. Netlify's function payload limit means chunks must remain small; the function rejects a chunk larger than 3 MiB. Cloud processing time depends on network and provider response times; sub-minute completion is not guaranteed. The local on-device mode remains available and does not upload recordings.
+Both cloud modes send sequential requests through the Cloudflare Worker, which accepts audio chunks up to 25 MiB. Deepgram's 5-minute mono WAV chunks are about 9.6 MB; Groq continues to use 90-second chunks. Cloud processing time depends on network and provider response times; sub-minute completion is not guaranteed. The local on-device mode remains available and does not upload recordings.
 
 ## Windows desktop app
 
@@ -28,7 +34,7 @@ npm install
 npm run dist:win
 ```
 
-The Windows installer is created in `VoiceScript/release`. It still uses the same transcription engines: local speed depends on your computer, and cloud modes need a working internet connection, their configured Netlify secrets, and may incur charges. The desktop app does not by itself make cloud transcription faster.
+The Windows installer is created in `VoiceScript/release`. It still uses the same transcription engines: local speed depends on your computer, and cloud modes need a working internet connection, their configured Cloudflare Worker secrets, and may incur charges. The desktop app does not by itself make cloud transcription faster.
 
 Packaged desktop builds check the public GitHub Releases page for updates at startup. When an update has downloaded, choose **Restart now** to install it immediately or **Later** to install it when you next quit the app. Development builds do not check for updates.
 

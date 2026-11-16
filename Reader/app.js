@@ -469,8 +469,8 @@ function setupRenditionEvents() {
       const sel = contents.window.getSelection();
       if (sel && sel.toString().trim().length > 0) return;
 
-      // Native, 100% accurate inner window measurement
-      const width = contents.window.innerWidth;
+      // EPUB iframes can exceed the visible reader width on tablets.
+      const width = document.getElementById('viewer').clientWidth;
       
       if (endX < width / 3) {
         currentRendition.prev();
@@ -493,7 +493,7 @@ function setupRenditionEvents() {
       const sel = contents.window.getSelection();
       if (sel && sel.toString().trim().length > 0) return;
 
-      const width = contents.window.innerWidth;
+      const width = document.getElementById('viewer').clientWidth;
       if (e.clientX < width / 3) currentRendition.prev();
       else if (e.clientX > width * 2 / 3) currentRendition.next();
       else toggleControls();

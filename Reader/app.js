@@ -148,11 +148,27 @@ function renderCategoryTabs() {
   `;
 
   customCategories.forEach(cat => {
+    const shelfGroup = document.createElement('div');
+    shelfGroup.className = 'shelf-filter-group';
+
     const btn = document.createElement('button');
     btn.className = `filter-btn ${activeFilter === cat ? 'active' : ''}`;
     btn.textContent = cat;
     btn.onclick = () => filterCategory(cat, btn);
-    filterBar.appendChild(btn);
+    shelfGroup.appendChild(btn);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'shelf-delete-btn';
+    deleteBtn.textContent = '×';
+    deleteBtn.title = `Delete ${cat} shelf`;
+    deleteBtn.setAttribute('aria-label', `Delete ${cat} shelf`);
+    deleteBtn.onclick = event => {
+      event.stopPropagation();
+      deleteShelf(cat);
+    };
+    shelfGroup.appendChild(deleteBtn);
+    filterBar.appendChild(shelfGroup);
   });
 
   const addBtn = document.createElement('button');
@@ -167,6 +183,38 @@ function filterCategory(cat, btn) {
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   renderBookshelf();
+}
+
+function showAllBooks() {
+  activeFilter = 'all';
+  renderCategoryTabs();
+  renderBookshelf();
+}
+
+async function deleteShelf(category) {
+  if (!customCategories.includes(category)) return;
+  if (!confirm(`Delete the "${category}" shelf? Books will stay in All Books.`)) return;
+
+  const updatedCategories = customCategories.filter(item => item !== category);
+  const updatedBooks = books.map(book => (
+    book.category === category ? { ...book, category: null } : book
+  ));
+
+  try {
+    await localforage.setItem('custom_categories', updatedCategories);
+    await localforage.setItem('books_meta', updatedBooks);
+    customCategories = updatedCategories;
+    books = updatedBooks;
+    if (activeFilter === category) {
+      showAllBooks();
+    } else {
+      renderCategoryTabs();
+      renderBookshelf();
+    }
+  } catch (error) {
+    console.error('Could not delete shelf:', error);
+    alert('Could not delete that shelf. Your books have not been deleted.');
+  }
 }
 
 // Bookshelf Logic
@@ -297,6 +345,11 @@ function renderBookshelf() {
     const safeTitle = escapeHtml(book.title);
     const safeAuthor = escapeHtml(book.author);
     const safeCategory = escapeHtml(book.category);
+    const deleteLabel = activeFilter === 'all'
+      ? 'Delete book from library'
+      : customCategories.includes(activeFilter)
+        ? 'Remove from this shelf and return to All Books'
+        : 'Return to All Books without deleting';
 
     card.innerHTML = `
       <div class="cover-box" onclick="openBook('${book.id}')">
@@ -311,7 +364,7 @@ function renderBookshelf() {
           ${shelfOptions}
         </select>
       </div>
-      <button class="delete-btn" onclick="deleteBook('${book.id}', event)">✕</button>
+      <button class="delete-btn" title="${deleteLabel}" aria-label="${deleteLabel}" onclick="deleteBook('${book.id}', event)">✕</button>
     `;
     grid.appendChild(card);
     loadBookCover(book.id, card.querySelector('.cover-box')).catch(error => {
@@ -347,6 +400,25 @@ async function assignShelf(bookId, category) {
 
 async function deleteBook(id, e) {
   e.stopPropagation();
+  if (activeFilter !== 'all') {
+    const book = books.find(item => item.id === id);
+    if (customCategories.includes(activeFilter) && book && book.category === activeFilter) {
+      const updatedBooks = books.map(item => (
+        item.id === id ? { ...item, category: null } : item
+      ));
+      try {
+        await localforage.setItem('books_meta', updatedBooks);
+        books = updatedBooks;
+      } catch (error) {
+        console.error('Could not remove book from shelf:', error);
+        alert('Could not remove this book from the shelf.');
+        return;
+      }
+    }
+    showAllBooks();
+    return;
+  }
+
   if (confirm("Delete this book from your library?")) {
     books = books.filter(b => b.id !== id);
     await localforage.removeItem(id);

@@ -32,6 +32,8 @@ body.theme-dark   { --bg: #1e1e1e; --bar: #121212; --fg: #e0e0e0; --line: #2a2a2
 .filter-btn { min-height: 44px; background: transparent; border: 1px solid currentColor; opacity: 0.7; border-radius: 20px; padding: 6px 14px; font-size: 13px; cursor: pointer; color: inherit; white-space: nowrap; }
 .filter-btn.active { opacity: 1; font-weight: bold; background: rgba(128,128,128,0.25); }
 .add-cat-btn { border-style: dashed; font-weight: bold; }
+.shelf-filter-group { display: inline-flex; align-items: center; gap: 2px; }
+.shelf-delete-btn { min-width: 44px; min-height: 44px; border: none; border-radius: 50%; background: rgba(239,68,68,0.18); color: inherit; font-size: 20px; cursor: pointer; }
 .shelf-grid { flex: 1; overflow-y: auto; padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 20px; align-content: start; }
 #shelf-view { background-color: var(--bg); background-position: center; background-repeat: no-repeat; background-size: cover; }
 #welcome-toast { position: fixed; z-index: 300; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 12px 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--bar); color: var(--fg); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }

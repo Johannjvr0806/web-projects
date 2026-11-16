@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cozy-reader-v4';
+const CACHE_NAME = 'cozy-reader-v5';
 const ASSETS = [
   './',
   './index.html',

@@ -14,6 +14,7 @@ let currentSelectedCfiRange = null;
 let currentTTSVoice = '';
 let currentTTSRate = 1;
 let booksMetaSaveTimer = null;
+let shelfBackgroundUrl = null;
 const coverCache = new Map();
 
 function escapeHtml(value) {
@@ -43,7 +44,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupTTSControls();
   setupBackupControls();
   setupFileInput();
+  await setupShelfBackgroundControls();
   renderCategoryTabs();
+  const hasOpenedBefore = await localforage.getItem('has_opened_app');
+  await localforage.setItem('has_opened_app', true);
+  if (hasOpenedBefore) showWelcomeBack();
 });
 
 // Persistent Theme System
@@ -63,6 +68,55 @@ async function setTheme(themeClass) {
   currentTheme = themeClass;
   await localforage.setItem('user_theme', themeClass);
   applyThemeToRendition();
+}
+
+async function setupShelfBackgroundControls() {
+  const input = document.getElementById('shelf-bg-input');
+  const savedBackground = await localforage.getItem('shelf_background');
+  if (savedBackground) setShelfBackground(savedBackground);
+
+  input.addEventListener('change', async () => {
+    const file = input.files[0];
+    if (!file) return;
+
+    try {
+      await localforage.setItem('shelf_background', file);
+      setShelfBackground(file);
+    } catch (error) {
+      console.error('Could not save bookshelf background:', error);
+      alert('Could not save that bookshelf background. Try a smaller image.');
+    } finally {
+      input.value = '';
+    }
+  });
+}
+
+function setShelfBackground(image) {
+  if (shelfBackgroundUrl) URL.revokeObjectURL(shelfBackgroundUrl);
+  shelfBackgroundUrl = URL.createObjectURL(image);
+  document.getElementById('shelf-view').style.backgroundImage = `url("${shelfBackgroundUrl}")`;
+  document.getElementById('shelf-bg-reset').hidden = false;
+}
+
+async function resetShelfBackground() {
+  try {
+    await localforage.removeItem('shelf_background');
+    if (shelfBackgroundUrl) URL.revokeObjectURL(shelfBackgroundUrl);
+    shelfBackgroundUrl = null;
+    document.getElementById('shelf-view').style.removeProperty('background-image');
+    document.getElementById('shelf-bg-reset').hidden = true;
+  } catch (error) {
+    console.error('Could not reset bookshelf background:', error);
+    alert('Could not reset the bookshelf background.');
+  }
+}
+
+function showWelcomeBack() {
+  const toast = document.getElementById('welcome-toast');
+  toast.hidden = false;
+  window.setTimeout(() => {
+    toast.hidden = true;
+  }, 3000);
 }
 
 // Categories Management
@@ -418,9 +472,9 @@ function setupRenditionEvents() {
       // Native, 100% accurate inner window measurement
       const width = contents.window.innerWidth;
       
-      if (endX < width * 0.3) {
+      if (endX < width / 3) {
         currentRendition.prev();
-      } else if (endX > width * 0.7) {
+      } else if (endX > width * 2 / 3) {
         currentRendition.next();
       } else {
         toggleControls();
@@ -440,8 +494,8 @@ function setupRenditionEvents() {
       if (sel && sel.toString().trim().length > 0) return;
 
       const width = contents.window.innerWidth;
-      if (e.clientX < width * 0.3) currentRendition.prev();
-      else if (e.clientX > width * 0.7) currentRendition.next();
+      if (e.clientX < width / 3) currentRendition.prev();
+      else if (e.clientX > width * 2 / 3) currentRendition.next();
       else toggleControls();
     });
   });

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reader</title>
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
   <link rel="manifest" href="manifest.json">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Reader">
@@ -33,6 +33,9 @@
     </div>
 
     <div class="header-actions">
+      <label for="shelf-bg-input" class="action-btn">🖼 Background</label>
+      <input type="file" id="shelf-bg-input" accept="image/*" style="display:none;">
+      <button id="shelf-bg-reset" class="action-btn" onclick="resetShelfBackground()" hidden>↺ Reset</button>
       <button id="reading-log-tab-btn" class="action-btn" style="background: #3b82f6 !important; color: white !important;" onclick="toggleReadingLogModal()">📚 Log</button>
       <a href="https://oceanofpdf.com" target="_blank" class="action-btn ocean-btn" title="Download books from OceanOfPDF">📥 Ocean</a>
       <label for="epub-input" class="action-btn upload-btn">📁 Add</label>
@@ -156,6 +159,7 @@
   </div>
 
   <div id="app-version">v4</div>
-  <script src="app.js?v=5"></script>
+  <div id="welcome-toast" role="status" aria-live="polite" hidden>Welcome back!</div>
+  <script src="app.js?v=7"></script>
 </body>
 </html>

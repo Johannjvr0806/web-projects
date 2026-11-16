@@ -33,6 +33,9 @@ body.theme-dark   { --bg: #1e1e1e; --bar: #121212; --fg: #e0e0e0; --line: #2a2a2
 .filter-btn.active { opacity: 1; font-weight: bold; background: rgba(128,128,128,0.25); }
 .add-cat-btn { border-style: dashed; font-weight: bold; }
 .shelf-grid { flex: 1; overflow-y: auto; padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 20px; align-content: start; }
+#shelf-view { background-color: var(--bg); background-position: center; background-repeat: no-repeat; background-size: cover; }
+#welcome-toast { position: fixed; z-index: 300; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 12px 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--bar); color: var(--fg); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+#welcome-toast[hidden] { display: none; }
 
 /* Book Cards */
 .book-card { background: rgba(128, 128, 128, 0.08); border: 1px solid rgba(128, 128, 128, 0.2); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; cursor: pointer; position: relative; transition: transform 0.2s; color: inherit; }
@@ -106,6 +109,10 @@ body.reading .reader-header.hidden { transform: translateY(-200%); }
 .safe-delete-btn { min-width: 44px; min-height: 44px; background: #ef4444; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 11px; cursor: pointer; }
 #app-version { position: fixed; right: 8px; bottom: 4px; font-size: 10px; opacity: 0.4; z-index: 1; pointer-events: none; }
 body.reading #app-version { display: none; }
+
+@media (max-width: 850px) {
+  #app-header { height: auto; min-height: 60px; flex-wrap: wrap; gap: 6px; justify-content: center; padding: 6px 10px; }
+}
 
 @media (max-width: 760px) {
   #app-header { height: auto; min-height: 60px; flex-wrap: wrap; gap: 6px; justify-content: center; padding: 6px 10px; }

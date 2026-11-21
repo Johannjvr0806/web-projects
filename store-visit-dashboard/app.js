@@ -147,9 +147,9 @@ function toggleSidebar(forceOpen) {
   const backdrop = $("#sidebarBackdrop");
   const isOpen = typeof forceOpen === "boolean"
     ? forceOpen
-    : !sidebar.classList.contains("open");
-  sidebar.classList.toggle("open", isOpen);
-  if (backdrop) backdrop.classList.toggle("open", isOpen);
+    : !sidebar.classList.contains("is-open");
+  sidebar.classList.toggle("is-open", isOpen);
+  if (backdrop) backdrop.classList.toggle("is-open", isOpen);
   if (backdrop) backdrop.setAttribute("aria-hidden", String(!isOpen));
   $("#menuBtn")?.setAttribute("aria-expanded", String(isOpen));
 }
@@ -933,6 +933,7 @@ function settings() {
       <div class="field"><label for="settingBrand">REPORT BRAND</label><input id="settingBrand" value="${escapeHtml(saved.reportBrand)}"></div>
       <button class="primary" type="submit">Save Settings</button>
     </form>
+    <p class="note">Install this app by opening its secure HTTPS address in Microsoft Edge or Chrome and choosing <b>Install this site as an app</b> from the browser menu. The installed app checks for updates automatically. Visits stay on this device unless you transfer them with Backup &amp; Device Transfer below.</p>
   </div>
   <div class="card" style="margin-top:16px">
     <div class="sectionTitle">
@@ -1711,6 +1712,43 @@ document.addEventListener("keydown", (event) => {
 
 window.addEventListener("pagehide", quietAutoSave);
 window.addEventListener("beforeunload", quietAutoSave);
+
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator) || location.protocol === "file:") return;
+
+  let firstController = !navigator.serviceWorker.controller;
+  let reloadStarted = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (firstController) {
+      firstController = false;
+      return;
+    }
+    if (reloadStarted) return;
+    reloadStarted = true;
+    quietAutoSave();
+    window.location.reload();
+  });
+
+  navigator.serviceWorker.register("./service-worker.js", { updateViaCache: "none" })
+    .then((registration) => {
+      registration.update().catch((error) => {
+        console.error("Could not check for dashboard updates.", error);
+      });
+      window.setInterval(() => {
+        registration.update().catch((error) => {
+          console.error("Could not check for dashboard updates.", error);
+        });
+      }, 60 * 60 * 1000);
+    })
+    .catch((error) => {
+      console.error("Could not register the dashboard service worker.", error);
+      showStatus("The dashboard opened, but app installation and automatic updates are unavailable.", true);
+    });
+}
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", registerServiceWorker, { once: true });
+}
 
 try {
   badge();

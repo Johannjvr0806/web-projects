@@ -628,7 +628,7 @@ th {
 }
 
 @media (max-width: 900px) {
-  .sidebarBackdrop.open {
+  .sidebarBackdrop.is-open {
     display: block;
     opacity: 1;
   }
@@ -638,7 +638,7 @@ th {
     transition: transform 0.2s ease;
   }
 
-  .sidebar.open {
+  .sidebar.is-open {
     transform: translateX(0);
   }
 

@@ -1,8 +1,10 @@
 # PnP Clothing Store Visit Dashboard
 
-## Run it
+## Run and install it
 
-Open `index.html` in Microsoft Edge or Chrome. No Node.js, build step, or installation is required.
+For a quick local preview, open `index.html` in Microsoft Edge or Chrome. App installation and offline support require serving the dashboard from HTTPS (or `localhost` during development); they are not available from a `file://` URL.
+
+To install it on a device, open the dashboard's HTTPS address in Microsoft Edge or Chrome and choose **Install this site as an app** from the browser menu. On mobile, use the browser's install or add-to-home-screen option. The app checks for updates on launch and periodically while open, and applies an update automatically.
 
 ## Included workflows
 

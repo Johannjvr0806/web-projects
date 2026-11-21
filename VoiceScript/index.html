@@ -243,7 +243,7 @@
                         <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
                             <i class="ph-bold ph-article text-indigo-400"></i> Transcript Workspace
                         </h2>
-                        <p class="text-[11px] text-slate-400">Click timestamps to jump to exact speech • Edit segments inline • Compare Gemini polished text against recording</p>
+                        <p class="text-[11px] text-slate-400">Click timestamps to jump to exact speech • Edit segments inline • Export directly to Word (.doc)</p>
                     </div>
 
                     <button id="manualPolishBtn" onclick="polishAllTranscriptSegments()" class="px-3 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 text-xs font-medium border border-indigo-500/30 transition flex items-center gap-1.5 self-start sm:self-auto">
@@ -280,7 +280,14 @@
                             <button class="px-3 py-2 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 text-xs font-medium border border-indigo-500/30 transition flex items-center gap-1.5">
                                 <i class="ph-bold ph-download-simple"></i> Export <i class="ph-bold ph-caret-down"></i>
                             </button>
-                            <div class="absolute right-0 mt-1 w-36 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl py-1 hidden group-hover:block z-50">
+                            <div class="absolute right-0 mt-1 w-48 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl py-1 hidden group-hover:block z-50">
+                                <button onclick="exportTranscript('doc')" class="w-full text-left px-3 py-1.5 text-xs text-indigo-300 font-medium hover:bg-slate-800 hover:text-indigo-200 transition flex items-center justify-between">
+                                    Legal Word Doc <span>.doc</span>
+                                </button>
+                                <button onclick="exportTranscript('doc-ts')" class="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-indigo-400 transition flex items-center justify-between">
+                                    Word + Timestamps <span>.doc</span>
+                                </button>
+                                <div class="my-1 border-t border-slate-800"></div>
                                 <button onclick="exportTranscript('txt')" class="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-indigo-400 transition flex items-center justify-between">
                                     TXT Document <span>.txt</span>
                                 </button>
@@ -298,7 +305,7 @@
                     </div>
                 </div>
                 <p class="text-[11px] leading-relaxed text-slate-400 pb-3">
-                    You can <a href="https://app.clipchamp.com/" target="_blank" rel="noopener noreferrer" class="text-indigo-300 hover:text-indigo-200 underline">generate captions in Clipchamp</a>, download its .srt file, and import it here. For Afrikaans proofreading, export the .srt, edit only the caption text in Word with <a href="https://wspel.wordpress.com/" target="_blank" rel="noopener noreferrer" class="text-indigo-300 hover:text-indigo-200 underline">WSpel</a>, then import the corrected .srt. WSpel runs in Office; it cannot be called directly from this browser app.
+                    Export directly to <strong>Legal Word Doc (.doc)</strong> (two-column Section 417/418 layout without timestamps) or <strong>Word + Timestamps (.doc)</strong> for proofreading in Word with <a href="https://wspel.wordpress.com/" target="_blank" rel="noopener noreferrer" class="text-indigo-300 hover:text-indigo-200 underline">WSpel</a>.
                 </p>
 
                 <!-- Transcript Output Container -->
@@ -1540,6 +1547,125 @@
             showToast("Copied to clipboard!");
         }
 
+        function buildLegalWordHtml(includeTimestamps) {
+            const fileLabel = currentFile ? currentFile.name.replace(/\.[^.]+$/, '') : 'Enquiry_Record';
+            const todayStr = new Date().toLocaleDateString('en-ZA', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
+
+            const rowsHtml = transcriptData.map((s) => {
+                const speaker = getSpeakerLabel(s) || (s.speaker && s.speaker !== 'Transcription' ? s.speaker : 'Speaker:');
+                const formattedSpeaker = speaker.endsWith(':') ? speaker : `${speaker}:`;
+                const tsPrefix = includeTimestamps
+                    ? `<span style="color:#555555;font-size:9pt;font-family:Consolas,monospace;">[${formatTime(s.start)} - ${formatTime(s.end || s.start + 4)}]</span> `
+                    : '';
+
+                return `
+                    <tr>
+                        <td style="width:165pt;vertical-align:top;padding:4pt 8pt 4pt 0;font-weight:bold;white-space:nowrap;">
+                            ${escapeHTML(formattedSpeaker)}
+                        </td>
+                        <td style="vertical-align:top;padding:4pt 0;text-align:justify;">
+                            ${tsPrefix}${escapeHTML(s.text)}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            return `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<title>${escapeHTML(fileLabel)}</title>
+<style>
+    @page {
+        size: A4 portrait;
+        margin: 2.0cm 2.0cm 2.0cm 2.0cm;
+    }
+    body {
+        font-family: "Times New Roman", Times, serif;
+        font-size: 11pt;
+        line-height: 1.35;
+        color: #000000;
+    }
+    .header-box {
+        border-top: 1.5pt solid #000000;
+        border-bottom: 1.5pt solid #000000;
+        padding: 8pt 0;
+        margin-bottom: 12pt;
+    }
+    .title {
+        font-weight: bold;
+        text-align: center;
+        font-size: 11.5pt;
+        margin-bottom: 10pt;
+        text-transform: uppercase;
+    }
+    table.meta {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 10pt;
+    }
+    table.meta td {
+        padding: 2pt 4pt;
+        vertical-align: top;
+    }
+    .notes {
+        font-size: 9.5pt;
+        font-style: italic;
+        margin: 8pt 0 12pt 0;
+        border-bottom: 1pt solid #000000;
+        padding-bottom: 8pt;
+    }
+    table.transcript {
+        width: 100%;
+        border-collapse: collapse;
+    }
+</style>
+</head>
+<body>
+    <div class="header-box">
+        <div class="title">ENQUIRY IN TERMS OF SECTION 417 AND 418 OF THE COMPANIES ACT 61 OF 1973</div>
+        <table class="meta">
+            <tr>
+                <td style="width:170pt;font-weight:bold;">IN THE MATTER:</td>
+                <td>${escapeHTML(fileLabel)}</td>
+            </tr>
+            <tr>
+                <td style="font-weight:bold;">MASTER'S REFERENCE NUMBER:</td>
+                <td>[Master's Reference]</td>
+            </tr>
+            <tr>
+                <td style="font-weight:bold;">HELD ON:</td>
+                <td>${escapeHTML(todayStr)} &nbsp;&nbsp; <strong>[VOLUME 1]</strong></td>
+            </tr>
+            <tr>
+                <td style="font-weight:bold;">COMMISSIONER:</td>
+                <td>Me P Engelbrecht</td>
+            </tr>
+            <tr>
+                <td style="font-weight:bold;">APPEARANCES:</td>
+                <td>Adv H Struwig; Mr H Steynberg (Payne Steynberg Incorporated)</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="notes">
+        * Headings are included for ease of reference.<br>
+        * Words in [ ] brackets are added by the transcriber for clarity.
+    </div>
+
+    <table class="transcript">
+        ${rowsHtml}
+    </table>
+</body>
+</html>`;
+        }
+
         function exportTranscript(type) {
             if (!transcriptData.length) {
                 showToast("No transcript content to export!");
@@ -1547,10 +1673,14 @@
             }
 
             let content = "";
-            let mime = "text/plain";
+            let mime = "text/plain;charset=utf-8";
             let ext = type;
 
-            if (type === 'txt') {
+            if (type === 'doc' || type === 'doc-ts') {
+                content = '\uFEFF' + buildLegalWordHtml(type === 'doc-ts');
+                mime = "application/msword;charset=utf-8";
+                ext = "doc";
+            } else if (type === 'txt') {
                 content = transcriptData.map(s => {
                     const speaker = getSpeakerLabel(s);
                     return `[${formatTime(s.start)}]${speaker ? ` ${speaker}:` : ''}\n${s.text}\n`;
@@ -1569,11 +1699,16 @@
                 mime = "application/json";
             }
 
+            const baseName = currentFile
+                ? currentFile.name.replace(/\.[^.]+$/, '')
+                : `transcript_${selectedLang}`;
+            const suffix = type === 'doc-ts' ? '_with_timestamps' : '';
+
             const blob = new Blob([content], { type: mime });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `transcript_${selectedLang}.${ext}`;
+            a.download = `${baseName}${suffix}.${ext}`;
             a.click();
             URL.revokeObjectURL(url);
             showToast(`Exported as .${ext.toUpperCase()}`);

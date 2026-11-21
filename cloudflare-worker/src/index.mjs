@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
+const GEMINI_MODEL = "gemini-3.8-flash";
 const GROQ_AFRIKAANS_PROMPT = "Die likwidateur het die boedel van die maatskappy ondersoek en gelde terugvorder weens onbehoorlike vervreemding en roekelose bestuur. Hulle kan aanspreeklik gehou word.";
 const DEFAULT_ALLOWED_ORIGINS = [
   "https://johannjvr0806.github.io",
@@ -47,6 +48,164 @@ function matchesAccessCode(received, expected) {
   return timingSafeEqual(receivedHash, expectedHash);
 }
 
+async function handleGeminiPolish(request, env, origin) {
+  if (!env.GEMINI_API_KEY) {
+    return jsonResponse(503, {
+      error: "Gemini cleanup is not configured yet. Add GEMINI_API_KEY as a Worker secret.",
+    }, origin, env);
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse(400, { error: "Invalid JSON payload for Gemini cleanup." }, origin, env);
+  }
+
+  const language = body?.language === "af" || body?.language === "en" || body?.language === "auto"
+    ? body.language
+    : "auto";
+  const keyterms = typeof body?.keyterms === "string" ? body.keyterms.trim().slice(0, 1500) : "";
+  const replacements = typeof body?.replacements === "string" ? body.replacements.trim().slice(0, 3000) : "";
+  const rawSegments = Array.isArray(body?.segments) ? body.segments : [];
+
+  if (!rawSegments.length || rawSegments.length > 120) {
+    return jsonResponse(400, {
+      error: "Send between 1 and 120 transcript segments for Gemini cleanup.",
+    }, origin, env);
+  }
+
+  const normalizedSegments = rawSegments.map((seg, i) => ({
+    index: Number.isInteger(seg?.index) ? seg.index : i,
+    speaker: typeof seg?.speaker === "string" ? seg.speaker.slice(0, 80) : "",
+    text: typeof seg?.text === "string" ? seg.text.trim().slice(0, 2500) : "",
+  })).filter((seg) => seg.text.length > 0);
+
+  if (!normalizedSegments.length) {
+    return jsonResponse(400, { error: "No non-empty segment text to polish." }, origin, env);
+  }
+
+  const systemInstruction = [
+    "You are a precision transcript editor for South African legal, insolvency, and business recordings.",
+    "You receive numbered transcript segments and must return cleaned text for each segment.",
+    "STRICT RULES:",
+    "1. Never add facts, invent words, summarize, or omit spoken meaning.",
+    "2. Fix garbled names, companies, legal/insolvency terms, and ASR mishearings using the provided Known Names/Terms and Spelling Replacements.",
+    "3. Whenever text is in Afrikaans (or Dutch drift occurs), enforce South African Afrikaans (af-ZA) spelling and vocabulary instead of Dutch (for example: 'nie' instead of Dutch 'niet', \"'n\" instead of Dutch 'een', 'vragmotors' instead of 'vrachtwagens', 'boedel', 'likwidateur', 'insolvensie', 'skuldeisers').",
+    "4. When a speaker clearly speaks English or uses established English terms/quotes, preserve natural English rather than forcing translation.",
+    "5. Keep the exact same 'index' for every segment so timestamps remain aligned.",
+  ].join("\n");
+
+  const userPrompt = [
+    `Language mode: ${language === "af" ? "Afrikaans (af-ZA)" : language === "en" ? "English" : "Bilingual / Auto (af-ZA & English)"}.`,
+    keyterms ? `Known names, companies, and legal terms:\n${keyterms}` : "",
+    replacements ? `Known ASR mishearings -> corrections:\n${replacements}` : "",
+    "Segments JSON:",
+    JSON.stringify(normalizedSegments),
+  ].filter(Boolean).join("\n\n");
+
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(env.GEMINI_API_KEY)}`;
+
+  let geminiResponse;
+  try {
+    geminiResponse = await fetch(geminiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: systemInstruction }],
+        },
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: userPrompt }],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.1,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              segments: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    index: { type: "INTEGER" },
+                    text: { type: "STRING" },
+                  },
+                  required: ["index", "text"],
+                },
+              },
+            },
+            required: ["segments"],
+          },
+        },
+      }),
+      signal: AbortSignal.timeout(45_000),
+    });
+  } catch (error) {
+    console.error("Gemini cleanup request failed:", error);
+    return jsonResponse(502, {
+      error: "Could not reach Gemini for transcript cleanup.",
+    }, origin, env);
+  }
+
+  const responseText = await geminiResponse.text();
+  let parsed;
+  try {
+    parsed = JSON.parse(responseText);
+  } catch {
+    console.error("Gemini returned non-JSON HTTP response:", geminiResponse.status);
+    return jsonResponse(502, {
+      error: "Gemini returned an unreadable response during cleanup.",
+    }, origin, env);
+  }
+
+  if (!geminiResponse.ok) {
+    const providerMessage = parsed?.error?.message;
+    console.error("Gemini API error:", geminiResponse.status, providerMessage || "No details");
+    const message = geminiResponse.status === 429
+      ? "Gemini rate limit reached. Wait a moment before retrying cleanup."
+      : providerMessage || `Gemini cleanup failed (${geminiResponse.status}).`;
+    return jsonResponse(geminiResponse.status, { error: message }, origin, env);
+  }
+
+  const candidateText = parsed?.candidates?.[0]?.content?.parts
+    ?.map((part) => (typeof part?.text === "string" ? part.text : ""))
+    .join("")
+    .trim();
+
+  if (!candidateText) {
+    return jsonResponse(502, { error: "Gemini returned an empty cleanup result." }, origin, env);
+  }
+
+  let structured;
+  try {
+    structured = JSON.parse(candidateText);
+  } catch {
+    console.error("Gemini structured output was invalid JSON");
+    return jsonResponse(502, { error: "Gemini cleanup output could not be parsed." }, origin, env);
+  }
+
+  const polishedMap = new Map();
+  if (Array.isArray(structured?.segments)) {
+    for (const item of structured.segments) {
+      if (Number.isInteger(item?.index) && typeof item?.text === "string" && item.text.trim()) {
+        polishedMap.set(item.index, item.text.trim());
+      }
+    }
+  }
+
+  const results = normalizedSegments.map((seg) => ({
+    index: seg.index,
+    text: polishedMap.get(seg.index) || seg.text,
+  }));
+
+  return jsonResponse(200, { segments: results }, origin, env);
+}
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("origin");
@@ -84,7 +243,12 @@ export default {
       return jsonResponse(401, { error: "The Cloudflare transcription access code is incorrect." }, origin, env);
     }
 
-    if (!request.headers.get("content-type")?.toLowerCase().startsWith("multipart/form-data")) {
+    const contentType = request.headers.get("content-type")?.toLowerCase() || "";
+    if (contentType.startsWith("application/json")) {
+      return handleGeminiPolish(request, env, origin);
+    }
+
+    if (!contentType.startsWith("multipart/form-data")) {
       return jsonResponse(415, { error: "Send an audio chunk using multipart form data." }, origin, env);
     }
 
@@ -127,10 +291,10 @@ export default {
       }
 
       const keyterms = typeof keytermsField === "string"
-        ? keytermsField.split(",").map((term) => term.trim()).filter(Boolean)
+        ? keytermsField.split(",").map((term) => term.trim()).filter(Boolean).slice(0, 80)
         : [];
-      if (keyterms.length > 20 || keyterms.some((term) => term.length > 50)) {
-        return jsonResponse(400, { error: "Deepgram accepts up to 20 keyterms, each 50 characters or fewer." }, origin, env);
+      if (keyterms.some((term) => term.length > 60)) {
+        return jsonResponse(400, { error: "Each Deepgram keyterm must be 60 characters or fewer." }, origin, env);
       }
 
       const query = new URLSearchParams({
@@ -138,6 +302,7 @@ export default {
         diarize_model: "latest",
         utterances: "true",
         punctuate: "true",
+        smart_format: "true",
         language: language === "auto" ? "multi" : language,
       });
       for (const keyterm of keyterms) query.append("keyterm", keyterm);
@@ -201,8 +366,8 @@ export default {
     if (promptField !== null && typeof promptField !== "string") {
       return jsonResponse(400, { error: "The transcription prompt must be text." }, origin, env);
     }
-    if (typeof promptField === "string" && promptField.length > 200) {
-      return jsonResponse(400, { error: "The transcription prompt must be 200 characters or fewer." }, origin, env);
+    if (typeof promptField === "string" && promptField.length > 600) {
+      return jsonResponse(400, { error: "The transcription prompt must be 600 characters or fewer." }, origin, env);
     }
     const clientPrompt = typeof promptField === "string" ? promptField.trim() : "";
 
@@ -213,7 +378,11 @@ export default {
     groqForm.set("timestamp_granularities[]", "segment");
     groqForm.set("temperature", "0");
     if (language !== "auto") groqForm.set("language", language);
-    if (language === "af") groqForm.set("prompt", clientPrompt || GROQ_AFRIKAANS_PROMPT);
+    if (clientPrompt) {
+      groqForm.set("prompt", clientPrompt);
+    } else if (language === "af") {
+      groqForm.set("prompt", GROQ_AFRIKAANS_PROMPT);
+    }
 
     let groqResponse;
     try {
@@ -246,9 +415,11 @@ export default {
       return jsonResponse(groqResponse.status, { error: message }, origin, env);
     }
 
+    const activePrompt = clientPrompt || (language === "af" ? GROQ_AFRIKAANS_PROMPT : "");
     const normalize = (s) => s.toLowerCase().replace(/[^\p{L}\s]/gu, " ").split(/\s+/).filter(Boolean);
-    const promptWords = new Set(normalize(GROQ_AFRIKAANS_PROMPT));
+    const promptWords = new Set(normalize(activePrompt));
     const echoesPrompt = (text) => {
+      if (!promptWords.size) return false;
       const words = normalize(text);
       if (words.length < 3) return false;
       const hits = words.filter((word) => promptWords.has(word)).length;
@@ -264,7 +435,7 @@ export default {
       const compressionRatio = Number(segment.compression_ratio);
       const likelySilence = noSpeechProbability > 0.6 && averageLogProbability < -1;
       const repeatedLoop = compressionRatio > 2.4;
-      if (language === "af" && echoesPrompt(text)) return true;
+      if (echoesPrompt(text)) return true;
       return likelySilence || repeatedLoop;
     };
 

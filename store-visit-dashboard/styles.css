@@ -1010,6 +1010,31 @@ th {
   outline-offset: 1px;
 }
 
+.resultOption.primaryResult {
+  min-height: 38px;
+  padding: 8px 13px;
+  font-size: 11px;
+}
+
+.resultOption.secondaryResult {
+  padding: 5px 8px;
+  border-style: dashed;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.resultOption.secondaryResult.selected {
+  border-style: solid;
+  background: #e9eff3;
+  color: var(--navy);
+}
+
+#storeNameField[hidden],
+#storeCodeField[hidden] {
+  display: none;
+}
+
 .standardEvidence {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(160px, 0.8fr);

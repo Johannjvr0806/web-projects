@@ -36,8 +36,25 @@ const standards = {
   ]
 };
 
+const PRELOADED_STORES = [
+  ["CC22", "Clothing Highveld"],
+  ["CC67", "Clothing Middelburg"],
+  ["CD19", "Clothing Brooklyn"],
+  ["CD92", "Clothing Groblersdal"],
+  ["CE16", "Clothing Ben Fleur"],
+  ["CE29", "Clothing Queenswood"],
+  ["CE47", "Clothing Midwater"],
+  ["CE50", "Clothing Waverley Plaza"],
+  ["CE58", "Clothing Glenfair Boulevard"],
+  ["CH41", "Clothing Bronkhorstspruit"],
+  ["CH43", "Clothing Hillcrest Boulevard"],
+  ["CH71", "Clothing Saveways Crescent"],
+  ["CJ42", "Clothing Silver Water"]
+].map(([storeCode, storeName]) => ({ storeCode, storeName, manager: "" }));
+
 const OPERATIONAL_SECTIONS = ["Sales Floor", "Back of House", "Previous Actions"];
 const LEADERSHIP_SECTIONS = ["Leadership and Culture"];
+const AUDIT_SECTIONS = Object.keys(standards);
 
 const STORAGE_KEYS = {
   actions: "actions",
@@ -162,13 +179,25 @@ function addDaysToIsoDate(baseIso, days) {
 }
 
 function getKnownStores() {
-  const map = new Map();
+  const map = new Map(PRELOADED_STORES.map((store) => [store.storeCode.toLowerCase(), { ...store }]));
   visits().forEach((item) => {
-    const key = (item.storeCode || item.storeName || "").trim().toLowerCase();
+    const storeCode = (item.storeCode || "").trim();
+    const storeName = (item.storeName || "").trim();
+    const codeKey = storeCode.toLowerCase();
+    const nameKey = storeName.toLowerCase();
+    const existing = codeKey && map.has(codeKey)
+      ? [codeKey, map.get(codeKey)]
+      : [...map.entries()].find(([, store]) => store.storeName.trim().toLowerCase() === nameKey);
+    if (existing) {
+      const [key, store] = existing;
+      map.set(key, { ...store, manager: store.manager || item.manager || "" });
+      return;
+    }
+    const key = codeKey || nameKey;
     if (!key) return;
     map.set(key, {
-      storeName: item.storeName || "",
-      storeCode: item.storeCode || "",
+      storeName,
+      storeCode,
       manager: item.manager || ""
     });
   });
@@ -242,6 +271,15 @@ function dashboard() {
 function visit() {
   const savedSettings = getSettings();
   const knownStores = getKnownStores();
+  const draftStoreCode = (draft.storeCode || "").trim().toLowerCase();
+  const draftStoreName = (draft.storeName || "").trim().toLowerCase();
+  const savedStoreIndex = knownStores.findIndex((store) => draftStoreCode
+    ? store.storeCode.trim().toLowerCase() === draftStoreCode
+    : draftStoreName && store.storeName.trim().toLowerCase() === draftStoreName);
+  const savedStore = savedStoreIndex >= 0 ? knownStores[savedStoreIndex] : null;
+  const selectedStore = savedStoreIndex >= 0
+    ? String(savedStoreIndex)
+    : (draftStoreName || draftStoreCode || !knownStores.length ? "new" : "");
   content.innerHTML = `<div class="visitToolbar">
     <div class="visitToolbarCopy"><span class="stepBadge">1</span><div>
       <h2>Store Visit Audit - Data Capture</h2>
@@ -255,12 +293,15 @@ function visit() {
   </div>
   <div class="card visitDetailsCard">
     <div class="sectionTitle"><h2>Visit Details</h2><span class="pill amber" id="draftStatusPill">Draft · Auto-saved</span></div>
-    <datalist id="storeNameList">${knownStores.map((s) => `<option value="${escapeHtml(s.storeName)}">${escapeHtml(s.storeCode)}</option>`).join("")}</datalist>
-    <datalist id="storeCodeList">${knownStores.map((s) => `<option value="${escapeHtml(s.storeCode)}">${escapeHtml(s.storeName)}</option>`).join("")}</datalist>
     <div class="formGrid visitDetailsGrid">
-      <div class="field"><label for="storeName">STORE NAME *</label><input id="storeName" list="storeNameList" value="${escapeHtml(draft.storeName)}" placeholder="Select or enter store" required></div>
-      <div class="field"><label for="storeCode">STORE CODE *</label><input id="storeCode" list="storeCodeList" value="${escapeHtml(draft.storeCode)}" placeholder="Store code" required></div>
-      <div class="field"><label for="manager">STORE MANAGER</label><input id="manager" value="${escapeHtml(draft.manager)}" placeholder="Store manager"></div>
+      <div class="field"><label for="storeSelect">SELECT STORE *</label><select id="storeSelect">
+        <option value="" ${selectedStore === "" ? "selected" : ""}>Select a saved store</option>
+        ${knownStores.map((store, index) => `<option value="${index}" ${selectedStore === String(index) ? "selected" : ""}>${escapeHtml(store.storeName)} (${escapeHtml(store.storeCode || "No code")})</option>`).join("")}
+        <option value="new" ${selectedStore === "new" ? "selected" : ""}>+ Add a new store</option>
+      </select></div>
+      <div class="field" id="storeNameField" ${selectedStore === "new" ? "" : "hidden"}><label for="storeName">STORE NAME *</label><input id="storeName" value="${escapeHtml(savedStore?.storeName || draft.storeName)}" placeholder="Store name"></div>
+      <div class="field" id="storeCodeField" ${selectedStore === "new" ? "" : "hidden"}><label for="storeCode">STORE CODE *</label><input id="storeCode" value="${escapeHtml(savedStore?.storeCode || draft.storeCode)}" placeholder="Store code"></div>
+      <div class="field"><label for="manager">STORE MANAGER</label><input id="manager" value="${escapeHtml(draft.manager || savedStore?.manager)}" placeholder="Store manager"></div>
       <div class="field"><label for="areaManager">AREA MANAGER</label><input id="areaManager" value="${escapeHtml(draft.areaManager || savedSettings.areaManager)}"></div>
       <div class="field"><label for="visitDate">VISIT DATE *</label><input id="visitDate" type="date" value="${escapeHtml(draft.date)}"></div>
       <div class="field"><label for="visitType">VISIT TYPE</label><select id="visitType">
@@ -340,6 +381,12 @@ function renderStandardWorkspace(section) {
     </button>`;
   }).join("");
   const resultOptions = ["Compliant", "Partially Compliant", "Action Required", "Not Observed", "Not Applicable"];
+  const primaryResults = ["Compliant", "Partially Compliant", "Action Required"];
+  const isLastStandard = activeStandardIndex === items.length - 1;
+  const hasNextSection = AUDIT_SECTIONS.indexOf(section) < AUDIT_SECTIONS.length - 1;
+  const nextButtonLabel = isLastStandard
+    ? hasNextSection ? "Next section" : "View summary"
+    : "Next standard";
   return `<div class="auditPanel">
     <aside class="standardNav"><h2>${escapeHtml(section)} Standards</h2>${list}</aside>
     <section class="standardEditor">
@@ -348,7 +395,7 @@ function renderStandardWorkspace(section) {
         <p>Check that the standard is in place, open and customer-ready.</p>
       </div><span class="standardCount">${activeStandardIndex + 1} / ${items.length}</span></div>
       <fieldset class="resultField"><legend>Result *</legend><div class="resultOptions">
-        ${resultOptions.map((result) => `<button type="button" class="resultOption ${selected.result === result ? `selected ${statusClass(result)}` : ""}"
+        ${resultOptions.map((result) => `<button type="button" class="resultOption ${primaryResults.includes(result) ? "primaryResult" : "secondaryResult"} ${selected.result === result ? `selected ${statusClass(result)}` : ""}"
           data-result-key="${escapeHtml(selectedKey)}" data-result-value="${escapeHtml(result)}">${escapeHtml(result)}</button>`).join("")}
       </div></fieldset>
       <div class="standardEvidence">
@@ -374,7 +421,7 @@ function renderStandardWorkspace(section) {
       </div>
       <div class="standardPager">
         <button class="secondary" data-standard-prev ${activeStandardIndex === 0 ? "disabled" : ""}>Previous</button>
-        <button class="secondary" data-standard-next ${activeStandardIndex === items.length - 1 ? "disabled" : ""}>Next standard</button>
+        <button class="secondary" data-standard-next>${nextButtonLabel}</button>
       </div>
     </section>
   </div>`;
@@ -1491,9 +1538,15 @@ document.addEventListener("click", (event) => {
     renderAudit();
     return;
   }
-  if (target.closest("[data-standard-next]") && activeStandardIndex < standards[activeTab].length - 1) {
+  if (target.closest("[data-standard-next]")) {
     quietAutoSave();
-    activeStandardIndex += 1;
+    if (activeStandardIndex < standards[activeTab].length - 1) {
+      activeStandardIndex += 1;
+    } else {
+      const sectionIndex = AUDIT_SECTIONS.indexOf(activeTab);
+      activeTab = AUDIT_SECTIONS[sectionIndex + 1] || "Summary";
+      activeStandardIndex = 0;
+    }
     renderAudit();
     return;
   }
@@ -1593,6 +1646,43 @@ document.addEventListener("input", (event) => {
 document.addEventListener("change", (event) => {
   const target = event.target;
   if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return;
+  if (target.matches("#storeSelect")) {
+    const nameField = $("#storeNameField");
+    const codeField = $("#storeCodeField");
+    if (target.value === "new") {
+      if (nameField.hidden) {
+        $("#storeName").value = "";
+        $("#storeCode").value = "";
+        $("#manager").value = "";
+        draft.manager = "";
+      }
+      nameField.hidden = false;
+      codeField.hidden = false;
+      $("#storeName").focus();
+    } else if (target.value === "") {
+      nameField.hidden = true;
+      codeField.hidden = true;
+      $("#storeName").value = "";
+      $("#storeCode").value = "";
+      $("#manager").value = "";
+      draft.manager = "";
+    } else {
+      const storeIndex = Number(target.value);
+      const store = getKnownStores()[storeIndex];
+      if (!Number.isInteger(storeIndex) || !store) {
+        showStatus("The selected saved store could not be found. Refresh the page and try again.", true);
+        return;
+      }
+      nameField.hidden = true;
+      codeField.hidden = true;
+      $("#storeName").value = store.storeName;
+      $("#storeCode").value = store.storeCode;
+      $("#manager").value = store.manager;
+      draft.manager = store.manager;
+    }
+    quietAutoSave();
+    return;
+  }
   if (target.id === "importBackupInput" && target.files?.[0]) {
     importBackup(target.files[0]);
     target.value = "";

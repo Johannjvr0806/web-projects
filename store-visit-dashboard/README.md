@@ -10,6 +10,7 @@ To install it on a device, open the dashboard's HTTPS address in Microsoft Edge 
 
 - Compact dashboard and responsive sidebar navigation
 - Visit details and tabbed Sales Floor, Back of House, Leadership, Previous Actions, and Summary sections
+- Preloaded store selector with automatic store-code and known-manager fill, plus manual entry for additional stores
 - Original eight-item Store Audit checklist
 - Standard results, observations, corrective actions, owners, priorities, and due dates
 - Add Issue notes and camera/photo capture

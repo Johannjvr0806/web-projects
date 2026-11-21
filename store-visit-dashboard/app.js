@@ -36,16 +36,8 @@ const standards = {
   ]
 };
 
-const storeChecklist = [
-  "Store Numbers (Manager alignment check)",
-  "New Trade Update executed",
-  "Floor Layout (Fully merchandised & full)",
-  "Flat Pack Tables (Standards check)",
-  "Hanger Disciplines (Sizing clips & sorting)",
-  "Signage Compliance (Matches product/promo)",
-  "Stockroom & Lay-Bye Management",
-  "Manager's Office Files updated"
-];
+const OPERATIONAL_SECTIONS = ["Sales Floor", "Back of House", "Previous Actions"];
+const LEADERSHIP_SECTIONS = ["Leadership and Culture"];
 
 const STORAGE_KEYS = {
   actions: "actions",
@@ -60,6 +52,7 @@ const pendingPhotoReads = new Set();
 let actionStatusFilter = "All statuses";
 let activeTab = "Sales Floor";
 let activeStandardIndex = 0;
+let autoSaveTimer = null;
 const actionFilters = { store: "All stores", status: "All statuses", priority: "All priorities", overdue: false };
 let startupError = null;
 let draft;
@@ -95,7 +88,6 @@ function createDraft() {
     id: createId(),
     date: new Date().toISOString().slice(0, 10),
     answers: {},
-    checklist: {},
     issues: []
   };
 }
@@ -108,7 +100,6 @@ function loadDraft() {
     ...createDraft(),
     ...saved,
     answers: saved.answers || {},
-    checklist: saved.checklist || {},
     issues: Array.isArray(saved.issues) ? saved.issues : []
   };
 }
@@ -151,6 +142,39 @@ function badge() {
   $("#actionBadge").textContent = String(openCount);
 }
 
+function toggleSidebar(forceOpen) {
+  const sidebar = $("#sidebar");
+  const backdrop = $("#sidebarBackdrop");
+  const isOpen = typeof forceOpen === "boolean"
+    ? forceOpen
+    : !sidebar.classList.contains("open");
+  sidebar.classList.toggle("open", isOpen);
+  if (backdrop) backdrop.classList.toggle("open", isOpen);
+  if (backdrop) backdrop.setAttribute("aria-hidden", String(!isOpen));
+  $("#menuBtn")?.setAttribute("aria-expanded", String(isOpen));
+}
+
+function addDaysToIsoDate(baseIso, days) {
+  const start = baseIso ? new Date(`${baseIso}T00:00:00`) : new Date();
+  if (Number.isNaN(start.getTime())) return "";
+  start.setDate(start.getDate() + days);
+  return start.toISOString().slice(0, 10);
+}
+
+function getKnownStores() {
+  const map = new Map();
+  visits().forEach((item) => {
+    const key = (item.storeCode || item.storeName || "").trim().toLowerCase();
+    if (!key) return;
+    map.set(key, {
+      storeName: item.storeName || "",
+      storeCode: item.storeCode || "",
+      manager: item.manager || ""
+    });
+  });
+  return [...map.values()];
+}
+
 function go(page) {
   const pages = {
     dashboard: ["Dashboard", "Store standards, actions and visit follow-up.", dashboard],
@@ -159,7 +183,7 @@ function go(page) {
     history: ["Visit History", "Review completed store visits.", history],
     reports: ["Reports", "Open and download completed visit reports.", reports],
     stores: ["Store List", "Stores are collected from your completed visits.", stores],
-    settings: ["Settings", "Manage defaults for your visit reports.", settings]
+    settings: ["Settings", "Manage defaults and device backups for your visit reports.", settings]
   };
   const pageInfo = pages[page] || pages.dashboard;
   document.body.classList.toggle("visit-mode", page === "visit");
@@ -169,7 +193,7 @@ function go(page) {
   $("#pageTitle").textContent = pageInfo[0];
   $("#pageSub").textContent = pageInfo[1];
   pageInfo[2]();
-  $("#sidebar").classList.remove("open");
+  toggleSidebar(false);
   showStatus("");
 }
 
@@ -217,6 +241,7 @@ function dashboard() {
 
 function visit() {
   const savedSettings = getSettings();
+  const knownStores = getKnownStores();
   content.innerHTML = `<div class="visitToolbar">
     <div class="visitToolbarCopy"><span class="stepBadge">1</span><div>
       <h2>Store Visit Audit - Data Capture</h2>
@@ -229,10 +254,12 @@ function visit() {
     </div>
   </div>
   <div class="card visitDetailsCard">
-    <div class="sectionTitle"><h2>Visit Details</h2><span class="pill amber">Draft</span></div>
+    <div class="sectionTitle"><h2>Visit Details</h2><span class="pill amber" id="draftStatusPill">Draft · Auto-saved</span></div>
+    <datalist id="storeNameList">${knownStores.map((s) => `<option value="${escapeHtml(s.storeName)}">${escapeHtml(s.storeCode)}</option>`).join("")}</datalist>
+    <datalist id="storeCodeList">${knownStores.map((s) => `<option value="${escapeHtml(s.storeCode)}">${escapeHtml(s.storeName)}</option>`).join("")}</datalist>
     <div class="formGrid visitDetailsGrid">
-      <div class="field"><label for="storeName">STORE NAME *</label><input id="storeName" value="${escapeHtml(draft.storeName)}" placeholder="Select or enter store" required></div>
-      <div class="field"><label for="storeCode">STORE CODE *</label><input id="storeCode" value="${escapeHtml(draft.storeCode)}" placeholder="Store code" required></div>
+      <div class="field"><label for="storeName">STORE NAME *</label><input id="storeName" list="storeNameList" value="${escapeHtml(draft.storeName)}" placeholder="Select or enter store" required></div>
+      <div class="field"><label for="storeCode">STORE CODE *</label><input id="storeCode" list="storeCodeList" value="${escapeHtml(draft.storeCode)}" placeholder="Store code" required></div>
       <div class="field"><label for="manager">STORE MANAGER</label><input id="manager" value="${escapeHtml(draft.manager)}" placeholder="Store manager"></div>
       <div class="field"><label for="areaManager">AREA MANAGER</label><input id="areaManager" value="${escapeHtml(draft.areaManager || savedSettings.areaManager)}"></div>
       <div class="field"><label for="visitDate">VISIT DATE *</label><input id="visitDate" type="date" value="${escapeHtml(draft.date)}"></div>
@@ -261,15 +288,40 @@ function renderIssueCards(issues) {
   </article>`).join("");
 }
 
+function getFlaggedStandards(answers = draft.answers) {
+  return Object.entries(answers)
+    .filter(([, answer]) => ["Action Required", "Partially Compliant"].includes(answer?.result))
+    .map(([key, answer]) => {
+      const section = key.split("-").slice(0, -1).join("-");
+      const index = Number(key.split("-").at(-1));
+      return {
+        key,
+        section,
+        index,
+        title: standards[section]?.[index] || key,
+        result: answer.result,
+        observation: answer.observation || "",
+        action: answer.action || "",
+        owner: answer.owner || "Store Manager",
+        priority: answer.priority || "Medium",
+        dueDate: answer.dueDate || "",
+        hasPhoto: Boolean(answer.photo)
+      };
+    });
+}
+
 function renderAudit() {
   const audit = $("#audit");
-  const tabs = [...Object.entries(standards).map(([name, items]) => [name, items.length]), ["Summary", storeChecklist.length]];
+  const summaryBadgeCount = getFlaggedStandards().length + (draft.issues?.length || 0);
+  const tabs = [
+    ...Object.entries(standards).map(([name, items]) => [name, items.length]),
+    ["Summary", summaryBadgeCount]
+  ];
   audit.innerHTML = `<div class="auditTabs" role="tablist">
     ${tabs.map(([name, count]) => `<button role="tab" class="${activeTab === name ? "active" : ""}" aria-selected="${activeTab === name}"
       data-audit-tab="${escapeHtml(name)}">${escapeHtml(name)} <span>${count}</span></button>`).join("")}
   </div>
   ${activeTab === "Summary" ? renderAuditSummary() : renderStandardWorkspace(activeTab)}`;
-  updateChecklistProgress();
 }
 
 function renderStandardWorkspace(section) {
@@ -328,21 +380,73 @@ function renderStandardWorkspace(section) {
   </div>`;
 }
 
+function sectionScore(section, answers = draft.answers) {
+  const keys = standards[section].map((_, index) => `${section}-${index}`);
+  return score(keys, answers);
+}
+
 function renderAuditSummary() {
-  const checks = storeChecklist.map((item, index) => `
-    <label class="checklist-item">
-      <input type="checkbox" data-store-check="${index}" ${draft.checklist[index] ? "checked" : ""}>
-      <span class="checkmark" aria-hidden="true"></span>
-      <span class="checklist-copy"><strong>${escapeHtml(item)}</strong></span>
-      <span class="item-status">${draft.checklist[index] ? "DONE" : "TO DO"}</span>
-    </label>`).join("");
+  const allStandardKeys = Object.entries(standards)
+    .flatMap(([section, items]) => items.map((_, index) => `${section}-${index}`));
+  const totalStandards = allStandardKeys.length;
+  const ratedCount = allStandardKeys.filter((key) => Boolean(draft.answers[key]?.result)).length;
+  const flagged = getFlaggedStandards(draft.answers);
+  const opScore = operationalScore();
+  const leadScore = leadershipScore();
+
+  const sectionBreakdown = Object.entries(standards).map(([section, items]) => {
+    const sectionKeys = items.map((_, index) => `${section}-${index}`);
+    const completed = sectionKeys.filter((key) => Boolean(draft.answers[key]?.result)).length;
+    const scoredCount = sectionKeys.filter((key) =>
+      ["Compliant", "Partially Compliant", "Action Required"].includes(draft.answers[key]?.result)
+    ).length;
+    const pct = sectionScore(section);
+    const actionCount = sectionKeys.filter((key) =>
+      ["Action Required", "Partially Compliant"].includes(draft.answers[key]?.result)
+    ).length;
+    const scorePillClass = !scoredCount ? "neutral" : pct >= 80 ? "closed" : pct >= 60 ? "amber" : "open";
+    return `<div class="summarySectionRow">
+      <div><strong>${escapeHtml(section)}</strong><small>${completed} / ${items.length} rated</small></div>
+      <div class="summarySectionPills">
+        <span class="pill ${scorePillClass}">${scoredCount ? `${pct}% score` : "Unscored"}</span>
+        <span class="pill ${actionCount ? "open" : "neutral"}">${actionCount} flagged</span>
+      </div>
+    </div>`;
+  }).join("");
+
+  const flaggedHtml = flagged.length
+    ? flagged.map((item) => `<article class="summaryFlaggedItem">
+        <div>
+          <span class="pill ${statusClass(item.result)}">${escapeHtml(item.result)}</span>
+          <strong>${escapeHtml(item.section)} — ${item.index + 1}. ${escapeHtml(item.title)}</strong>
+          ${item.observation ? `<p class="muted">${escapeHtml(item.observation)}</p>` : ""}
+          <small>Action: ${escapeHtml(item.action || "Corrective action needed")} · Owner: ${escapeHtml(item.owner)}${item.dueDate ? ` · Due: ${escapeHtml(item.dueDate)}` : ""}${item.hasPhoto ? " · Photo attached" : ""}</small>
+        </div>
+        <button class="secondary" type="button" data-jump-section="${escapeHtml(item.section)}" data-jump-index="${item.index}">Review</button>
+      </article>`).join("")
+    : '<div class="empty">No standards marked Action Required or Partially Compliant yet.</div>';
+
   return `<div class="summaryWorkspace">
-    <section class="card summaryChecklist"><div class="sectionTitle"><div><h2>Store Audit Checklist</h2>
-      <p class="muted">Original checklist items are preserved here.</p></div><span class="pill amber" id="checklistProgress"></span></div>
-      <div class="checklist">${checks}</div>
+    <section class="card summaryChecklist">
+      <div class="sectionTitle">
+        <div><h2>Visit Results Roll-Up</h2><p class="muted">Live ratings and follow-ups from your audit tabs.</p></div>
+        <span class="pill amber">${ratedCount} / ${totalStandards} rated</span>
+      </div>
+      <div class="summaryStatsGrid">
+        <div class="metric"><small>OPERATIONAL</small><strong>${opScore}%</strong></div>
+        <div class="metric"><small>LEADERSHIP</small><strong>${leadScore}%</strong></div>
+        <div class="metric"><small>FLAGGED ITEMS</small><strong>${flagged.length}</strong></div>
+        <div class="metric"><small>VISIT ISSUES</small><strong>${draft.issues.length}</strong></div>
+      </div>
+      <div class="summarySectionList">${sectionBreakdown}</div>
+      <div class="summaryFlaggedBlock">
+        <h3>Action Required &amp; Partially Compliant (${flagged.length})</h3>
+        <div class="summaryFlaggedList">${flaggedHtml}</div>
+      </div>
     </section>
-    <section class="card summaryIssues"><div class="sectionTitle"><h2>Issues &amp; Notes</h2>
-      <span class="pill amber">${draft.issues.length} ${draft.issues.length === 1 ? "issue" : "issues"}</span></div>
+    <section class="card summaryIssues">
+      <div class="sectionTitle"><h2>Issues &amp; Notes</h2>
+        <span class="pill amber">${draft.issues.length} ${draft.issues.length === 1 ? "issue" : "issues"}</span></div>
       <p class="muted">Add an issue note, a photo, or both. Issues are added to the Action Tracker when the visit is completed.</p>
       <form id="issueForm" class="issueForm">
         <div class="field"><label for="issueComment">ISSUE NOTE</label><textarea id="issueComment" rows="2" placeholder="What needs follow-up?"></textarea></div>
@@ -391,7 +495,7 @@ function renderActionPanel() {
         <div class="field"><label>REQUIRED ACTION</label><input name="action" required></div>
         <div class="field"><label>OWNER</label><input name="owner" value="Store Manager"></div>
         <div class="field"><label>PRIORITY</label><select name="priority"><option>Medium</option><option>Low</option><option>High</option><option>Critical</option></select></div>
-        <div class="field"><label>DUE DATE</label><input name="dueDate" type="date"></div>
+        <div class="field"><label>DUE DATE</label><input name="dueDate" type="date" value="${addDaysToIsoDate(draft.date, 7)}"></div>
       </div>
       <button class="primary" type="submit">Save Action</button>
     </form>
@@ -430,7 +534,7 @@ function renderHistoryPanel() {
 function renderReportPreview() {
   const latest = visits().slice(-1)[0];
   if (!latest) return `<section class="card reportPreviewSection">
-    <div class="panelHeading"><div><span class="stepBadge">4</span><div><h2>Example PDF Report - Store Visit Report (Preview)</h2><p>Reports include the checklist, findings, actions and photo evidence.</p></div></div></div>
+    <div class="panelHeading"><div><span class="stepBadge">4</span><div><h2>Example PDF Report - Store Visit Report (Preview)</h2><p>Reports include the summary, findings, actions and photo evidence.</p></div></div></div>
     <div class="empty">Complete a visit to see its report preview here.</div>
   </section>`;
   const findings = Object.entries(latest.answers || {}).filter(([, answer]) => answer.result);
@@ -453,8 +557,8 @@ function renderReportPreview() {
       <article class="pdfPage"><div class="pdfBrand">PnP <span>Clothing</span></div><h3>Sales Floor Findings</h3>
         ${issueCards("Sales Floor")}<small>Page 2 · Sales floor findings</small>
       </article>
-      <article class="pdfPage"><div class="pdfBrand">PnP <span>Clothing</span></div><h3>Back of House Findings</h3>
-        ${issueCards("Back of House")}<h4>Visit Issues</h4><p>${(latest.issues || []).length} issue(s) recorded</p><small>Page 3 · Follow-up and evidence</small>
+      <article class="pdfPage"><div class="pdfBrand">PnP <span>Clothing</span></div><h3>Leadership &amp; Back of House</h3>
+        ${issueCards("Leadership and Culture")}${issueCards("Back of House")}<h4>Visit Issues</h4><p>${(latest.issues || []).length} issue(s) recorded</p><small>Page 3 · Follow-up and evidence</small>
       </article>
     </div>
   </section>`;
@@ -462,13 +566,6 @@ function renderReportPreview() {
 
 function safe(value) {
   return value.replaceAll(" ", "_");
-}
-
-function updateChecklistProgress() {
-  const progress = $("#checklistProgress");
-  if (!progress) return;
-  const complete = Object.values(draft.checklist).filter(Boolean).length;
-  progress.textContent = `${complete} / ${storeChecklist.length} complete`;
 }
 
 function trackPhotoRead(promise) {
@@ -481,13 +578,20 @@ function trackPhotoRead(promise) {
 }
 
 function collectVisit() {
-  draft.storeName = $("#storeName").value.trim();
-  draft.storeCode = $("#storeCode").value.trim();
-  draft.manager = $("#manager").value.trim();
-  draft.areaManager = $("#areaManager").value.trim();
-  draft.date = $("#visitDate").value;
-  draft.visitType = $("#visitType").value;
-  draft.focus = $("#focus").value.trim();
+  const storeNameEl = $("#storeName");
+  const storeCodeEl = $("#storeCode");
+  if (storeNameEl) draft.storeName = storeNameEl.value.trim();
+  if (storeCodeEl) draft.storeCode = storeCodeEl.value.trim();
+  const managerEl = $("#manager");
+  const areaManagerEl = $("#areaManager");
+  const visitDateEl = $("#visitDate");
+  const visitTypeEl = $("#visitType");
+  const focusEl = $("#focus");
+  if (managerEl) draft.manager = managerEl.value.trim();
+  if (areaManagerEl) draft.areaManager = areaManagerEl.value.trim();
+  if (visitDateEl) draft.date = visitDateEl.value;
+  if (visitTypeEl) draft.visitType = visitTypeEl.value;
+  if (focusEl) draft.focus = focusEl.value.trim();
   const activeKey = `${activeTab}-${activeStandardIndex}`;
   const activeAnswer = draft.answers[activeKey];
   if (activeAnswer) {
@@ -496,6 +600,22 @@ function collectVisit() {
     });
   }
   return draft;
+}
+
+function quietAutoSave() {
+  try {
+    collectVisit();
+    DB.set(STORAGE_KEYS.draft, draft);
+    const pill = $("#draftStatusPill");
+    if (pill) pill.textContent = `Draft · Saved ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  } catch {
+    // Ignore background storage quota issues until explicit save
+  }
+}
+
+function scheduleAutoSave() {
+  window.clearTimeout(autoSaveTimer);
+  autoSaveTimer = window.setTimeout(quietAutoSave, 450);
 }
 
 function compressPhoto(file) {
@@ -539,17 +659,19 @@ async function saveDraft() {
     await Promise.all([...pendingPhotoReads]);
     collectVisit();
     DB.set(STORAGE_KEYS.draft, draft);
+    const pill = $("#draftStatusPill");
+    if (pill) pill.textContent = `Draft · Saved ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
     showStatus("Draft saved on this device.");
   } catch (error) {
     showStatus(error.message || "The draft could not be saved. Check available browser storage.", true);
   }
 }
 
-function score(keys) {
+function score(keys, answers = draft.answers) {
   let points = 0;
   let count = 0;
   keys.forEach((key) => {
-    const result = draft.answers[key]?.result;
+    const result = answers[key]?.result;
     if (result === "Compliant") {
       points += 1;
       count += 1;
@@ -563,14 +685,16 @@ function score(keys) {
   return count ? Math.round((points / count) * 100) : 0;
 }
 
-function operationalScore() {
-  const keys = ["Sales Floor", "Back of House", "Previous Actions"]
+function operationalScore(answers = draft.answers) {
+  const keys = OPERATIONAL_SECTIONS
     .flatMap((section) => standards[section].map((_, index) => `${section}-${index}`));
-  return score(keys);
+  return score(keys, answers);
 }
 
-function leadershipScore() {
-  return score(standards["Leadership and Culture"].map((_, index) => `Leadership and Culture-${index}`));
+function leadershipScore(answers = draft.answers) {
+  const keys = LEADERSHIP_SECTIONS
+    .flatMap((section) => standards[section].map((_, index) => `${section}-${index}`));
+  return score(keys, answers);
 }
 
 function buildActions() {
@@ -581,12 +705,12 @@ function buildActions() {
       id: `${draft.id}-standard-${safe(key)}`,
       visitId: draft.id,
       store: `${draft.storeName} ${draft.storeCode}`,
-      area: key.split("-")[0],
+      area: key.split("-").slice(0, -1).join("-"),
       issue: answer.observation || key,
       action: answer.action || "Correct standard",
       owner: answer.owner || "Store Manager",
       priority: answer.priority || "Medium",
-      dueDate: answer.dueDate || "",
+      dueDate: answer.dueDate || addDaysToIsoDate(draft.date, 7),
       photo: answer.photo || "",
       status: "Open"
     });
@@ -601,7 +725,7 @@ function buildActions() {
       action: "Review and resolve the visit issue",
       owner: "Store Manager",
       priority: "Medium",
-      dueDate: "",
+      dueDate: addDaysToIsoDate(draft.date, 7),
       photo: issue.imageUrl || "",
       status: "Open"
     });
@@ -692,9 +816,7 @@ function reports() {
 }
 
 function stores() {
-  const byCode = new Map();
-  visits().forEach((item) => byCode.set(item.storeCode || item.storeName, item));
-  const allStores = [...byCode.values()];
+  const allStores = getKnownStores();
   content.innerHTML = `<div class="card"><div class="sectionTitle"><h2>Stores</h2></div>
     ${allStores.length ? allStores.map((item) => `<div class="storeItem">
       <div><strong>${escapeHtml(item.storeName)}</strong><small>Manager: ${escapeHtml(item.manager || "Not recorded")}</small></div>
@@ -710,20 +832,147 @@ function getSettings() {
   });
 }
 
+function exportBackup() {
+  try {
+    collectVisit();
+    const payload = {
+      app: "pnp-clothing-store-visits",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      data: {
+        visits: visits(),
+        actions: actions(),
+        draft,
+        settings: getSettings()
+      }
+    };
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `pnp-store-visits-backup-${dateStamp}.json`;
+    link.hidden = true;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+    showStatus(`Backup exported (${payload.data.visits.length} visits, ${payload.data.actions.length} actions).`);
+  } catch (error) {
+    showStatus(error.message || "Backup could not be exported.", true);
+  }
+}
+
+function mergeById(existingList, incomingList) {
+  const map = new Map();
+  existingList.forEach((item) => {
+    if (item && item.id) map.set(item.id, item);
+  });
+  incomingList.forEach((item) => {
+    if (item && item.id) map.set(item.id, item);
+  });
+  return [...map.values()];
+}
+
+function importBackup(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.addEventListener("error", () => {
+    showStatus("The selected backup file could not be read.", true);
+  });
+  reader.addEventListener("load", () => {
+    try {
+      const parsed = JSON.parse(String(reader.result || ""));
+      const incoming = parsed?.data || parsed;
+      if (!incoming || !Array.isArray(incoming.visits) || !Array.isArray(incoming.actions)) {
+        throw new Error("Invalid backup file. Choose a JSON backup exported from this app.");
+      }
+      const mergedVisits = mergeById(visits(), incoming.visits);
+      const mergedActions = mergeById(actions(), incoming.actions);
+      DB.set(STORAGE_KEYS.visits, mergedVisits);
+      DB.set(STORAGE_KEYS.actions, mergedActions);
+
+      if (incoming.settings && typeof incoming.settings === "object") {
+        DB.set(STORAGE_KEYS.settings, { ...getSettings(), ...incoming.settings });
+      }
+      if (incoming.draft && typeof incoming.draft === "object") {
+        const hasCurrentWork = Boolean(
+          draft.storeName ||
+          draft.storeCode ||
+          Object.keys(draft.answers || {}).length ||
+          (draft.issues || []).length
+        );
+        if (!hasCurrentWork) {
+          draft = {
+            ...createDraft(),
+            ...incoming.draft,
+            answers: incoming.draft.answers || {},
+            issues: Array.isArray(incoming.draft.issues) ? incoming.draft.issues : []
+          };
+          DB.set(STORAGE_KEYS.draft, draft);
+        }
+      }
+      badge();
+      settings();
+      showStatus(`Backup restored: ${mergedVisits.length} total visits and ${mergedActions.length} total actions on this device.`);
+    } catch (error) {
+      showStatus(error.message || "The backup file could not be restored.", true);
+    }
+  });
+  reader.readAsText(file);
+}
+
 function settings() {
   const saved = getSettings();
+  const savedVisitsCount = visits().length;
+  const savedActionsCount = actions().length;
   content.innerHTML = `<div class="card"><h2>Settings</h2>
     <form id="settingsForm" class="formGrid settingsForm">
       <div class="field"><label for="settingManager">DEFAULT AREA MANAGER</label><input id="settingManager" value="${escapeHtml(saved.areaManager)}"></div>
       <div class="field"><label for="settingBrand">REPORT BRAND</label><input id="settingBrand" value="${escapeHtml(saved.reportBrand)}"></div>
       <button class="primary" type="submit">Save Settings</button>
     </form>
-    <p class="note">Visits, actions, drafts and compressed photos are stored in this browser profile. This standalone prototype does not sync across devices.</p>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <div class="sectionTitle">
+      <div><h2>Backup &amp; Device Transfer</h2><p class="muted">Export your visits, actions, photos and current draft to move them between devices or keep a safe copy.</p></div>
+      <span class="pill amber">${savedVisitsCount} visits · ${savedActionsCount} actions</span>
+    </div>
+    <p class="backupTransferGuide">Whenever you want to move your visits between your phone and laptop, open Settings, tap <b>Export Backup (.json)</b>, send that file to your other device, and tap <b>Restore Backup (.json)</b>.</p>
+    <div class="toolbar">
+      <button class="primary" type="button" data-export-backup>Export Backup (.json)</button>
+      <label class="secondary" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">
+        <span>Restore Backup (.json)</span>
+        <input type="file" id="importBackupInput" accept=".json,application/json" hidden>
+      </label>
+    </div>
+    <p class="note">Restoring a backup safely merges imported visits and actions with any existing records on this device without overwriting duplicates.</p>
   </div>`;
 }
 
 function findVisit(id) {
   return visits().find((item) => item.id === id);
+}
+
+function renderReportFindingsGroup(entries, allowedSections, emptyMessage) {
+  const filtered = entries.filter(([key]) => {
+    const section = key.split("-").slice(0, -1).join("-");
+    return allowedSections.includes(section);
+  });
+  if (!filtered.length) return `<div class="empty">${emptyMessage}</div>`;
+  return filtered.map(([key, answer]) => {
+    const section = key.split("-").slice(0, -1).join("-");
+    const index = Number(key.split("-").at(-1));
+    return `<div class="standard reportStandard">
+      <div><h3>${escapeHtml(section)}: ${escapeHtml(standards[section]?.[index] || key)}</h3>
+        <p><b>Result:</b> ${escapeHtml(answer.result || "Not recorded")}</p>
+        ${answer.observation ? `<p><b>Observation:</b> ${escapeHtml(answer.observation)}</p>` : ""}
+        ${answer.action ? `<p><b>Required:</b> ${escapeHtml(answer.action)}</p>` : ""}
+      </div>
+      ${answer.photo ? `<img class="reportPhoto" src="${answer.photo}" alt="Audit evidence photo">` : ""}
+    </div>`;
+  }).join("");
 }
 
 function showReport(item, isDraft = false) {
@@ -732,17 +981,8 @@ function showReport(item, isDraft = false) {
     showStatus("That visit report could not be found.", true);
     return;
   }
-  const checks = storeChecklist.map((label, index) => `
-    <div class="reportCheck"><span>${escapeHtml(label)}</span><b>${item.checklist?.[index] ? "Complete" : "To do"}</b></div>`).join("");
   const answerEntries = Object.entries(item.answers || {});
-  const findings = answerEntries.map(([key, answer]) => `<div class="standard reportStandard">
-    <div><h3>${escapeHtml(key.replace(/-\d+$/, ""))}: ${escapeHtml(standards[key.split("-").slice(0, -1).join("-")]?.[Number(key.split("-").at(-1))] || key)}</h3>
-      <p><b>Result:</b> ${escapeHtml(answer.result || "Not recorded")}</p>
-      ${answer.observation ? `<p><b>Observation:</b> ${escapeHtml(answer.observation)}</p>` : ""}
-      ${answer.action ? `<p><b>Required:</b> ${escapeHtml(answer.action)}</p>` : ""}
-    </div>
-    ${answer.photo ? `<img class="reportPhoto" src="${answer.photo}" alt="Audit evidence photo">` : ""}
-  </div>`).join("");
+  const flaggedItems = answerEntries.filter(([, answer]) => ["Partially Compliant", "Action Required"].includes(answer.result));
   content.innerHTML = `<div class="card">
     <div class="sectionTitle"><div><small>${escapeHtml(getSettings().reportBrand)}</small>
       <h2>${escapeHtml(item.storeName)} (${escapeHtml(item.storeCode)})</h2>
@@ -753,15 +993,22 @@ function showReport(item, isDraft = false) {
       <div class="metric"><small>VISIT DATE</small><strong>${escapeHtml(item.date)}</strong></div>
       <div class="metric"><small>OPERATIONAL</small><strong>${Number(item.operational || 0)}%</strong></div>
       <div class="metric"><small>LEADERSHIP</small><strong>${Number(item.leadership || 0)}%</strong></div>
-      <div class="metric"><small>ACTIONS</small><strong>${(item.issues || []).length + answerEntries.filter(([, answer]) => ["Partially Compliant", "Action Required"].includes(answer.result)).length}</strong></div>
+      <div class="metric"><small>ACTIONS</small><strong>${(item.issues || []).length + flaggedItems.length}</strong></div>
     </div>
     <div class="reportMeta"><span><b>Visit type:</b> ${escapeHtml(item.visitType || "Store audit")}</span>
       <span><b>Store manager:</b> ${escapeHtml(item.manager || "Not recorded")}</span>
       <span><b>Area manager:</b> ${escapeHtml(item.areaManager || "")}</span></div>
   </div>
-  <div class="card"><div class="sectionTitle"><h2>Store Audit Checklist</h2></div>${checks}</div>
-  <div class="card"><div class="sectionTitle"><h2>Operational Standards</h2></div>
-    ${findings || '<div class="empty">No operational standards were recorded.</div>'}</div>
+  <div class="card"><div class="sectionTitle"><h2>Flagged Standards (${flaggedItems.length})</h2></div>
+    ${flaggedItems.length ? flaggedItems.map(([key, answer]) => `<div class="reportCheck">
+      <span><b>${escapeHtml(key.replace(/-\d+$/, ""))}</b> — ${escapeHtml(standards[key.split("-").slice(0, -1).join("-")]?.[Number(key.split("-").at(-1))] || key)}${answer.action ? ` (${escapeHtml(answer.action)})` : ""}</span>
+      <b>${escapeHtml(answer.result)}</b>
+    </div>`).join("") : '<div class="empty">No standards flagged for follow-up.</div>'}
+  </div>
+  <div class="card"><div class="sectionTitle"><h2>Operational Standards (${Number(item.operational || 0)}%)</h2></div>
+    ${renderReportFindingsGroup(answerEntries, OPERATIONAL_SECTIONS, "No operational standards were recorded.")}</div>
+  <div class="card"><div class="sectionTitle"><h2>Leadership &amp; Culture Standards (${Number(item.leadership || 0)}%)</h2></div>
+    ${renderReportFindingsGroup(answerEntries, LEADERSHIP_SECTIONS, "No leadership & culture standards were recorded.")}</div>
   <div class="card"><div class="sectionTitle"><h2>Issues &amp; Notes</h2></div>
     ${item.issues?.length ? item.issues.map((issue) => `<div class="issueCard">
       ${issue.imageUrl ? `<img class="issueImage" src="${issue.imageUrl}" alt="Issue photo">` : '<div class="issueImage issuePlaceholder">!</div>'}
@@ -858,6 +1105,58 @@ function drawSectionHeading(pdf, title, x, y) {
   pdf.line(x, y + 2.5, x + 18, y + 2.5);
 }
 
+function drawStandardsPdfGroup(pdf, title, entries, y, pageHeight, margin, contentWidth, storeName, navy, ink, muted) {
+  if (!entries.length) return y;
+  y = ensureReportSpace(pdf, y, 22, pageHeight, margin, storeName);
+  drawSectionHeading(pdf, title, margin, y);
+  y += 8;
+  const standardWidths = [contentWidth * 0.55, contentWidth * 0.23, contentWidth * 0.22];
+  const standardX = [margin, margin + standardWidths[0], margin + standardWidths[0] + standardWidths[1]];
+  const drawStandardsHeader = () => {
+    pdf.setFillColor(...navy);
+    pdf.roundedRect(margin, y, contentWidth, 12, 1.5, 1.5, "F");
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(255, 255, 255);
+    pdf.text("STANDARD", standardX[0] + 3, y + 7.7);
+    pdf.text("RESULT", standardX[1] + 2, y + 7.7);
+    pdf.text("FOLLOW-UP", standardX[2] + 2, y + 7.7);
+    y += 12;
+  };
+  drawStandardsHeader();
+  entries.forEach(([key, answer], rowIndex) => {
+    const section = key.split("-").slice(0, -1).join("-");
+    const index = Number(key.split("-").at(-1));
+    const label = `${section}: ${standards[section]?.[index] || key}`;
+    const labelLines = pdf.splitTextToSize(label, standardWidths[0] - 7);
+    const resultLines = pdf.splitTextToSize(answer.result, standardWidths[1] - 5);
+    const followUpLines = pdf.splitTextToSize(answer.action || (["Action Required", "Partially Compliant"].includes(answer.result) ? "Action open" : "-"), standardWidths[2] - 5);
+    const rowHeight = Math.max(11, Math.max(labelLines.length, resultLines.length, followUpLines.length) * 4.5 + 5);
+    const previousY = y;
+    y = ensureReportSpace(pdf, y, rowHeight, pageHeight, margin, storeName);
+    if (y < previousY) drawStandardsHeader();
+    if (rowIndex % 2 === 0) {
+      pdf.setFillColor(246, 248, 250);
+      pdf.rect(margin, y, contentWidth, rowHeight, "F");
+    }
+    pdf.setDrawColor(225, 231, 236);
+    pdf.line(margin, y + rowHeight, margin + contentWidth, y + rowHeight);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(8.5);
+    pdf.setTextColor(...ink);
+    pdf.text(labelLines, standardX[0] + 3, y + 5.7);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(...(answer.result === "Compliant" ? [35, 128, 80] : [83, 91, 99]));
+    pdf.text(resultLines, standardX[1] + 2, y + 5.7);
+    pdf.setFont("helvetica", "normal");
+    pdf.setTextColor(...muted);
+    pdf.text(followUpLines, standardX[2] + 2, y + 5.7);
+    y += rowHeight;
+  });
+  return y + 8;
+}
+
 async function downloadReport(item) {
   const JsPdf = getPdfLibraries();
   const pdf = new JsPdf({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -874,7 +1173,9 @@ async function downloadReport(item) {
   const dateValue = item.date
     ? new Intl.DateTimeFormat(undefined, { month: "long", day: "numeric", year: "numeric" }).format(new Date(`${item.date}T00:00:00`))
     : "Not recorded";
-  const checklistComplete = storeChecklist.filter((_, index) => item.checklist?.[index]).length;
+  const answerEntries = Object.entries(item.answers || {}).filter(([, answer]) => answer.result);
+  const operationalEntries = answerEntries.filter(([key]) => OPERATIONAL_SECTIONS.includes(key.split("-").slice(0, -1).join("-")));
+  const leadershipEntries = answerEntries.filter(([key]) => LEADERSHIP_SECTIONS.includes(key.split("-").slice(0, -1).join("-")));
   let y = 20;
   const brand = getSettings().reportBrand || "PnP Clothing";
 
@@ -917,111 +1218,39 @@ async function downloadReport(item) {
   pdf.text(`STORE  ${item.storeName || "Not recorded"} (${item.storeCode || "No code"})`, margin + 1, infoY + infoHeight + 7);
   pdf.setFont("helvetica", "bold");
   pdf.setTextColor(...navy);
-  pdf.text(`${checklistComplete} / ${storeChecklist.length} CHECKLIST ITEMS COMPLETE`, pageWidth - margin, infoY + infoHeight + 7, { align: "right" });
+  pdf.text(`OPERATIONAL ${Number(item.operational || 0)}%  ·  LEADERSHIP ${Number(item.leadership || 0)}%`, pageWidth - margin, infoY + infoHeight + 7, { align: "right" });
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(8.5);
   pdf.setTextColor(...muted);
   pdf.text(`STORE MANAGER  ${item.manager || "Not recorded"}     VISIT TYPE  ${item.visitType || "Store audit"}`, margin + 1, infoY + infoHeight + 13);
 
   y = infoY + infoHeight + 25;
-  drawSectionHeading(pdf, "Checklist Summary", margin, y);
-  y += 8;
-  const checklistWidths = [contentWidth * 0.55, contentWidth * 0.23, contentWidth * 0.22];
-  const checklistX = [margin, margin + checklistWidths[0], margin + checklistWidths[0] + checklistWidths[1]];
-  const drawChecklistHeader = () => {
-    pdf.setFillColor(...navy);
-    pdf.roundedRect(margin, y, contentWidth, 12, 1.5, 1.5, "F");
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(7.5);
-    pdf.setTextColor(255, 255, 255);
-    pdf.text("OPERATIONAL STANDARDS", checklistX[0] + 3, y + 7.7);
-    pdf.text("STATUS", checklistX[1] + 2, y + 7.7);
-    pdf.text("VERIFICATION", checklistX[2] + 2, y + 7.7);
-    y += 12;
-  };
-  drawChecklistHeader();
-  storeChecklist.forEach((label, index) => {
-    const checked = Boolean(item.checklist?.[index]);
-    const labelLines = pdf.splitTextToSize(label, checklistWidths[0] - 7);
-    const statusLines = pdf.splitTextToSize(checked ? "COMPLETED" : "PENDING / TO DO", checklistWidths[1] - 5);
-    const verificationLines = pdf.splitTextToSize(checked ? "Verified" : "Pending", checklistWidths[2] - 5);
-    const rowHeight = Math.max(11, Math.max(labelLines.length, statusLines.length, verificationLines.length) * 4.5 + 5);
-    const previousY = y;
-    y = ensureReportSpace(pdf, y, rowHeight, pageHeight, margin, storeName);
-    if (y < previousY) drawChecklistHeader();
-    if (index % 2 === 0) {
-      pdf.setFillColor(246, 248, 250);
-      pdf.rect(margin, y, contentWidth, rowHeight, "F");
-    }
-    pdf.setDrawColor(225, 231, 236);
-    pdf.setLineWidth(0.2);
-    pdf.line(margin, y + rowHeight, margin + contentWidth, y + rowHeight);
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(9);
-    pdf.setTextColor(...ink);
-    pdf.text(labelLines, checklistX[0] + 3, y + 5.7);
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(checked ? 7.8 : 7.1);
-    pdf.setTextColor(...(checked ? [35, 128, 80] : [83, 91, 99]));
-    pdf.text(statusLines, checklistX[1] + 2, y + 5.7);
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(8.5);
-    pdf.setTextColor(...(checked ? [35, 128, 80] : muted));
-    pdf.text(verificationLines, checklistX[2] + 2, y + 5.7);
-    y += rowHeight;
-  });
-
-  const answerEntries = Object.entries(item.answers || {}).filter(([, answer]) => answer.result);
-  if (answerEntries.length) {
-    y += 8;
-    y = ensureReportSpace(pdf, y, 22, pageHeight, margin, storeName);
-    drawSectionHeading(pdf, "Operational Standards", margin, y);
-    y += 8;
-    const standardWidths = [contentWidth * 0.55, contentWidth * 0.23, contentWidth * 0.22];
-    const standardX = [margin, margin + standardWidths[0], margin + standardWidths[0] + standardWidths[1]];
-    const drawStandardsHeader = () => {
-      pdf.setFillColor(...navy);
-      pdf.roundedRect(margin, y, contentWidth, 12, 1.5, 1.5, "F");
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(7.5);
-      pdf.setTextColor(255, 255, 255);
-      pdf.text("STANDARD", standardX[0] + 3, y + 7.7);
-      pdf.text("RESULT", standardX[1] + 2, y + 7.7);
-      pdf.text("FOLLOW-UP", standardX[2] + 2, y + 7.7);
-      y += 12;
-    };
-    drawStandardsHeader();
-    answerEntries.forEach(([key, answer], rowIndex) => {
-      const section = key.split("-").slice(0, -1).join("-");
-      const index = Number(key.split("-").at(-1));
-      const label = `${section}: ${standards[section]?.[index] || key}`;
-      const labelLines = pdf.splitTextToSize(label, standardWidths[0] - 7);
-      const resultLines = pdf.splitTextToSize(answer.result, standardWidths[1] - 5);
-      const followUpLines = pdf.splitTextToSize(answer.action || (["Action Required", "Partially Compliant"].includes(answer.result) ? "Action open" : "-"), standardWidths[2] - 5);
-      const rowHeight = Math.max(11, Math.max(labelLines.length, resultLines.length, followUpLines.length) * 4.5 + 5);
-      const previousY = y;
-      y = ensureReportSpace(pdf, y, rowHeight, pageHeight, margin, storeName);
-      if (y < previousY) drawStandardsHeader();
-      if (rowIndex % 2 === 0) {
-        pdf.setFillColor(246, 248, 250);
-        pdf.rect(margin, y, contentWidth, rowHeight, "F");
-      }
-      pdf.setDrawColor(225, 231, 236);
-      pdf.line(margin, y + rowHeight, margin + contentWidth, y + rowHeight);
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(8.5);
-      pdf.setTextColor(...ink);
-      pdf.text(labelLines, standardX[0] + 3, y + 5.7);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(7.5);
-      pdf.setTextColor(...(answer.result === "Compliant" ? [35, 128, 80] : [83, 91, 99]));
-      pdf.text(resultLines, standardX[1] + 2, y + 5.7);
-      pdf.setFont("helvetica", "normal");
-      pdf.setTextColor(...muted);
-      pdf.text(followUpLines, standardX[2] + 2, y + 5.7);
-      y += rowHeight;
-    });
-  }
+  y = drawStandardsPdfGroup(
+    pdf,
+    `Operational Standards (${Number(item.operational || 0)}%)`,
+    operationalEntries,
+    y,
+    pageHeight,
+    margin,
+    contentWidth,
+    storeName,
+    navy,
+    ink,
+    muted
+  );
+  y = drawStandardsPdfGroup(
+    pdf,
+    `Leadership & Culture Standards (${Number(item.leadership || 0)}%)`,
+    leadershipEntries,
+    y,
+    pageHeight,
+    margin,
+    contentWidth,
+    storeName,
+    navy,
+    ink,
+    muted
+  );
 
   const reportItems = answerEntries
     .filter(([, answer]) => ["Partially Compliant", "Action Required"].includes(answer.result) || answer.observation || answer.photo)
@@ -1029,7 +1258,7 @@ async function downloadReport(item) {
       const section = key.split("-").slice(0, -1).join("-");
       const index = Number(key.split("-").at(-1));
       return {
-        title: standards[section]?.[index] || key,
+        title: `${section}: ${standards[section]?.[index] || key}`,
         result: answer.result,
         observation: answer.observation,
         action: answer.action,
@@ -1045,7 +1274,7 @@ async function downloadReport(item) {
       imageUrl: issue.imageUrl
     })));
 
-  y += 10;
+  y += 2;
   y = ensureReportSpace(pdf, y, 20, pageHeight, margin, storeName);
   drawSectionHeading(pdf, `Issue & Action Logs (${reportItems.length})`, margin, y);
   y += 9;
@@ -1184,9 +1413,8 @@ function addIssueFromForm(form) {
   const saveIssue = (imageUrl) => {
     draft.issues.push({ id: createId(), comment, imageUrl, createdAt: new Date().toISOString() });
     form.reset();
-    $("#issueList").innerHTML = renderIssueCards(draft.issues);
-    form.closest(".card").querySelector(".sectionTitle .pill").textContent =
-      `${draft.issues.length} ${draft.issues.length === 1 ? "issue" : "issues"}`;
+    quietAutoSave();
+    renderAudit();
     showStatus("");
   };
   if (!file) {
@@ -1201,7 +1429,11 @@ document.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof Element)) return;
   if (target.closest("#menuBtn")) {
-    $("#sidebar").classList.toggle("open");
+    toggleSidebar();
+    return;
+  }
+  if (target.closest("#sidebarBackdrop")) {
+    toggleSidebar(false);
     return;
   }
   const pageButton = target.closest("[data-page]");
@@ -1210,15 +1442,29 @@ document.addEventListener("click", (event) => {
     go(destination);
     return;
   }
+  if (target.closest("[data-export-backup]")) {
+    exportBackup();
+    return;
+  }
   const tabButton = target.closest("[data-audit-tab]");
   if (tabButton) {
+    quietAutoSave();
     activeTab = tabButton.dataset.auditTab;
     activeStandardIndex = 0;
     renderAudit();
     return;
   }
+  const jumpButton = target.closest("[data-jump-section]");
+  if (jumpButton && standards[jumpButton.dataset.jumpSection]) {
+    quietAutoSave();
+    activeTab = jumpButton.dataset.jumpSection;
+    activeStandardIndex = Number(jumpButton.dataset.jumpIndex) || 0;
+    renderAudit();
+    return;
+  }
   const standardButton = target.closest("[data-standard-index]");
   if (standardButton) {
+    quietAutoSave();
     activeStandardIndex = Number(standardButton.dataset.standardIndex);
     renderAudit();
     return;
@@ -1226,19 +1472,26 @@ document.addEventListener("click", (event) => {
   const resultButton = target.closest("[data-result-key]");
   if (resultButton) {
     const key = resultButton.dataset.resultKey;
+    const val = resultButton.dataset.resultValue;
     draft.answers[key] = draft.answers[key] || {};
-    draft.answers[key].result = resultButton.dataset.resultValue;
-    if (!draft.answers[key].owner) draft.answers[key].owner = "Store Manager";
-    if (!draft.answers[key].priority) draft.answers[key].priority = "Medium";
+    draft.answers[key].result = val;
+    if (["Action Required", "Partially Compliant"].includes(val)) {
+      if (!draft.answers[key].owner) draft.answers[key].owner = "Store Manager";
+      if (!draft.answers[key].priority) draft.answers[key].priority = val === "Action Required" ? "High" : "Medium";
+      if (!draft.answers[key].dueDate) draft.answers[key].dueDate = addDaysToIsoDate(draft.date, 7);
+    }
+    quietAutoSave();
     renderAudit();
     return;
   }
   if (target.closest("[data-standard-prev]") && activeStandardIndex > 0) {
+    quietAutoSave();
     activeStandardIndex -= 1;
     renderAudit();
     return;
   }
   if (target.closest("[data-standard-next]") && activeStandardIndex < standards[activeTab].length - 1) {
+    quietAutoSave();
     activeStandardIndex += 1;
     renderAudit();
     return;
@@ -1273,9 +1526,8 @@ document.addEventListener("click", (event) => {
   const removeButton = target.closest("[data-remove-issue]");
   if (removeButton) {
     draft.issues = draft.issues.filter((issue) => issue.id !== removeButton.dataset.removeIssue);
-    $("#issueList").innerHTML = renderIssueCards(draft.issues);
-    const pill = removeButton.closest(".card").querySelector(".sectionTitle .pill");
-    if (pill) pill.textContent = `${draft.issues.length} ${draft.issues.length === 1 ? "issue" : "issues"}`;
+    quietAutoSave();
+    renderAudit();
     return;
   }
   const openButton = target.closest("[data-open-report]");
@@ -1295,27 +1547,59 @@ document.addEventListener("click", (event) => {
 document.addEventListener("input", (event) => {
   const target = event.target;
   if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) return;
-  if (target.matches("#storeName")) draft.storeName = target.value;
-  if (target.matches("#storeCode")) draft.storeCode = target.value;
-  if (target.matches("#manager")) draft.manager = target.value;
-  if (target.matches("#areaManager")) draft.areaManager = target.value;
-  if (target.matches("#visitDate")) draft.date = target.value;
-  if (target.matches("#focus")) draft.focus = target.value;
+  if (target.matches("#storeName")) {
+    draft.storeName = target.value;
+    const match = getKnownStores().find((s) => s.storeName.toLowerCase() === target.value.trim().toLowerCase());
+    if (match) {
+      if (match.storeCode && !$("#storeCode").value.trim()) {
+        $("#storeCode").value = match.storeCode;
+        draft.storeCode = match.storeCode;
+      }
+      if (match.manager && !$("#manager").value.trim()) {
+        $("#manager").value = match.manager;
+        draft.manager = match.manager;
+      }
+    }
+    scheduleAutoSave();
+  }
+  if (target.matches("#storeCode")) {
+    draft.storeCode = target.value;
+    const match = getKnownStores().find((s) => s.storeCode.toLowerCase() === target.value.trim().toLowerCase());
+    if (match) {
+      if (match.storeName && !$("#storeName").value.trim()) {
+        $("#storeName").value = match.storeName;
+        draft.storeName = match.storeName;
+      }
+      if (match.manager && !$("#manager").value.trim()) {
+        $("#manager").value = match.manager;
+        draft.manager = match.manager;
+      }
+    }
+    scheduleAutoSave();
+  }
+  if (target.matches("#manager")) { draft.manager = target.value; scheduleAutoSave(); }
+  if (target.matches("#areaManager")) { draft.areaManager = target.value; scheduleAutoSave(); }
+  if (target.matches("#visitDate")) { draft.date = target.value; scheduleAutoSave(); }
+  if (target.matches("#focus")) { draft.focus = target.value; scheduleAutoSave(); }
   if (target.matches("#audit [data-f]")) {
     const key = `${activeTab}-${activeStandardIndex}`;
     draft.answers[key] = draft.answers[key] || {};
     draft.answers[key][target.dataset.f] = target.value;
+    scheduleAutoSave();
   }
 });
 
 document.addEventListener("change", (event) => {
   const target = event.target;
   if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return;
-  if (target.matches("[data-store-check]")) {
-    draft.checklist[target.dataset.storeCheck] = target.checked;
-    const status = target.closest(".checklist-item").querySelector(".item-status");
-    status.textContent = target.checked ? "DONE" : "TO DO";
-    updateChecklistProgress();
+  if (target.id === "importBackupInput" && target.files?.[0]) {
+    importBackup(target.files[0]);
+    target.value = "";
+    return;
+  }
+  if (target.matches("#visitType")) {
+    draft.visitType = target.value;
+    quietAutoSave();
     return;
   }
   if (target.matches("[data-action-status]")) {
@@ -1355,6 +1639,7 @@ document.addEventListener("change", (event) => {
         field.append(preview);
       }
       preview.src = photo;
+      quietAutoSave();
       showStatus("");
     }).catch((error) => showStatus(error.message, true));
   }
@@ -1419,6 +1704,13 @@ document.addEventListener("change", (event) => {
     actionPage();
   }
 });
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") toggleSidebar(false);
+});
+
+window.addEventListener("pagehide", quietAutoSave);
+window.addEventListener("beforeunload", quietAutoSave);
 
 try {
   badge();

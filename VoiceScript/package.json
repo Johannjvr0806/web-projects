@@ -1,6 +1,6 @@
 {
   "name": "voicescript-desktop",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "description": "Windows desktop app for Afrikaans and English transcription",
   "main": "desktop/main.cjs",

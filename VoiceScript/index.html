@@ -138,9 +138,14 @@
 
             <!-- Language & Processing Settings -->
             <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-                <h2 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                    <i class="ph-bold ph-sliders text-indigo-400"></i> Speech & Language Config
-                </h2>
+                <div class="flex items-center justify-between gap-2">
+                    <h2 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                        <i class="ph-bold ph-sliders text-indigo-400"></i> Speech & Language Config
+                    </h2>
+                    <button type="button" onclick="resetUniversalDefaults()" class="text-[11px] text-slate-400 hover:text-indigo-300 underline transition">
+                        Reset core af-ZA defaults
+                    </button>
+                </div>
 
                 <div>
                     <label class="block text-xs text-slate-400 mb-1.5 font-medium">Source Language</label>
@@ -157,15 +162,26 @@
                     </div>
                 </div>
 
-                <div>
-                    <label for="deepgramKeyterms" class="block text-[11px] text-slate-400 mb-1 font-medium">Names, companies & legal terms</label>
-                    <textarea id="deepgramKeyterms" rows="2" placeholder="Comma-separated names, companies & legal terms (e.g. Struwig, Engelbrecht, Steynberg, Superdynamic, likwidateur)" class="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none"></textarea>
-                    <p class="text-[10px] text-slate-500 mt-1">Sent to Deepgram keyterms (up to 80 terms) and used by Gemini Flash to recover exact names/entities. Saved in this browser.</p>
+                <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-3 space-y-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <label for="caseTermsInput" class="block text-[11px] text-indigo-300 font-medium">This matter's names & companies (swappable per case)</label>
+                        <button type="button" onclick="clearCaseTerms()" class="text-[11px] text-rose-300 hover:text-rose-200 underline transition">
+                            Clear case names
+                        </button>
+                    </div>
+                    <textarea id="caseTermsInput" rows="2" placeholder="Only for the current recording/case (e.g. Struwig, Engelbrecht, Steynberg, Superdynamic, Evergreen Tires)" class="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none"></textarea>
+                    <p class="text-[10px] text-slate-500">Combined automatically with your universal af-ZA & legal terms below when transcribing or polishing, so you can clear case names cleanly on a new matter.</p>
                 </div>
 
                 <div>
-                    <label for="deepgramReplacements" class="block text-[11px] text-slate-400 mb-1 font-medium">Transcript replacements</label>
-                    <textarea id="deepgramReplacements" rows="4" class="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none"></textarea>
+                    <label for="deepgramKeyterms" class="block text-[11px] text-slate-400 mb-1 font-medium">Universal af-ZA & legal terms</label>
+                    <textarea id="deepgramKeyterms" rows="3" placeholder="Comma-separated universal af-ZA & legal terms" class="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none"></textarea>
+                    <p class="text-[10px] text-slate-500 mt-1">High-risk af-ZA particles, legal/insolvency terms, and SA words sent to Deepgram keyterms (up to 80 combined terms) and Gemini Flash. Saved in this browser.</p>
+                </div>
+
+                <div>
+                    <label for="deepgramReplacements" class="block text-[11px] text-slate-400 mb-1 font-medium">Transcript replacements (Dutch drift & common misses)</label>
+                    <textarea id="deepgramReplacements" rows="5" class="w-full bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none"></textarea>
                     <p class="text-[10px] text-slate-500 mt-1">One wrong->correct spelling per line. Applied to Deepgram results and passed to Gemini Flash cleanup; saved in this browser.</p>
                 </div>
 
@@ -339,10 +355,33 @@
         const TRANSCRIPTION_API_URL = 'https://voicescript-transcribe.johann-dev.workers.dev';
 
         const TRANSCRIPT_STORAGE_KEY = 'voicescript.transcript';
+        const CASE_TERMS_STORAGE_KEY = 'voicescript.case.terms';
         const DEEPGRAM_KEYTERMS_STORAGE_KEY = 'voicescript.deepgram.keyterms';
         const DEEPGRAM_REPLACEMENTS_STORAGE_KEY = 'voicescript.deepgram.replacements';
         const AUTO_GEMINI_POLISH_STORAGE_KEY = 'voicescript.gemini.autoPolish';
+
+        const DEFAULT_UNIVERSAL_KEYTERMS = [
+            "'n", "nie", "nou", "tog", "maar", "dalk", "mos", "sommer", "reeds", "alreeds", "hoekom", "waaram",
+            "likwidateur", "likwidateurs", "likwidasie", "insolvensie", "boedel", "skuldeisers", "skuldenaar",
+            "verhoor", "getuienis", "beëdigde verklaring", "kommissaris", "ondervraging", "verslag",
+            "beslaglegging", "vervreemding", "onbehoorlik", "Hooggeregshof", "Meester van die Hooggeregshof",
+            "CIPC", "eNaTIS", "SAPS", "regter", "prokureur", "advokaat", "dagvaarding", "eis", "kontrak",
+            "ooreenkoms", "volmag", "vragmotor", "vragmotors", "sleepwa", "sleepwaens", "maatskappy",
+            "direkteur", "direkteure", "aandeelhouer", "rekeningstaat", "bankstaat", "bewysstuk", "kwitansie", "faktuur"
+        ].join(', ');
+
         const DEFAULT_DEEPGRAM_REPLACEMENTS = [
+            'niet->nie',
+            'een->\'n',
+            'vrachtwagen->vragmotor',
+            'vrachtwagens->vragmotors',
+            'boedel->boedel',
+            'curateuren->likwidateurs',
+            'curator->likwidateur',
+            'faillissement->insolvensie',
+            'schuldeisers->skuldeisers',
+            'maatskappy->maatskappy',
+            'direkteur->direkteur',
             'super dinamic->Superdynamic',
             'super diamic->Superdynamic',
             'super dimamic->Superdynamic',
@@ -368,14 +407,21 @@
             'super disamic->Superdynamic',
             'suikerdianamic->Superdynamic'
         ].join('\n');
+
+        const caseTermsInput = document.getElementById('caseTermsInput');
         const deepgramKeytermsInput = document.getElementById('deepgramKeyterms');
         const deepgramReplacementsInput = document.getElementById('deepgramReplacements');
         const autoGeminiPolishInput = document.getElementById('autoGeminiPolish');
-        deepgramKeytermsInput.value = localStorage.getItem(DEEPGRAM_KEYTERMS_STORAGE_KEY) ?? '';
+
+        caseTermsInput.value = localStorage.getItem(CASE_TERMS_STORAGE_KEY) ?? '';
+        deepgramKeytermsInput.value = localStorage.getItem(DEEPGRAM_KEYTERMS_STORAGE_KEY) ?? DEFAULT_UNIVERSAL_KEYTERMS;
         deepgramReplacementsInput.value = localStorage.getItem(DEEPGRAM_REPLACEMENTS_STORAGE_KEY) ?? DEFAULT_DEEPGRAM_REPLACEMENTS;
         const savedAutoPolish = localStorage.getItem(AUTO_GEMINI_POLISH_STORAGE_KEY);
         autoGeminiPolishInput.checked = savedAutoPolish === null ? true : savedAutoPolish === 'true';
 
+        caseTermsInput.addEventListener('input', () => {
+            localStorage.setItem(CASE_TERMS_STORAGE_KEY, caseTermsInput.value);
+        });
         deepgramKeytermsInput.addEventListener('input', () => {
             localStorage.setItem(DEEPGRAM_KEYTERMS_STORAGE_KEY, deepgramKeytermsInput.value);
         });
@@ -385,6 +431,36 @@
         autoGeminiPolishInput.addEventListener('change', () => {
             localStorage.setItem(AUTO_GEMINI_POLISH_STORAGE_KEY, String(autoGeminiPolishInput.checked));
         });
+
+        function getCombinedKeyterms() {
+            const parts = [caseTermsInput.value.trim(), deepgramKeytermsInput.value.trim()].filter(Boolean);
+            const seen = new Set();
+            const merged = [];
+            for (const item of parts.join(',').split(',')) {
+                const term = item.trim();
+                if (!term) continue;
+                const key = term.toLowerCase();
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    merged.push(term);
+                }
+            }
+            return merged.slice(0, 80).join(', ');
+        }
+
+        function clearCaseTerms() {
+            caseTermsInput.value = '';
+            localStorage.setItem(CASE_TERMS_STORAGE_KEY, '');
+            showToast('Cleared case-specific names; universal af-ZA & legal terms kept.');
+        }
+
+        function resetUniversalDefaults() {
+            deepgramKeytermsInput.value = DEFAULT_UNIVERSAL_KEYTERMS;
+            deepgramReplacementsInput.value = DEFAULT_DEEPGRAM_REPLACEMENTS;
+            localStorage.setItem(DEEPGRAM_KEYTERMS_STORAGE_KEY, DEFAULT_UNIVERSAL_KEYTERMS);
+            localStorage.setItem(DEEPGRAM_REPLACEMENTS_STORAGE_KEY, DEFAULT_DEEPGRAM_REPLACEMENTS);
+            showToast('Reset universal af-ZA terms and replacements to defaults.');
+        }
 
         // Data & App State
         let currentFile = null;
@@ -507,6 +583,7 @@
 
             const batchSize = 40;
             const polishedByIndex = new Map();
+            const combinedKeyterms = getCombinedKeyterms();
 
             for (let startIdx = 0; startIdx < targetSegments.length; startIdx += batchSize) {
                 const batch = targetSegments.slice(startIdx, startIdx + batchSize).map((seg, offset) => ({
@@ -524,7 +601,7 @@
                     body: JSON.stringify({
                         action: 'polish',
                         language: mapLanguageCode(selectedLang),
-                        keyterms: deepgramKeytermsInput.value.trim(),
+                        keyterms: combinedKeyterms,
                         replacements: deepgramReplacementsInput.value.trim(),
                         segments: batch
                     })
@@ -1062,7 +1139,7 @@
                         formData.append('file', new Blob([wav], { type: 'audio/wav' }), `chunk-${index + 1}.wav`);
                         formData.append('language', mapLanguageCode(sourceLanguage));
                         formData.append('provider', 'deepgram');
-                        const keyterms = deepgramKeytermsInput.value.trim();
+                        const keyterms = getCombinedKeyterms();
                         if (keyterms) formData.append('keyterms', keyterms);
 
                         const payload = await fetchCloudChunk(formData, cloudAccessCode, 'Deepgram', retryInfo);
